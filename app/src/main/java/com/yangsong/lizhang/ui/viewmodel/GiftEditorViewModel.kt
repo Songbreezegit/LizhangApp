@@ -33,9 +33,13 @@ data class GiftEditorUiState(
     val isSaved: Boolean = false,
     val isSaving: Boolean = false,
     val contacts: List<Contact> = emptyList(),
+    val isCreatingContact: Boolean = false,
 )
 
-class GiftEditorViewModel(private val repository: GiftRecordRepository, contactRepository: ContactRepository) : ViewModel() {
+class GiftEditorViewModel(
+    private val repository: GiftRecordRepository,
+    private val contactRepository: ContactRepository,
+) : ViewModel() {
     private val mutableUiState = MutableStateFlow(GiftEditorUiState())
     val uiState: StateFlow<GiftEditorUiState> = mutableUiState.asStateFlow()
     init { viewModelScope.launch { contactRepository.observeContacts().collect { contacts -> mutableUiState.value = mutableUiState.value.copy(contacts = contacts) } } }
@@ -53,7 +57,27 @@ class GiftEditorViewModel(private val repository: GiftRecordRepository, contactR
             eventDate = record.eventDate,
             direction = record.direction,
             notes = record.notes.orEmpty(),
+            contacts = mutableUiState.value.contacts,
         )
+    }
+
+    fun createContact(name: String, phone: String, relationship: String) {
+        if (name.isBlank() || mutableUiState.value.isCreatingContact) return
+        viewModelScope.launch {
+            mutableUiState.value = mutableUiState.value.copy(isCreatingContact = true)
+            val contactId = contactRepository.create(
+                Contact(
+                    name = name.trim(),
+                    phone = phone.trim().ifBlank { null },
+                    relationship = relationship.trim().ifBlank { null },
+                ),
+            )
+            mutableUiState.value = mutableUiState.value.copy(
+                contactId = contactId,
+                isCreatingContact = false,
+                validationError = null,
+            )
+        }
     }
 
     fun save() {

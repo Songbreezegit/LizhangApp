@@ -17,5 +17,5 @@ private fun NavHostController.open(destination:AppDestination){navigate(destinat
  composable(AppDestination.Search.route){SearchScreen(viewModel(factory=SearchViewModel.factory(appContainer.giftRecordRepository)),nav::popBackStack)}
  composable(AppDestination.Statistics.route){StatisticsScreen(viewModel(factory=StatisticsViewModel.factory(appContainer.giftRecordRepository)),nav::popBackStack)}
  composable(AppDestination.Settings.route){SettingsScreen(go)}
- composable(AppDestination.OcrImport.route){OcrImportScreen(nav::popBackStack)}
+ composable(AppDestination.OcrImport.route){OcrImportScreen(viewModel(factory=OcrImportViewModel.factory()),nav::popBackStack)}
 }}

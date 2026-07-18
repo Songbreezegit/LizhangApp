@@ -17,6 +17,7 @@ data class SearchUiState(
     val records: List<GiftRecordWithContact> = emptyList(),
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(repository: GiftRecordRepository) : ViewModel() {
     private val query = MutableStateFlow("")
 
