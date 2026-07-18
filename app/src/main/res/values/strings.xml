@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">礼账</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_add_gift">新增礼金</string>
+    <string name="nav_contacts">联系人</string>
+    <string name="nav_contact_detail">联系人详情</string>
+    <string name="nav_statistics">统计</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_settings">设置</string>
+    <string name="placeholder_message">该功能的业务基础已预留，界面将在设计系统确定后实现。</string>
+    <string name="action_back">返回</string>
+    <string name="home_contact_count">联系人：%1$d</string>
+    <string name="home_recent_record_count">最近记录：%1$d</string>
+    <string name="contact_ledger_count">礼金记录：%1$d</string>
+    <string name="contact_net_amount">净往来：%1$s</string>
+    <string name="event_wedding">婚礼</string>
+    <string name="event_full_month">满月</string>
+    <string name="event_birthday">生日</string>
+    <string name="event_housewarming">乔迁</string>
+    <string name="event_festival">节日</string>
+    <string name="event_other">其他</string>
+    <string name="direction_received">收到</string>
+    <string name="direction_given">送出</string>
+</resources>
