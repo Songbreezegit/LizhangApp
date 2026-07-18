@@ -6,6 +6,8 @@
 
 已完成：项目基础设施、MVVM 分层、Room 数据库、联系人与礼金记录 CRUD、StateFlow 状态管理、Navigation Compose 路由、主题和通用格式化工具。
 
+设计阶段已建立中文设计系统与原型规范，并提供可直接用于 Stitch 的全局及分页面提示词。当前仍不实现最终视觉 UI，待原型在 Figma 中完成变量、组件和交互定稿后再映射到 Compose。
+
 工程已迁移至 `D:\AndroidProjects\LizhangApp`，并完成 Gradle Wrapper、Android Studio Gradle Sync、Clean、`assembleDebug` 及 Pixel 9 模拟器运行验证。Git 主分支为 `main`，远程仓库为 `https://github.com/Songbreezegit/LizhangApp.git`。
 
 当前页面为功能占位页面，未进入最终视觉设计阶段。后续会先完成设计系统和原型，再替换 Compose 页面视觉实现；数据与业务层无需重构。
@@ -115,10 +117,11 @@ Room 同时提供联系人汇总投影和“礼金记录 + 联系人名称”投
 
 ## 后续开发计划
 
-1. 为新增礼金、联系人编辑和详情记录补上设计定稿后的 Compose 表单。
-2. 完成搜索、事件/年份统计 dashboard 和筛选。
-3. 实现 CSV/Excel 导入导出、本地备份与恢复。
-4. 增加 OCR 图片识别及“待确认批量导入”流程。
-5. 以本地账本边界为基础，扩展云同步、家庭共享和账号体系。
+1. 使用 [`docs/Stitch原型提示词.md`](docs/Stitch原型提示词.md) 生成 3 套视觉方向，并按 [`docs/设计系统与原型规范.md`](docs/设计系统与原型规范.md) 完成评审。
+2. 将选定方向导入 Figma，建立 Light/Dark 变量、组件状态和关键可点击流程。
+3. 为新增礼金、联系人编辑和详情记录实现设计定稿后的 Compose 表单。
+4. 完成搜索、事件/年份统计 dashboard 和筛选。
+5. 实现 CSV/Excel 导入导出、本地备份与恢复。
+6. 增加 OCR 图片识别及“待确认批量导入”流程。
 
 每个功能完成后必须同步更新本 README、执行构建验证，并保持领域层和数据层不依赖具体视觉设计。
