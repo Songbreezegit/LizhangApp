@@ -1,45 +1,8 @@
 package com.yangsong.lizhang.ui.viewmodel
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import com.yangsong.lizhang.domain.model.Contact
-import com.yangsong.lizhang.domain.model.GiftRecord
-import com.yangsong.lizhang.domain.repository.ContactRepository
-import com.yangsong.lizhang.domain.repository.GiftRecordRepository
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import androidx.lifecycle.*
+import com.yangsong.lizhang.domain.model.*
+import com.yangsong.lizhang.domain.repository.*
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-data class ContactDetailUiState(
-    val contact: Contact? = null,
-    val records: List<GiftRecord> = emptyList(),
-)
-
-class ContactDetailViewModel(
-    contactId: Long,
-    contactRepository: ContactRepository,
-    private val giftRecordRepository: GiftRecordRepository,
-) : ViewModel() {
-    val uiState: StateFlow<ContactDetailUiState> = combine(
-        contactRepository.observeContact(contactId),
-        giftRecordRepository.observeByContact(contactId),
-    ) { contact, records -> ContactDetailUiState(contact, records) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ContactDetailUiState())
-
-    fun deleteRecord(record: GiftRecord) = viewModelScope.launch { giftRecordRepository.delete(record) }
-
-    companion object {
-        fun factory(
-            contactId: Long,
-            contactRepository: ContactRepository,
-            giftRecordRepository: GiftRecordRepository,
-        ) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                ContactDetailViewModel(contactId, contactRepository, giftRecordRepository) as T
-        }
-    }
-}
+data class ContactDetailUiState(val contact:Contact?=null,val records:List<GiftRecord> = emptyList(),val received:Long=0,val given:Long=0,val isLoading:Boolean=true,val error:Boolean=false){val net get()=received-given}
+class ContactDetailViewModel(id:Long,c:ContactRepository,private val g:GiftRecordRepository):ViewModel(){val uiState=combine(c.observeContact(id),g.observeByContact(id)){contact,records->ContactDetailUiState(contact,records,records.filter{it.direction==GiftDirection.RECEIVED}.sumOf{it.amountInCents},records.filter{it.direction==GiftDirection.GIVEN}.sumOf{it.amountInCents},false)}.catch{emit(ContactDetailUiState(isLoading=false,error=true))}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ContactDetailUiState());fun deleteRecord(r:GiftRecord)=viewModelScope.launch{g.delete(r)};companion object{fun factory(id:Long,c:ContactRepository,g:GiftRecordRepository)=object:ViewModelProvider.Factory{@Suppress("UNCHECKED_CAST")override fun<T:ViewModel>create(m:Class<T>)=ContactDetailViewModel(id,c,g)as T}}}

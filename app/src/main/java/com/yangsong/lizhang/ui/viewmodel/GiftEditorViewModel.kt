@@ -7,6 +7,8 @@ import com.yangsong.lizhang.core.util.toCentsOrNull
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
+import com.yangsong.lizhang.domain.model.Contact
+import com.yangsong.lizhang.domain.repository.ContactRepository
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,11 +31,14 @@ data class GiftEditorUiState(
     val notes: String = "",
     val validationError: GiftRecordValidationError? = null,
     val isSaved: Boolean = false,
+    val isSaving: Boolean = false,
+    val contacts: List<Contact> = emptyList(),
 )
 
-class GiftEditorViewModel(private val repository: GiftRecordRepository) : ViewModel() {
+class GiftEditorViewModel(private val repository: GiftRecordRepository, contactRepository: ContactRepository) : ViewModel() {
     private val mutableUiState = MutableStateFlow(GiftEditorUiState())
     val uiState: StateFlow<GiftEditorUiState> = mutableUiState.asStateFlow()
+    init { viewModelScope.launch { contactRepository.observeContacts().collect { contacts -> mutableUiState.value = mutableUiState.value.copy(contacts = contacts) } } }
 
     fun update(transform: (GiftEditorUiState) -> GiftEditorUiState) {
         mutableUiState.value = transform(mutableUiState.value).copy(validationError = null, isSaved = false)
@@ -59,6 +64,7 @@ class GiftEditorViewModel(private val repository: GiftRecordRepository) : ViewMo
             contactId == null -> mutableUiState.value = state.copy(validationError = GiftRecordValidationError.CONTACT_REQUIRED)
             amountInCents == null || amountInCents <= 0 -> mutableUiState.value = state.copy(validationError = GiftRecordValidationError.AMOUNT_INVALID)
             else -> viewModelScope.launch {
+                mutableUiState.value = state.copy(isSaving = true)
                 val record = GiftRecord(
                     id = state.recordId,
                     contactId = contactId,
@@ -69,7 +75,7 @@ class GiftEditorViewModel(private val repository: GiftRecordRepository) : ViewMo
                     notes = state.notes,
                 )
                 if (record.id == 0L) repository.create(record) else repository.update(record)
-                mutableUiState.value = mutableUiState.value.copy(isSaved = true)
+                mutableUiState.value = mutableUiState.value.copy(isSaved = true, isSaving = false)
             }
         }
     }
@@ -95,9 +101,9 @@ class GiftEditorViewModel(private val repository: GiftRecordRepository) : ViewMo
     }
 
     companion object {
-        fun factory(repository: GiftRecordRepository) = object : ViewModelProvider.Factory {
+        fun factory(repository: GiftRecordRepository, contactRepository: ContactRepository) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = GiftEditorViewModel(repository) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = GiftEditorViewModel(repository, contactRepository) as T
         }
     }
 }

@@ -1,0 +1,55 @@
+package com.yangsong.lizhang.ui.component
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.util.CurrencyFormatter
+import com.yangsong.lizhang.core.util.DateFormatter
+import com.yangsong.lizhang.domain.model.*
+import com.yangsong.lizhang.ui.mapper.labelRes
+import com.yangsong.lizhang.ui.navigation.AppDestination
+import com.yangsong.lizhang.ui.theme.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun AppTopBar(title: String, onBack: (() -> Unit)? = null, action: (@Composable RowScope.() -> Unit)? = null) =
+    TopAppBar(title = { Text(title, style = MaterialTheme.typography.titleLarge) }, navigationIcon = { if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.action_back)) } }, actions = { action?.invoke(this) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background))
+
+private data class NavItem(val destination: AppDestination, val label: Int, val icon: ImageVector)
+private val navItems = listOf(NavItem(AppDestination.Home, R.string.nav_home, Icons.Outlined.Home), NavItem(AppDestination.Contacts, R.string.nav_contacts, Icons.Outlined.People), NavItem(AppDestination.Statistics, R.string.nav_statistics, Icons.Outlined.BarChart), NavItem(AppDestination.Settings, R.string.nav_settings, Icons.Outlined.Settings))
+@Composable fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit) { NavigationBar(containerColor = MaterialTheme.colorScheme.surface) { navItems.forEach { item -> NavigationBarItem(selected = current == item.destination, onClick = { onNavigate(item.destination) }, icon = { Icon(item.icon, null) }, label = { Text(stringResource(item.label)) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary, indicatorColor = MaterialTheme.colorScheme.primaryContainer)) } } }
+
+@Composable fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, loading: Boolean = false, enabled: Boolean = true, icon: ImageVector? = null) { Button(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), enabled = enabled && !loading, shape = RoundedCornerShape(LiZhangRadius.md)) { if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else { icon?.let { Icon(it, null); Spacer(Modifier.width(LiZhangSpacing.sm)) }; Text(text) } } }
+@Composable fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: ImageVector? = null) { OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(LiZhangRadius.md), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) { icon?.let { Icon(it, null); Spacer(Modifier.width(LiZhangSpacing.sm)) }; Text(text) } }
+
+@Composable fun AppTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, placeholder: String? = null, error: String? = null, leadingIcon: ImageVector? = null, readOnly: Boolean = false) { OutlinedTextField(value, onValueChange, modifier.fillMaxWidth(), label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } }, leadingIcon = leadingIcon?.let { { Icon(it, null) } }, isError = error != null, supportingText = error?.let { { Text(it) } }, readOnly = readOnly, singleLine = true, shape = RoundedCornerShape(LiZhangRadius.sm)) }
+@Composable fun AmountTextField(value: String, onValueChange: (String) -> Unit, error: String? = null) { OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.field_amount)) }, prefix = { Text("¥") }, placeholder = { Text(stringResource(R.string.field_amount_hint)) }, isError = error != null, supportingText = error?.let { { Text(it) } }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), textStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold), singleLine = true, shape = RoundedCornerShape(LiZhangRadius.sm)) }
+
+@Composable fun DirectionSelector(selected: GiftDirection, onSelected: (GiftDirection) -> Unit) { Column(verticalArrangement = Arrangement.spacedBy(LiZhangSpacing.sm)) { Text(stringResource(R.string.field_direction), style = MaterialTheme.typography.labelLarge); Row(horizontalArrangement = Arrangement.spacedBy(LiZhangSpacing.sm)) { GiftDirection.entries.forEach { direction -> FilterChip(selected = direction == selected, onClick = { onSelected(direction) }, label = { Text(stringResource(direction.labelRes())) }, leadingIcon = { Icon(if (direction == GiftDirection.RECEIVED) Icons.Outlined.SouthWest else Icons.Outlined.NorthEast, null) }) } } } }
+@OptIn(ExperimentalLayoutApi::class)
+@Composable fun EventTypeSelector(selected: EventType, onSelected: (EventType) -> Unit) { Column(verticalArrangement = Arrangement.spacedBy(LiZhangSpacing.sm)) { Text(stringResource(R.string.field_event), style = MaterialTheme.typography.labelLarge); FlowRow(horizontalArrangement = Arrangement.spacedBy(LiZhangSpacing.sm)) { EventType.entries.forEach { type -> FilterChip(selected = type == selected, onClick = { onSelected(type) }, label = { Text(stringResource(type.labelRes())) }) } } } }
+
+@Composable fun AmountSummaryCard(label: String, amount: Long, modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) { Card(modifier, shape = RoundedCornerShape(LiZhangRadius.lg), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(LiZhangElevation.low)) { Column(Modifier.padding(LiZhangSpacing.md), verticalArrangement = Arrangement.spacedBy(LiZhangSpacing.sm)) { Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge); Text(CurrencyFormatter.formatCents(amount), color = tint, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) } } }
+@Composable fun GiftRecordListItem(item: GiftRecordWithContact, onClick: (() -> Unit)? = null) { val modifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick); Row(modifier.fillMaxWidth().padding(vertical = LiZhangSpacing.md), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LiZhangSpacing.xs)) { Text(item.contactName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold); Text("${stringResource(item.record.eventType.labelRes())} · ${DateFormatter.format(item.record.eventDate)} · ${stringResource(item.record.direction.labelRes())}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }; Text(CurrencyFormatter.formatCents(item.record.amountInCents), color = if (item.record.direction == GiftDirection.RECEIVED) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) } }
+@Composable fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) { Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = LiZhangSpacing.md), verticalAlignment = Alignment.CenterVertically) { Surface(shape = RoundedCornerShape(LiZhangRadius.sm), color = MaterialTheme.colorScheme.primaryContainer) { Text(summary.contact.name.take(1), Modifier.padding(horizontal = 14.dp, vertical = 10.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) }; Spacer(Modifier.width(LiZhangSpacing.md)); Column(Modifier.weight(1f)) { Text(summary.contact.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold); Text(summary.contact.phone ?: summary.contact.relationship.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }; Column(horizontalAlignment = Alignment.End) { Text(CurrencyFormatter.formatCents(summary.netInCents), fontWeight = FontWeight.SemiBold); Text(stringResource(R.string.contact_net), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall) }; Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) } }
+
+@Composable fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); if (action != null && onAction != null) TextButton(onClick = onAction) { Text(action) } } }
+@Composable fun EmptyState(title: String, description: String? = null, action: String? = null, onAction: (() -> Unit)? = null) { Column(Modifier.fillMaxWidth().padding(LiZhangSpacing.xl), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(LiZhangSpacing.md)) { Icon(Icons.Outlined.AutoStories, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(title, style = MaterialTheme.typography.titleMedium); description?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }; if (action != null && onAction != null) PrimaryButton(action, onAction) } }
+@Composable fun LoadingState() { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+@Composable fun ErrorState(onRetry: () -> Unit) { EmptyState(stringResource(R.string.load_failed), action = stringResource(R.string.action_retry), onAction = onRetry) }
+@Composable fun SettingsRow(icon: ImageVector, title: String, subtitle: String? = null, onClick: () -> Unit, trailing: @Composable (() -> Unit)? = null) { Row(Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 56.dp).padding(vertical = LiZhangSpacing.sm), verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.width(LiZhangSpacing.md)); Column(Modifier.weight(1f)) { Text(title); subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } }; trailing?.invoke() ?: Icon(Icons.Outlined.ChevronRight, null) } }

@@ -1,47 +1,9 @@
 package com.yangsong.lizhang.ui.viewmodel
-
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import com.yangsong.lizhang.domain.model.Contact
-import com.yangsong.lizhang.domain.model.ContactLedgerSummary
+import androidx.lifecycle.*
+import com.yangsong.lizhang.domain.model.*
 import com.yangsong.lizhang.domain.repository.ContactRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-data class ContactsUiState(
-    val query: String = "",
-    val contacts: List<ContactLedgerSummary> = emptyList(),
-)
-
-class ContactsViewModel(private val repository: ContactRepository) : ViewModel() {
-    private val query = MutableStateFlow("")
-
-    val uiState: StateFlow<ContactsUiState> = query
-        .flatMapLatest { currentQuery ->
-            repository.observeContactSummaries(currentQuery).map { ContactsUiState(currentQuery, it) }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ContactsUiState())
-
-    fun updateQuery(value: String) {
-        query.value = value
-    }
-
-    fun save(contact: Contact) = viewModelScope.launch {
-        if (contact.id == 0L) repository.create(contact) else repository.update(contact)
-    }
-
-    fun delete(contact: Contact) = viewModelScope.launch { repository.delete(contact) }
-
-    companion object {
-        fun factory(repository: ContactRepository) = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = ContactsViewModel(repository) as T
-        }
-    }
-}
+enum class ContactSort { RECENT, NAME }
+data class ContactsUiState(val query:String="", val sort:ContactSort=ContactSort.RECENT, val contacts:List<ContactLedgerSummary> = emptyList(), val isLoading:Boolean=true, val error:Boolean=false)
+class ContactsViewModel(private val repository:ContactRepository):ViewModel(){ private val query=MutableStateFlow(""); private val sort=MutableStateFlow(ContactSort.RECENT); val uiState=combine(query,sort){q,s->q to s}.flatMapLatest{(q,s)->repository.observeContactSummaries(q).map{ list->ContactsUiState(q,s,if(s==ContactSort.NAME)list.sortedBy{it.contact.name}else list,isLoading=false)}}.catch{emit(ContactsUiState(isLoading=false,error=true))}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ContactsUiState()); fun updateQuery(v:String){query.value=v}; fun updateSort(v:ContactSort){sort.value=v}; fun save(c:Contact)=viewModelScope.launch{if(c.id==0L)repository.create(c)else repository.update(c)}; companion object{fun factory(r:ContactRepository)=object:ViewModelProvider.Factory{@Suppress("UNCHECKED_CAST") override fun<T:ViewModel>create(m:Class<T>)=ContactsViewModel(r)as T}}}

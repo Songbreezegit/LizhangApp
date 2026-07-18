@@ -7,23 +7,19 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val LightColors = lightColorScheme(
-    primary = BrandPrimary,
-    onPrimary = BrandOnPrimary,
-    secondary = BrandSecondary,
-    background = AppBackground,
-    surface = AppSurface,
+    primary = SealRed, onPrimary = PaperSurface, primaryContainer = SealRedContainer,
+    secondary = QingGray, tertiary = TeaBrown, background = PaperBackground,
+    surface = PaperSurface, onBackground = InkPrimary, onSurface = InkPrimary,
+    onSurfaceVariant = InkSecondary, outline = PaperDivider, error = AppError,
 )
-
 private val DarkColors = darkColorScheme(
-    primary = DarkBrandPrimary,
-    onPrimary = DarkBrandOnPrimary,
-    secondary = DarkBrandSecondary,
-    background = DarkAppBackground,
-    surface = DarkAppSurface,
+    primary = DarkSealRed, onPrimary = DarkInkPrimary, primaryContainer = DarkSealRedContainer,
+    secondary = DarkQingGray, tertiary = DarkTeaBrown, background = DarkPaperBackground,
+    surface = DarkPaperSurface, onBackground = DarkInkPrimary, onSurface = DarkInkPrimary,
+    onSurfaceVariant = DarkInkSecondary, outline = DarkPaperDivider, error = DarkAppError,
 )
 
 @Composable
-fun LiZhangTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkColors else LightColors
-    MaterialTheme(colorScheme = colors, typography = LiZhangTypography, content = content)
+fun LiZhangTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = if (darkTheme) DarkColors else LightColors, typography = LiZhangTypography, content = content)
 }

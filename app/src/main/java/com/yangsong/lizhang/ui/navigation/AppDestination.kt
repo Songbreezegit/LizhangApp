@@ -12,4 +12,5 @@ sealed class AppDestination(val route: String) {
     data object Statistics : AppDestination("statistics")
     data object Search : AppDestination("search")
     data object Settings : AppDestination("settings")
+    data object OcrImport : AppDestination("ocr_import")
 }
