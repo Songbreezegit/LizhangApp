@@ -6,7 +6,7 @@
 
 已完成：项目基础设施、MVVM 分层、Room 数据库、联系人与礼金记录 CRUD、StateFlow 状态管理、Navigation Compose 路由、主题和通用格式化工具。
 
-设计阶段已建立中文设计系统与原型规范，并提供可直接用于 Stitch 的全局及分页面提示词。当前仍不实现最终视觉 UI，待原型在 Figma 中完成变量、组件和交互定稿后再映射到 Compose。
+设计阶段已建立中文设计系统与原型规范，并提供可直接用于 Stitch 的全局及分页面提示词。视觉方向为面向广泛用户的“简约中国古代风”，首批用户由开发者父母验证易用性，但产品不定位为中老年专用 App。当前仍不实现最终视觉 UI，待原型在 Figma 中完成变量、组件和交互定稿后再映射到 Compose。
 
 工程已迁移至 `D:\AndroidProjects\LizhangApp`，并完成 Gradle Wrapper、Android Studio Gradle Sync、Clean、`assembleDebug` 及 Pixel 9 模拟器运行验证。Git 主分支为 `main`，远程仓库为 `https://github.com/Songbreezegit/LizhangApp.git`。
 
