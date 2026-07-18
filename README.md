@@ -6,6 +6,8 @@
 
 已完成：项目基础设施、MVVM 分层、Room 数据库、联系人与礼金记录 CRUD、StateFlow 状态管理、Navigation Compose 路由、主题和通用格式化工具。
 
+工程已迁移至 `D:\AndroidProjects\LizhangApp`，并完成 Gradle Wrapper、Android Studio Gradle Sync、Clean、`assembleDebug` 及 Pixel 9 模拟器运行验证。Git 主分支为 `main`，远程仓库为 `https://github.com/Songbreezegit/LizhangApp.git`。
+
 当前页面为功能占位页面，未进入最终视觉设计阶段。后续会先完成设计系统和原型，再替换 Compose 页面视觉实现；数据与业务层无需重构。
 
 ## 技术栈
@@ -102,6 +104,8 @@ Room 同时提供联系人汇总投影和“礼金记录 + 联系人名称”投
 2. 确认 Gradle JDK 使用 Android Studio 自带的 JDK。
 3. 等待 Gradle 同步完成并下载依赖。
 4. 选择 Pixel 9 模拟器，点击运行。
+
+当前 Windows 开发工作目录为 `D:\AndroidProjects\LizhangApp`。如果首次同步仅因 Gradle 源码分发包网络超时而长时间等待，可临时启用 Android Studio 的 Gradle Offline Mode；该设置属于本机 `.idea` 配置，不提交到仓库。新增依赖前应恢复联网模式并先完成依赖下载。
 
 如使用命令行，请先由 Android Studio 生成/下载 Gradle Wrapper，再执行：
 
