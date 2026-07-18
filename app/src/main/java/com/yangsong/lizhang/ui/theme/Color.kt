@@ -1,27 +1,7 @@
 package com.yangsong.lizhang.ui.theme
-
 import androidx.compose.ui.graphics.Color
-
-val PaperBackground = Color(0xFFF5F0E2)
-val PaperSurface = Color(0xFFFBF7EE)
-val InkPrimary = Color(0xFF2A2826)
-val InkSecondary = Color(0xFF6B6459)
-val PaperDivider = Color(0xFFE2D8C4)
-val SealRed = Color(0xFF8B2F2A)
-val SealRedContainer = Color(0xFFF1E0D8)
-val QingGray = Color(0xFF6D7A70)
-val TeaBrown = Color(0xFF8C6B45)
-val AppError = Color(0xFFAE4A2C)
-val AppSuccess = Color(0xFF4C7A57)
-
-val DarkPaperBackground = Color(0xFF1B1A17)
-val DarkPaperSurface = Color(0xFF252320)
-val DarkInkPrimary = Color(0xFFECE6D8)
-val DarkInkSecondary = Color(0xFFA59D8E)
-val DarkPaperDivider = Color(0xFF39352D)
-val DarkSealRed = Color(0xFFC25851)
-val DarkSealRedContainer = Color(0xFF3A2723)
-val DarkQingGray = Color(0xFF93A199)
-val DarkTeaBrown = Color(0xFFB79471)
-val DarkAppError = Color(0xFFDA6B5A)
-val DarkAppSuccess = Color(0xFF7FAE8E)
+val CreamBackground=Color(0xFFFFF9F5);val CardWhite=Color(0xFFFFFEFD);val InkPrimary=Color(0xFF17191C);val InkSecondary=Color(0xFF7D7B7A);val SoftDivider=Color(0xFFF0E8E3)
+val CoralPrimary=Color(0xFFFF6374);val CoralStrong=Color(0xFFFF5265);val CoralContainer=Color(0xFFFFE8E7);val BlushSurface=Color(0xFFFFF0EF)
+val MintPrimary=Color(0xFF20B56B);val MintContainer=Color(0xFFE3F8EC);val ApricotPrimary=Color(0xFFFFB33E);val ApricotContainer=Color(0xFFFFF1D8);val LavenderPrimary=Color(0xFF7D78F2);val LavenderContainer=Color(0xFFECEAFF)
+val AppError=Color(0xFFE64F5D);val AppSuccess=MintPrimary
+val DarkBackground=Color(0xFF1D1919);val DarkSurface=Color(0xFF2A2424);val DarkText=Color(0xFFFFF3EF);val DarkSecondary=Color(0xFFCBBFBA);val DarkDivider=Color(0xFF443A38);val DarkCoral=Color(0xFFFF8290);val DarkCoralContainer=Color(0xFF4B2A2E)

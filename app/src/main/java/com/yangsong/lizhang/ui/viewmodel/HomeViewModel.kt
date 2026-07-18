@@ -6,7 +6,7 @@ import com.yangsong.lizhang.domain.repository.*
 import kotlinx.coroutines.flow.*
 import java.util.Calendar
 
-data class HomeUiState(val isLoading: Boolean = true, val error: Boolean = false, val recentRecords: List<GiftRecordWithContact> = emptyList(), val received: Long = 0, val given: Long = 0) { val net get() = received - given }
+data class HomeUiState(val isLoading: Boolean = true, val error: Boolean = false, val year: Int = Calendar.getInstance().get(Calendar.YEAR), val recentRecords: List<GiftRecordWithContact> = emptyList(), val received: Long = 0, val given: Long = 0) { val net get() = received - given }
 class HomeViewModel(contactRepository: ContactRepository, giftRepository: GiftRecordRepository) : ViewModel() {
     val uiState = combine(contactRepository.observeContactSummaries(), giftRepository.observeRecent(Int.MAX_VALUE)) { _, records ->
         val year = Calendar.getInstance().get(Calendar.YEAR)

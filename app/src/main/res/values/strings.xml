@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">礼账</string><string name="app_tagline">一本清楚、可靠的人情往来礼簿</string>
-    <string name="nav_home">首页</string><string name="nav_add_gift">新增礼金</string><string name="nav_contacts">联系人</string><string name="nav_contact_detail">联系人详情</string><string name="nav_statistics">统计</string><string name="nav_search">搜索</string><string name="nav_settings">设置</string><string name="nav_ocr">礼簿识别</string>
+    <string name="app_name">礼金记账</string><string name="app_tagline">每一份心意，都值得被记录</string>
+    <string name="nav_home">首页</string><string name="nav_add_gift">记一笔</string><string name="nav_contacts">联系人</string><string name="nav_contact_detail">联系人详情</string><string name="nav_statistics">统计</string><string name="nav_search">搜索</string><string name="nav_settings">我的</string><string name="nav_ocr">礼簿识别</string>
+    <string name="shortcut_received">收礼记录</string><string name="shortcut_given">送礼记录</string><string name="shortcut_calendar">日历视图</string><string name="shortcut_statistics">统计分析</string><string name="action_all">全部</string><string name="year_format">%1$d年</string>
     <string name="action_back">返回</string><string name="action_retry">重试</string><string name="action_cancel">取消</string><string name="action_confirm">确认</string><string name="action_delete">删除</string><string name="action_save_record">保存记录</string><string name="action_add_gift">记一笔礼金</string><string name="action_search">搜索礼金与联系人</string><string name="action_edit">编辑</string>
     <string name="loading">正在加载…</string><string name="load_failed">暂时无法读取数据</string><string name="feature_developing">功能正在完善中</string>
     <string name="home_year_received">本年收到</string><string name="home_year_given">本年送出</string><string name="home_net">净往来</string><string name="home_recent">最近往来</string><string name="home_ocr_title">纸质礼簿识别</string><string name="home_ocr_desc">拍照后逐条核对，再安全导入</string><string name="home_empty_title">礼簿还是空的</string><string name="home_empty_desc">记下第一笔礼金，往来从此清楚可查。</string>
