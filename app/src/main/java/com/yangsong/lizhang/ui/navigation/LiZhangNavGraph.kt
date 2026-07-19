@@ -136,7 +136,9 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
         composable(AppDestination.Statistics.route) {
             StatisticsScreen(viewModel(factory = StatisticsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
         }
-        composable(AppDestination.Settings.route) { SettingsScreen() }
+        composable(AppDestination.Settings.route) {
+            SettingsScreen(viewModel(factory = SettingsViewModel.factory(appContainer.giftRecordRepository)))
+        }
         composable(AppDestination.OcrImport.route) {
             OcrImportScreen(viewModel(factory = OcrImportViewModel.factory()), nav::popBackStack)
         }

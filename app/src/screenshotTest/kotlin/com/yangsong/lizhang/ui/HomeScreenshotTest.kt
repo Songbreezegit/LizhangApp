@@ -18,11 +18,12 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.screen.HomeContent
 import com.yangsong.lizhang.ui.screen.ContactsContent
 import com.yangsong.lizhang.ui.screen.GiftEntryScreen
-import com.yangsong.lizhang.ui.screen.SettingsScreen
+import com.yangsong.lizhang.ui.screen.SettingsContent
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.ContactSort
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
+import com.yangsong.lizhang.ui.viewmodel.SettingsUiState
 
 @PreviewTest
 @Preview(name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
@@ -99,7 +100,7 @@ fun GiftEntryScreenshotTest() {
 fun SettingsScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
         Box(Modifier.fillMaxSize()) {
-            SettingsScreen()
+            SettingsContent(SettingsUiState(), onCsvExport = {}, onUnavailable = {})
             BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
         }
     }
