@@ -16,6 +16,8 @@
 
 已建立首批 ViewModel 单元测试，覆盖礼金编辑状态恢复、金额更新、创建时间保留、删除完成状态、首页年度收送汇总、最近记录数量限制、联系人查询和中文姓名排序。联系人“按姓名”使用中文 Collator，而非 Unicode 编码顺序。测试使用 Kotlin Coroutines Test 的可控主线程调度器和内存 Fake Repository，不依赖 Android 设备或真实数据库。
 
+已接入官方 Compose Preview Screenshot Testing（当前为实验性版本），并建立首页标准状态基准图。基准覆盖奶白背景、年度汇总、快捷入口、最近记录、姓氏头像和悬浮磨砂导航；截图测试位于独立 `screenshotTest` 源集，不进入正式 APK。视觉变更应先运行验证任务，确认差异符合预期后才能更新基准图。
+
 ## 视觉资源
 
 项目插画使用 AI 生成后按页面用途切分，并保存于 `app/src/main/res/drawable-nodpi/`：
@@ -33,6 +35,7 @@
 
 - Kotlin / Coroutines / StateFlow
 - Jetpack Compose / Material 3
+- Compose Preview Screenshot Testing
 - Navigation Compose
 - Room（SQLite）与 KSP
 - MVVM + Repository Pattern
@@ -141,10 +144,22 @@ Room 同时提供联系人汇总投影和“礼金记录 + 联系人名称”投
 .\gradlew.bat :app:assembleDebug
 ```
 
+首页截图回归验证：
+
+```powershell
+.\gradlew.bat :app:validateDebugScreenshotTest
+```
+
+仅在已经人工确认视觉变更正确时更新截图基准：
+
+```powershell
+.\gradlew.bat :app:updateDebugScreenshotTest
+```
+
 ## 后续开发计划
 
 1. 在 Pixel 9 与大字体环境完成第一轮真实用户易用性走查。
-2. 扩展 ViewModel 单元测试，并建立 Compose 截图回归测试。
+2. 将 Compose 截图基准扩展到联系人、记一笔和“我的”，并继续补齐 ViewModel 单元测试。
 3. 实现 CSV/Excel 导出、本地备份与恢复。
 4. 接入系统级提醒调度与通知权限管理。
 5. 接入 OCR 图片识别服务，将真实结果映射到现有“待确认批量导入”状态。
