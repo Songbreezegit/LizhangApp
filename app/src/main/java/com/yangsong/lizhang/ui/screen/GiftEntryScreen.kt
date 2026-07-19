@@ -12,18 +12,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.component.*
-import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
 
 @Composable
-fun GiftEntryScreen(onManual: () -> Unit, onOcr: () -> Unit, onNavigate: (AppDestination) -> Unit) {
+fun GiftEntryScreen(onManual: () -> Unit, onOcr: () -> Unit) {
     Scaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_add_gift)) },
-        bottomBar = { BottomNavBar(AppDestination.AddGift, onNavigate) },
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start=16.dp,end=16.dp,top=8.dp,bottom=124.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item { PageIllustration(R.drawable.page_add_cat, Modifier.fillMaxWidth().height(190.dp)) }

@@ -1,17 +1,24 @@
 package com.yangsong.lizhang.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.yangsong.lizhang.core.common.NavigationConstants
 import com.yangsong.lizhang.data.di.AppContainer
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.ui.screen.*
+import com.yangsong.lizhang.ui.component.BottomNavBar
 import com.yangsong.lizhang.ui.viewmodel.*
 
 private val mainTabs = listOf(AppDestination.Home, AppDestination.Contacts, AppDestination.AddGift, AppDestination.Settings)
@@ -29,8 +36,11 @@ private fun NavHostController.open(destination: AppDestination) {
 @Composable
 fun LiZhangNavGraph(appContainer: AppContainer) {
     val nav = rememberNavController()
+    val backStackEntry by nav.currentBackStackEntryAsState()
+    val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
     val go: (AppDestination) -> Unit = { nav.open(it) }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
+    Box(Modifier.fillMaxSize()) {
     NavHost(nav, AppDestination.Home.route) {
         composable(AppDestination.Home.route) {
             HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
@@ -40,7 +50,6 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 viewModel(factory = ContactsViewModel.factory(appContainer.contactRepository)),
                 { nav.navigate(AppDestination.ContactDetail.createRoute(it)) },
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
-                go,
             )
         }
         composable(
@@ -70,14 +79,12 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             GiftEntryScreen(
                 onManual = { nav.navigate(AppDestination.ManualGift.route) },
                 onOcr = { nav.navigate(AppDestination.OcrImport.route) },
-                onNavigate = go,
             )
         }
         composable(AppDestination.ManualGift.route) {
             AddGiftScreen(
                 viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository)),
                 nav::popBackStack,
-                go,
             )
         }
         composable(
@@ -99,8 +106,6 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             AddGiftScreen(
                 viewModel(key = "gift-record-editor-$recordId", factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository, recordId)),
                 onBack = nav::popBackStack,
-                onNavigate = go,
-                showBottomNavigation = false,
             )
         }
         composable(AppDestination.ReceivedRecords.route) {
@@ -131,9 +136,13 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
         composable(AppDestination.Statistics.route) {
             StatisticsScreen(viewModel(factory = StatisticsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
         }
-        composable(AppDestination.Settings.route) { SettingsScreen(go) }
+        composable(AppDestination.Settings.route) { SettingsScreen() }
         composable(AppDestination.OcrImport.route) {
             OcrImportScreen(viewModel(factory = OcrImportViewModel.factory()), nav::popBackStack)
         }
+    }
+    currentMainTab?.let { tab ->
+        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
+    }
     }
 }

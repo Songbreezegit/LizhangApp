@@ -13,23 +13,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.component.*
-import com.yangsong.lizhang.ui.navigation.AppDestination
 import kotlinx.coroutines.launch
 
 @Composable
-fun SettingsScreen(onNavigate:(AppDestination)->Unit){
+fun SettingsScreen(){
     val snackbar=remember{SnackbarHostState()}
     val scope=rememberCoroutineScope()
     val unavailable=stringResource(R.string.settings_unavailable)
     val notify:()->Unit={scope.launch{snackbar.showSnackbar(unavailable)};Unit}
     Scaffold(
         topBar={AppTopBar(stringResource(R.string.nav_settings))},
-        bottomBar={BottomNavBar(AppDestination.Settings,onNavigate)},
         snackbarHost={SnackbarHost(snackbar)},
     ){padding->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),
+            contentPadding=PaddingValues(start=16.dp,end=16.dp,top=8.dp,bottom=124.dp),
             verticalArrangement=Arrangement.spacedBy(14.dp),
         ){
             item{PageIllustration(R.drawable.page_settings_cat,Modifier.fillMaxWidth().height(190.dp))}

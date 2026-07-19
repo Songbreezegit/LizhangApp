@@ -20,14 +20,13 @@ import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.ui.component.*
-import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.viewmodel.*
 import kotlinx.coroutines.delay
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppDestination)->Unit,showBottomNavigation:Boolean=true){
+fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar=remember{SnackbarHostState()}
     var showContacts by remember{mutableStateOf(false)}
@@ -39,7 +38,6 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppD
     LaunchedEffect(state.operationFailed){if(state.operationFailed)snackbar.showSnackbar(operationFailed)}
     Scaffold(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
-        bottomBar={if(showBottomNavigation)BottomNavBar(AppDestination.AddGift,onNavigate)},
         snackbarHost={SnackbarHost(snackbar)},
     ){padding->
         when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState{}};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){

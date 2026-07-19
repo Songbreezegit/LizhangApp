@@ -37,14 +37,15 @@ fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, o
 fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit = {}) {
     var showEntryOptions by remember { mutableStateOf(false) }
     Scaffold(
-        bottomBar = { BottomNavBar(AppDestination.Home, onNavigate) },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showEntryOptions = true },
-                containerColor = CoralPrimary,
-                contentColor = Color.White,
-                shape = CircleShape,
-            ) { Icon(Icons.Outlined.Add, stringResource(R.string.action_add_gift), Modifier.size(30.dp)) }
+            Box(Modifier.padding(bottom=96.dp)) {
+                FloatingActionButton(
+                    onClick = { showEntryOptions = true },
+                    containerColor = CoralPrimary,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                ) { Icon(Icons.Outlined.Add, stringResource(R.string.action_add_gift), Modifier.size(30.dp)) }
+            }
         },
     ) { padding ->
         when {
@@ -52,7 +53,7 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
             state.error -> ErrorState { }
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 28.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }

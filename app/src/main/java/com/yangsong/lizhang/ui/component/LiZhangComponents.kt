@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.CallMade
@@ -15,7 +16,6 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.*
@@ -38,19 +38,19 @@ import com.yangsong.lizhang.ui.theme.*
 
 private data class NavItem(val destination:AppDestination,val label:Int,val icon:ImageVector)
 private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.Outlined.Home),NavItem(AppDestination.Contacts,R.string.nav_contacts,Icons.Outlined.PersonOutline),NavItem(AppDestination.AddGift,R.string.nav_add_gift,Icons.Outlined.EditNote),NavItem(AppDestination.Settings,R.string.nav_settings,Icons.Outlined.AccountCircle))
-@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit){
+@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit,modifier:Modifier=Modifier){
     val dark=MaterialTheme.colorScheme.background.luminance()<.5f
     val glassTop=if(dark)MaterialTheme.colorScheme.surface else Color.White
     val glassBottom=if(dark)MaterialTheme.colorScheme.surfaceVariant else Color(0xFFF8F6F2)
     val glassShape=RoundedCornerShape(30.dp)
-    Box(Modifier.fillMaxWidth().navigationBarsPadding()){
+    Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=10.dp,vertical=7.dp).height(78.dp)){
+        Box(
+            Modifier.matchParentSize().shadow(10.dp,glassShape,clip=false).clip(glassShape)
+                .background(Brush.verticalGradient(listOf(glassTop,glassBottom)))
+                .border(1.dp,if(dark)Color.White.copy(alpha=.12f)else Color.White.copy(alpha=.9f),glassShape),
+        )
         Row(
-            Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=7.dp).height(78.dp)
-                .shadow(10.dp,glassShape,clip=false)
-                .graphicsLayer{alpha=if(dark).90f else .88f;compositingStrategy=CompositingStrategy.Offscreen}
-                .clip(glassShape).background(Brush.verticalGradient(listOf(glassTop,glassBottom)))
-                .border(1.dp,if(dark)Color.White.copy(alpha=.12f)else Color.White.copy(alpha=.9f),glassShape)
-                .padding(horizontal=6.dp),
+            Modifier.matchParentSize().padding(horizontal=6.dp),
             verticalAlignment=Alignment.CenterVertically,
         ){
             navItems.forEach{item->
@@ -66,7 +66,10 @@ private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.
                         contentAlignment=Alignment.Center,
                     ){Icon(item.icon,null,Modifier.size(23.dp),tint=tint)}
                     Spacer(Modifier.height(3.dp))
-                    Text(stringResource(item.label),color=tint,style=MaterialTheme.typography.labelMedium,fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Normal)
+                    BasicText(
+                        stringResource(item.label),
+                        style=MaterialTheme.typography.labelMedium.copy(color=tint,fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Normal),
+                    )
                 }
             }
         }
