@@ -7,6 +7,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.tools.screenshot.PreviewTest
+import com.yangsong.lizhang.domain.model.Contact
+import com.yangsong.lizhang.domain.model.ContactLedgerSummary
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
@@ -14,8 +16,13 @@ import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.ui.component.BottomNavBar
 import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.screen.HomeContent
+import com.yangsong.lizhang.ui.screen.ContactsContent
+import com.yangsong.lizhang.ui.screen.GiftEntryScreen
+import com.yangsong.lizhang.ui.screen.SettingsScreen
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
+import com.yangsong.lizhang.ui.viewmodel.ContactSort
+import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 
 @PreviewTest
 @Preview(name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
@@ -37,6 +44,63 @@ fun HomeStandardScreenshotTest() {
                 onNavigate = {},
             )
             BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "联系人标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun ContactsStandardScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        Box(Modifier.fillMaxSize()) {
+            ContactsContent(
+                state = ContactsUiState(
+                    contacts = listOf(
+                        ContactLedgerSummary(
+                            contact = Contact(id = 1, name = "王阿姨", phone = "13800000000"),
+                            receivedInCents = 88_800,
+                            givenInCents = 20_000,
+                        ),
+                        ContactLedgerSummary(
+                            contact = Contact(id = 2, name = "张同学", relationship = "同学"),
+                            receivedInCents = 0,
+                            givenInCents = 60_000,
+                        ),
+                    ),
+                    sort = ContactSort.RECENT,
+                    isLoading = false,
+                ),
+                onQueryChange = {},
+                onSortChange = {},
+                onContactClick = {},
+                onAddContact = {},
+            )
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "记一笔入口", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun GiftEntryScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        Box(Modifier.fillMaxSize()) {
+            GiftEntryScreen(onManual = {}, onOcr = {})
+            BottomNavBar(AppDestination.AddGift, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun SettingsScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        Box(Modifier.fillMaxSize()) {
+            SettingsScreen()
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
         }
     }
 }
