@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.yangsong.lizhang.data.local.entity.GiftRecordEntity
 import com.yangsong.lizhang.data.local.projection.GiftRecordWithContactRow
+import com.yangsong.lizhang.domain.model.GiftDirection
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -34,6 +35,27 @@ interface GiftRecordDao {
         """,
     )
     fun observeRecent(limit: Int): Flow<List<GiftRecordWithContactRow>>
+
+    @Query(
+        """
+        SELECT gift_records.*, contacts.name AS contactName
+        FROM gift_records
+        INNER JOIN contacts ON contacts.id = gift_records.contactId
+        ORDER BY gift_records.eventDate DESC, gift_records.createdTime DESC
+        """,
+    )
+    fun observeAll(): Flow<List<GiftRecordWithContactRow>>
+
+    @Query(
+        """
+        SELECT gift_records.*, contacts.name AS contactName
+        FROM gift_records
+        INNER JOIN contacts ON contacts.id = gift_records.contactId
+        WHERE gift_records.direction = :direction
+        ORDER BY gift_records.eventDate DESC, gift_records.createdTime DESC
+        """,
+    )
+    fun observeByDirection(direction: GiftDirection): Flow<List<GiftRecordWithContactRow>>
 
     @Query(
         """

@@ -40,7 +40,7 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppD
         snackbarHost={SnackbarHost(snackbar)},
     ){padding->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(145.dp))
+            PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(190.dp))
             Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
