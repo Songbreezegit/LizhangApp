@@ -13,10 +13,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.*
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -32,7 +38,40 @@ import com.yangsong.lizhang.ui.theme.*
 
 private data class NavItem(val destination:AppDestination,val label:Int,val icon:ImageVector)
 private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.Outlined.Home),NavItem(AppDestination.Contacts,R.string.nav_contacts,Icons.Outlined.PersonOutline),NavItem(AppDestination.AddGift,R.string.nav_add_gift,Icons.Outlined.EditNote),NavItem(AppDestination.Settings,R.string.nav_settings,Icons.Outlined.AccountCircle))
-@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit){Surface(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),shape=RoundedCornerShape(28.dp),shadowElevation=4.dp,color=MaterialTheme.colorScheme.surface){NavigationBar(containerColor=Color.Transparent,modifier=Modifier.height(72.dp)){navItems.forEach{item->NavigationBarItem(selected=current==item.destination,onClick={onNavigate(item.destination)},icon={Icon(item.icon,null)},label={Text(stringResource(item.label))},colors=NavigationBarItemDefaults.colors(selectedIconColor=MaterialTheme.colorScheme.primary,selectedTextColor=MaterialTheme.colorScheme.primary,indicatorColor=MaterialTheme.colorScheme.primaryContainer,unselectedIconColor=MaterialTheme.colorScheme.onSurfaceVariant,unselectedTextColor=MaterialTheme.colorScheme.onSurfaceVariant))}}}}
+@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit){
+    val dark=MaterialTheme.colorScheme.background.luminance()<.5f
+    val glassTop=if(dark)MaterialTheme.colorScheme.surface else Color.White
+    val glassBottom=if(dark)MaterialTheme.colorScheme.surfaceVariant else Color(0xFFF8F6F2)
+    val glassShape=RoundedCornerShape(30.dp)
+    Box(Modifier.fillMaxWidth().navigationBarsPadding()){
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal=10.dp,vertical=7.dp).height(78.dp)
+                .shadow(10.dp,glassShape,clip=false)
+                .graphicsLayer{alpha=if(dark).90f else .88f;compositingStrategy=CompositingStrategy.Offscreen}
+                .clip(glassShape).background(Brush.verticalGradient(listOf(glassTop,glassBottom)))
+                .border(1.dp,if(dark)Color.White.copy(alpha=.12f)else Color.White.copy(alpha=.9f),glassShape)
+                .padding(horizontal=6.dp),
+            verticalAlignment=Alignment.CenterVertically,
+        ){
+            navItems.forEach{item->
+                val selected=current==item.destination
+                val tint=if(selected)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                Column(
+                    Modifier.weight(1f).fillMaxHeight().clickable(role=Role.Tab){onNavigate(item.destination)}.semantics{this.selected=selected;role=Role.Tab},
+                    horizontalAlignment=Alignment.CenterHorizontally,
+                    verticalArrangement=Arrangement.Center,
+                ){
+                    Box(
+                        Modifier.width(62.dp).height(31.dp).background(if(selected)MaterialTheme.colorScheme.primaryContainer.copy(alpha=.78f)else Color.Transparent,RoundedCornerShape(18.dp)),
+                        contentAlignment=Alignment.Center,
+                    ){Icon(item.icon,null,Modifier.size(23.dp),tint=tint)}
+                    Spacer(Modifier.height(3.dp))
+                    Text(stringResource(item.label),color=tint,style=MaterialTheme.typography.labelMedium,fontWeight=if(selected)FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
+        }
+    }
+}
 
 @Composable fun PrimaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,loading:Boolean=false,enabled:Boolean=true,icon:ImageVector?=null){Button(onClick,modifier.heightIn(min=52.dp),enabled=enabled&&!loading,shape=RoundedCornerShape(18.dp),colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.primary)){if(loading)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=MaterialTheme.colorScheme.onPrimary)else{icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text,fontWeight=FontWeight.SemiBold)}}}
 @Composable fun SecondaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,icon:ImageVector?=null){OutlinedButton(onClick,modifier.heightIn(min=52.dp),shape=RoundedCornerShape(18.dp),border=BorderStroke(1.dp,MaterialTheme.colorScheme.outline)){icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text)}}
@@ -44,9 +83,11 @@ private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.
 @OptIn(ExperimentalLayoutApi::class) @Composable fun EventTypeSelector(selected:EventType,onSelected:(EventType)->Unit){Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.field_event),fontWeight=FontWeight.SemiBold);FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){EventType.entries.forEach{type->FilterChip(type==selected,{onSelected(type)},{Text(stringResource(type.labelRes()))},colors=FilterChipDefaults.filterChipColors(selectedContainerColor=ApricotContainer),border=FilterChipDefaults.filterChipBorder(enabled=true,selected=type==selected,borderColor=Color.Transparent,selectedBorderColor=Color.Transparent))}}}}
 
 @Composable fun AmountSummaryCard(label:String,amount:Long,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){Card(modifier,shape=RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(CurrencyFormatter.formatCents(amount),color=tint,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
-@DrawableRes private fun avatarFor(id:Long)=when((id%4).toInt()){0->R.drawable.avatar_woman_brown;1->R.drawable.avatar_man_brown;2->R.drawable.avatar_grandmother;else->R.drawable.avatar_woman_black}
-@Composable fun GiftRecordListItem(item:GiftRecordWithContact,onClick:(()->Unit)?=null){val click=if(onClick==null)Modifier else Modifier.clickable(onClick=onClick);Row(click.fillMaxWidth().padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Image(painterResource(avatarFor(item.record.id)),null,Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)),contentScale=ContentScale.Crop);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Row(verticalAlignment=Alignment.CenterVertically){Text(item.contactName,style=MaterialTheme.typography.bodyLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.width(8.dp));Surface(shape=RoundedCornerShape(6.dp),color=if(item.record.direction==GiftDirection.RECEIVED)CoralContainer else MintContainer){Text(stringResource(item.record.direction.labelRes()),Modifier.padding(horizontal=6.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,color=if(item.record.direction==GiftDirection.RECEIVED)CoralStrong else MintPrimary)}};Text("${stringResource(item.record.eventType.labelRes())} · ${DateFormatter.format(item.record.eventDate)}",color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Text((if(item.record.direction==GiftDirection.RECEIVED)"+"else"-")+CurrencyFormatter.formatCents(item.record.amountInCents),color=if(item.record.direction==GiftDirection.RECEIVED)CoralStrong else MintPrimary,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}}
-@Composable fun ContactListItem(summary:ContactLedgerSummary,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Image(painterResource(avatarFor(summary.contact.id)),null,Modifier.size(56.dp).clip(RoundedCornerShape(20.dp)),contentScale=ContentScale.Crop);Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(summary.contact.name,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.bodyLarge);Text(summary.contact.phone?:summary.contact.relationship.orEmpty(),color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Column(horizontalAlignment=Alignment.End){Text(CurrencyFormatter.formatCents(summary.netInCents),fontWeight=FontWeight.Bold,color=if(summary.netInCents>=0)CoralStrong else MintPrimary);Text(stringResource(R.string.contact_net),color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)};Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}
+private val compoundSurnames=listOf("欧阳","司马","上官","诸葛","东方","皇甫","尉迟","公孙","慕容","司徒")
+private fun contactSurname(name:String):String{val clean=name.trim();if(clean.isBlank())return "人";compoundSurnames.firstOrNull{clean.startsWith(it)}?.let{return it};return clean.first().toString().uppercase()}
+@Composable fun ContactAvatar(name:String,size:androidx.compose.ui.unit.Dp,modifier:Modifier=Modifier){Surface(modifier.size(size),shape=CircleShape,color=AvatarBackground){Box(contentAlignment=Alignment.Center){val surname=contactSurname(name);Text(surname,color=AvatarText,style=if(surname.length>1)MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}}}
+@Composable fun GiftRecordListItem(item:GiftRecordWithContact,onClick:(()->Unit)?=null){val click=if(onClick==null)Modifier else Modifier.clickable(onClick=onClick);Row(click.fillMaxWidth().padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){ContactAvatar(item.contactName,52.dp);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Row(verticalAlignment=Alignment.CenterVertically){Text(item.contactName,style=MaterialTheme.typography.bodyLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.width(8.dp));Surface(shape=RoundedCornerShape(6.dp),color=if(item.record.direction==GiftDirection.RECEIVED)CoralContainer else MintContainer){Text(stringResource(item.record.direction.labelRes()),Modifier.padding(horizontal=6.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,color=if(item.record.direction==GiftDirection.RECEIVED)CoralStrong else MintPrimary)}};Text("${stringResource(item.record.eventType.labelRes())} · ${DateFormatter.format(item.record.eventDate)}",color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Text((if(item.record.direction==GiftDirection.RECEIVED)"+"else"-")+CurrencyFormatter.formatCents(item.record.amountInCents),color=if(item.record.direction==GiftDirection.RECEIVED)CoralStrong else MintPrimary,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}}
+@Composable fun ContactListItem(summary:ContactLedgerSummary,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){ContactAvatar(summary.contact.name,56.dp);Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(summary.contact.name,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.bodyLarge);Text(summary.contact.phone?:summary.contact.relationship.orEmpty(),color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Column(horizontalAlignment=Alignment.End){Text(CurrencyFormatter.formatCents(summary.netInCents),fontWeight=FontWeight.Bold,color=if(summary.netInCents>=0)CoralStrong else MintPrimary);Text(stringResource(R.string.contact_net),color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.labelSmall)};Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}
 
 @Composable fun PageIllustration(@DrawableRes image:Int,modifier:Modifier=Modifier){Image(painterResource(image),null,modifier.clip(RoundedCornerShape(24.dp)),contentScale=ContentScale.Fit)}
 @Composable fun SectionHeader(title:String,action:String?=null,onAction:(()->Unit)?=null){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(title,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);if(action!=null&&onAction!=null)TextButton(onAction){Text(action,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}

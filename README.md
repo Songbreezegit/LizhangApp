@@ -6,7 +6,7 @@
 
 已完成：项目基础设施、MVVM 分层、Room 数据库、联系人与礼金记录 CRUD、StateFlow 状态管理、Navigation Compose 路由、主题和通用格式化工具。
 
-已根据正式视觉参考图完成第二版 Jetpack Compose UI。视觉语言调整为温暖、治愈的家庭礼簿风格：奶油白背景、珊瑚粉主色、薄荷绿收支对比、低饱和糖果色功能入口、白色柔和圆角卡片，以及统一的猫咪与家庭人物水彩插画。首批用户由开发者父母验证易用性，但产品不定位为中老年专用 App。
+已根据正式视觉参考图完成第二版 Jetpack Compose UI。视觉语言调整为温暖、治愈的家庭礼簿风格：全局奶白背景、珊瑚粉主色、薄荷绿收支对比、低饱和糖果色功能入口、白色柔和圆角卡片，以及统一的猫咪与家庭人物水彩插画。底部主导航采用带高光、描边和柔和投影的半透明液态玻璃容器，图标与文字作为整体垂直居中，并正确避让系统手势区。联系人头像由 Compose 统一生成浅灰圆形底与居中深灰姓氏，不再按记录随机选择人物图片。首批用户由开发者父母验证易用性，但产品不定位为中老年专用 App。
 
 工程已迁移至 `D:\AndroidProjects\LizhangApp`，并完成 Gradle Wrapper、Android Studio Gradle Sync、Clean、`assembleDebug` 及 Pixel 9 模拟器运行验证。Git 主分支为 `main`，远程仓库为 `https://github.com/Songbreezegit/LizhangApp.git`。
 
@@ -21,7 +21,7 @@
 项目插画使用 AI 生成后按页面用途切分，并保存于 `app/src/main/res/drawable-nodpi/`：
 
 - `home_hero_cat.png`：首页年度汇总横幅。
-- `avatar_*.png`：四个联系人人物头像。
+- `avatar_*.png`：早期人物头像资源，当前联系人列表改用 Compose 姓氏头像，保留供后续资料头像功能评估。
 - `page_contacts_cat.png`：联系人及搜索页面。
 - `page_add_cat.png`：记一笔、空状态及 OCR 页面。
 - `page_statistics_cat.png`：统计页面。
