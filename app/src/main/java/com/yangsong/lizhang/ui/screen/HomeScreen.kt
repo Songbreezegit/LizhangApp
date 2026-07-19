@@ -27,14 +27,14 @@ import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit) {
+fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(state, onNavigate)
+    HomeContent(state, onNavigate, onRecordClick)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit) {
+fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit = {}) {
     var showEntryOptions by remember { mutableStateOf(false) }
     Scaffold(
         bottomBar = { BottomNavBar(AppDestination.Home, onNavigate) },
@@ -79,7 +79,7 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit) {
                                 )
                             } else {
                                 state.recentRecords.take(4).forEachIndexed { index, item ->
-                                    GiftRecordListItem(item)
+                                    GiftRecordListItem(item) { onRecordClick(item.record.id) }
                                     if (index < state.recentRecords.take(4).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                                 }
                             }

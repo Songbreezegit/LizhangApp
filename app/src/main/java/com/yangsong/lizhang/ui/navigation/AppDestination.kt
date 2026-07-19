@@ -6,6 +6,12 @@ sealed class AppDestination(val route: String) {
     data object Home : AppDestination("home")
     data object AddGift : AppDestination("add_gift")
     data object ManualGift : AppDestination("manual_gift")
+    data object GiftRecordDetail : AppDestination("gift_record/{${NavigationConstants.RECORD_ID_ARGUMENT}}") {
+        fun createRoute(recordId: Long) = "gift_record/$recordId"
+    }
+    data object GiftRecordEditor : AppDestination("gift_record_editor/{${NavigationConstants.RECORD_ID_ARGUMENT}}") {
+        fun createRoute(recordId: Long) = "gift_record_editor/$recordId"
+    }
     data object Contacts : AppDestination("contacts")
     data object ContactDetail : AppDestination("contact/{${NavigationConstants.CONTACT_ID_ARGUMENT}}") {
         fun createRoute(contactId: Long) = "contact/$contactId"

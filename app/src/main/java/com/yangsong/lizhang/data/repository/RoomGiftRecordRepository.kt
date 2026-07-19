@@ -20,6 +20,12 @@ class RoomGiftRecordRepository(private val giftRecordDao: GiftRecordDao) : GiftR
     override fun observeByDirection(direction: GiftDirection): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeByDirection(direction).map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeRecord(recordId: Long): Flow<GiftRecord?> =
+        giftRecordDao.observeById(recordId).map { it?.toDomain() }
+
+    override fun observeRecordWithContact(recordId: Long): Flow<GiftRecordWithContact?> =
+        giftRecordDao.observeWithContactById(recordId).map { it?.toDomain() }
+
     override fun observeByContact(contactId: Long): Flow<List<GiftRecord>> =
         giftRecordDao.observeByContact(contactId).map { entities -> entities.map { it.toDomain() } }
 

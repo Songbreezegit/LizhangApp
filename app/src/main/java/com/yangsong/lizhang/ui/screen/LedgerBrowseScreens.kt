@@ -26,6 +26,7 @@ fun DirectionRecordsScreen(
     viewModel: DirectionRecordsViewModel,
     direction: GiftDirection,
     onBack: () -> Unit,
+    onRecordClick: (Long) -> Unit,
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val title = stringResource(if (direction == GiftDirection.RECEIVED) R.string.shortcut_received else R.string.shortcut_given)
@@ -49,7 +50,7 @@ fun DirectionRecordsScreen(
                         Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
                             Column(Modifier.padding(horizontal = 16.dp)) {
                                 state.records.forEachIndexed { index, record ->
-                                    GiftRecordListItem(record)
+                                    GiftRecordListItem(record) { onRecordClick(record.record.id) }
                                     if (index < state.records.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                                 }
                             }
@@ -62,7 +63,7 @@ fun DirectionRecordsScreen(
 }
 
 @Composable
-fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit) {
+fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     Scaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
         when {
@@ -78,7 +79,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit) {
                 if (state.selectedRecords.isEmpty()) {
                     item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
                 } else {
-                    items(state.selectedRecords) { GiftRecordListItem(it) }
+                    items(state.selectedRecords) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
                 }
             }
         }
@@ -128,7 +129,7 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 }
 
 @Composable
-fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
+fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     Scaffold(topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) }) { padding ->
         when {
@@ -144,7 +145,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
                 if (state.upcoming.isEmpty()) {
                     item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }
                 } else {
-                    items(state.upcoming) { GiftRecordListItem(it) }
+                    items(state.upcoming) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
                 }
             }
         }

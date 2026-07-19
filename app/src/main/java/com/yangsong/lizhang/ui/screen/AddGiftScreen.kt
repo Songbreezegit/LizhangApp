@@ -27,19 +27,22 @@ import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppDestination)->Unit){
+fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppDestination)->Unit,showBottomNavigation:Boolean=true){
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar=remember{SnackbarHostState()}
     var showContacts by remember{mutableStateOf(false)}
     var showCreateContact by remember{mutableStateOf(false)}
     var showDatePicker by remember{mutableStateOf(false)}
-    LaunchedEffect(state.isSaved){if(state.isSaved){snackbar.showSnackbar("礼金记录已保存");delay(450);onBack()}}
+    val savedMessage=stringResource(if(state.isEditing)R.string.record_updated else R.string.saved_success)
+    val operationFailed=stringResource(R.string.record_save_failed)
+    LaunchedEffect(state.isSaved){if(state.isSaved){snackbar.showSnackbar(savedMessage);delay(450);onBack()}}
+    LaunchedEffect(state.operationFailed){if(state.operationFailed)snackbar.showSnackbar(operationFailed)}
     Scaffold(
-        topBar={AppTopBar(stringResource(R.string.nav_add_gift),onBack)},
-        bottomBar={BottomNavBar(AppDestination.AddGift,onNavigate)},
+        topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
+        bottomBar={if(showBottomNavigation)BottomNavBar(AppDestination.AddGift,onNavigate)},
         snackbarHost={SnackbarHost(snackbar)},
     ){padding->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState{}};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(190.dp))
             Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
@@ -59,7 +62,7 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit,onNavigate:(AppD
                 }
             }
             Spacer(Modifier.height(16.dp))
-        }
+        }}
     }
     if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
     if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})

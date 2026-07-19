@@ -25,6 +25,20 @@ interface GiftRecordDao {
     @Query("SELECT * FROM gift_records WHERE contactId = :contactId ORDER BY eventDate DESC, createdTime DESC")
     fun observeByContact(contactId: Long): Flow<List<GiftRecordEntity>>
 
+    @Query("SELECT * FROM gift_records WHERE id = :recordId LIMIT 1")
+    fun observeById(recordId: Long): Flow<GiftRecordEntity?>
+
+    @Query(
+        """
+        SELECT gift_records.*, contacts.name AS contactName
+        FROM gift_records
+        INNER JOIN contacts ON contacts.id = gift_records.contactId
+        WHERE gift_records.id = :recordId
+        LIMIT 1
+        """,
+    )
+    fun observeWithContactById(recordId: Long): Flow<GiftRecordWithContactRow?>
+
     @Query(
         """
         SELECT gift_records.*, contacts.name AS contactName

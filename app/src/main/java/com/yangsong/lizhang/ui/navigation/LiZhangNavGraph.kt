@@ -30,9 +30,10 @@ private fun NavHostController.open(destination: AppDestination) {
 fun LiZhangNavGraph(appContainer: AppContainer) {
     val nav = rememberNavController()
     val go: (AppDestination) -> Unit = { nav.open(it) }
+    val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
     NavHost(nav, AppDestination.Home.route) {
         composable(AppDestination.Home.route) {
-            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go)
+            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
         }
         composable(AppDestination.Contacts.route) {
             ContactsScreen(
@@ -52,6 +53,7 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 nav::popBackStack,
                 { nav.navigate(AppDestination.ContactEditor.createRoute(id)) },
                 { nav.open(AppDestination.ManualGift) },
+                openRecord,
             )
         }
         composable(
@@ -78,11 +80,35 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 go,
             )
         }
+        composable(
+            AppDestination.GiftRecordDetail.route,
+            arguments = listOf(navArgument(NavigationConstants.RECORD_ID_ARGUMENT) { type = NavType.LongType }),
+        ) { entry ->
+            val recordId = entry.arguments?.getLong(NavigationConstants.RECORD_ID_ARGUMENT) ?: return@composable
+            GiftRecordDetailScreen(
+                viewModel(key = "gift-record-$recordId", factory = GiftRecordDetailViewModel.factory(recordId, appContainer.giftRecordRepository)),
+                onBack = nav::popBackStack,
+                onEdit = { nav.navigate(AppDestination.GiftRecordEditor.createRoute(it)) },
+            )
+        }
+        composable(
+            AppDestination.GiftRecordEditor.route,
+            arguments = listOf(navArgument(NavigationConstants.RECORD_ID_ARGUMENT) { type = NavType.LongType }),
+        ) { entry ->
+            val recordId = entry.arguments?.getLong(NavigationConstants.RECORD_ID_ARGUMENT) ?: return@composable
+            AddGiftScreen(
+                viewModel(key = "gift-record-editor-$recordId", factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository, recordId)),
+                onBack = nav::popBackStack,
+                onNavigate = go,
+                showBottomNavigation = false,
+            )
+        }
         composable(AppDestination.ReceivedRecords.route) {
             DirectionRecordsScreen(
                 viewModel(factory = DirectionRecordsViewModel.factory(GiftDirection.RECEIVED, appContainer.giftRecordRepository)),
                 GiftDirection.RECEIVED,
                 nav::popBackStack,
+                openRecord,
             )
         }
         composable(AppDestination.GivenRecords.route) {
@@ -90,16 +116,17 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 viewModel(factory = DirectionRecordsViewModel.factory(GiftDirection.GIVEN, appContainer.giftRecordRepository)),
                 GiftDirection.GIVEN,
                 nav::popBackStack,
+                openRecord,
             )
         }
         composable(AppDestination.Calendar.route) {
-            CalendarScreen(viewModel(factory = CalendarViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
+            CalendarScreen(viewModel(factory = CalendarViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
         }
         composable(AppDestination.Notifications.route) {
-            NotificationsScreen(viewModel(factory = NotificationsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
+            NotificationsScreen(viewModel(factory = NotificationsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
         }
         composable(AppDestination.Search.route) {
-            SearchScreen(viewModel(factory = SearchViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
+            SearchScreen(viewModel(factory = SearchViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
         }
         composable(AppDestination.Statistics.route) {
             StatisticsScreen(viewModel(factory = StatisticsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack)
