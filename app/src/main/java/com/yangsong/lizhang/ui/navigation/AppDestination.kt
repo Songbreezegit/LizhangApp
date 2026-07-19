@@ -9,6 +9,9 @@ sealed class AppDestination(val route: String) {
     data object ContactDetail : AppDestination("contact/{${NavigationConstants.CONTACT_ID_ARGUMENT}}") {
         fun createRoute(contactId: Long) = "contact/$contactId"
     }
+    data object ContactEditor : AppDestination("contact_editor/{${NavigationConstants.CONTACT_ID_ARGUMENT}}") {
+        fun createRoute(contactId: Long = NavigationConstants.NEW_CONTACT_ID) = "contact_editor/$contactId"
+    }
     data object Statistics : AppDestination("statistics")
     data object Search : AppDestination("search")
     data object Settings : AppDestination("settings")
