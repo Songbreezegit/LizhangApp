@@ -49,6 +49,7 @@ import com.yangsong.lizhang.ui.component.PageIllustration
 import com.yangsong.lizhang.ui.component.SectionHeader
 import com.yangsong.lizhang.ui.component.SettingsRow
 import com.yangsong.lizhang.ui.viewmodel.ExportDocument
+import com.yangsong.lizhang.ui.viewmodel.ExportFormat
 import com.yangsong.lizhang.ui.viewmodel.SettingsMessage
 import com.yangsong.lizhang.ui.viewmodel.SettingsUiState
 import com.yangsong.lizhang.ui.viewmodel.SettingsViewModel
@@ -64,39 +65,55 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val scope = rememberCoroutineScope()
     var documentToSave by remember { mutableStateOf<ExportDocument?>(null) }
 
-    val createCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        val document = documentToSave
+    fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
+        val document = documentToSave?.takeIf { it.format == format }
         documentToSave = null
         if (uri == null || document == null) {
-            viewModel.reportCsvSaveCancelled()
+            viewModel.reportSaveCancelled(format)
         } else {
             scope.launch {
                 val saved = withContext(Dispatchers.IO) {
                     runCatching {
-                        context.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
-                            stream.write(document.content.toByteArray(Charsets.UTF_8))
+                        context.contentResolver.openOutputStream(uri, "w")?.use { stream ->
+                            stream.write(document.bytes)
                         } ?: error("无法打开导出文件")
                     }.isSuccess
                 }
-                viewModel.reportCsvSaveResult(saved)
+                viewModel.reportSaveResult(format, saved)
             }
         }
     }
 
-    LaunchedEffect(state.pendingCsv) {
-        state.pendingCsv?.let { document ->
+    val createCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        saveDocument(uri, ExportFormat.CSV)
+    }
+    val createExcel = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+    ) { uri ->
+        saveDocument(uri, ExportFormat.EXCEL)
+    }
+
+    LaunchedEffect(state.pendingExport) {
+        state.pendingExport?.let { document ->
             documentToSave = document
-            viewModel.consumePendingCsv()
-            createCsv.launch(document.fileName)
+            viewModel.consumePendingExport()
+            when (document.format) {
+                ExportFormat.CSV -> createCsv.launch(document.fileName)
+                ExportFormat.EXCEL -> createExcel.launch(document.fileName)
+            }
         }
     }
 
     val message = when (state.message) {
-        SettingsMessage.CSV_EMPTY -> stringResource(R.string.settings_csv_empty)
+        SettingsMessage.EXPORT_EMPTY -> stringResource(R.string.settings_export_empty)
         SettingsMessage.CSV_PREPARE_FAILED -> stringResource(R.string.settings_csv_prepare_failed)
+        SettingsMessage.EXCEL_PREPARE_FAILED -> stringResource(R.string.settings_excel_prepare_failed)
         SettingsMessage.CSV_SAVE_SUCCESS -> stringResource(R.string.settings_csv_saved)
+        SettingsMessage.EXCEL_SAVE_SUCCESS -> stringResource(R.string.settings_excel_saved)
         SettingsMessage.CSV_SAVE_FAILED -> stringResource(R.string.settings_csv_save_failed)
+        SettingsMessage.EXCEL_SAVE_FAILED -> stringResource(R.string.settings_excel_save_failed)
         SettingsMessage.CSV_SAVE_CANCELLED -> stringResource(R.string.settings_csv_cancelled)
+        SettingsMessage.EXCEL_SAVE_CANCELLED -> stringResource(R.string.settings_excel_cancelled)
         null -> null
     }
     LaunchedEffect(message) {
@@ -110,6 +127,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     SettingsContent(
         state = state,
         onCsvExport = viewModel::prepareCsvExport,
+        onExcelExport = viewModel::prepareExcelExport,
         onUnavailable = { scope.launch { snackbar.showSnackbar(unavailable) } },
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
@@ -119,6 +137,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 fun SettingsContent(
     state: SettingsUiState,
     onCsvExport: () -> Unit,
+    onExcelExport: () -> Unit,
     onUnavailable: () -> Unit,
     snackbarHost: @Composable () -> Unit = {},
 ) {
@@ -135,7 +154,14 @@ fun SettingsContent(
             item {
                 SettingsGroup(stringResource(R.string.settings_data)) {
                     SettingsRow(Icons.Outlined.Backup, stringResource(R.string.settings_backup), onClick = onUnavailable)
-                    SettingsRow(Icons.Outlined.TableView, stringResource(R.string.settings_excel), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.TableView,
+                        stringResource(R.string.settings_excel),
+                        onClick = onExcelExport,
+                        trailing = if (state.isPreparingExcel) {
+                            { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
+                        } else null,
+                    )
                     SettingsRow(
                         Icons.Outlined.Description,
                         stringResource(R.string.settings_csv),

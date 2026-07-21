@@ -100,7 +100,7 @@ fun GiftEntryScreenshotTest() {
 fun SettingsScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
         Box(Modifier.fillMaxSize()) {
-            SettingsContent(SettingsUiState(), onCsvExport = {}, onUnavailable = {})
+            SettingsContent(SettingsUiState(), onCsvExport = {}, onExcelExport = {}, onUnavailable = {})
             BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
         }
     }

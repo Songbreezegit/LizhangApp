@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.ui.viewmodel
 
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
+import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
@@ -22,6 +23,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvExportTest {
@@ -53,8 +56,46 @@ class CsvExportTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isPreparingCsv)
-        assertEquals("礼账_20250718_172405.csv", viewModel.uiState.value.pendingCsv?.fileName)
-        assertTrue(viewModel.uiState.value.pendingCsv?.content.orEmpty().contains("张同学,123.45,收到,婚礼"))
+        val document = viewModel.uiState.value.pendingExport
+        assertEquals("礼账_20250718_172405.csv", document?.fileName)
+        assertEquals("text/csv", document?.mimeType)
+        assertEquals(ExportFormat.CSV, document?.format)
+        assertTrue(document?.bytes?.toString(Charsets.UTF_8).orEmpty().contains("张同学,123.45,收到,婚礼"))
+    }
+
+    @Test
+    fun `XLSX 包含标准工作簿结构与已转义业务数据`() {
+        val bytes = GiftRecordXlsxFormatter.format(
+            listOf(sampleItem(contactName = "王&阿姨", notes = "祝福<满满>")),
+        )
+        val entries = bytes.unzipXmlEntries()
+        val sheet = entries.getValue("xl/worksheets/sheet1.xml")
+
+        assertEquals('P'.code.toByte(), bytes[0])
+        assertEquals('K'.code.toByte(), bytes[1])
+        assertTrue(entries.keys.containsAll(REQUIRED_XLSX_ENTRIES))
+        assertTrue(sheet.contains("联系人"))
+        assertTrue(sheet.contains("王&amp;阿姨"))
+        assertTrue(sheet.contains("祝福&lt;满满&gt;"))
+        assertTrue(sheet.contains("<v>123.45</v>"))
+        assertTrue(sheet.contains("state=\"frozen\""))
+        assertTrue(sheet.contains("<autoFilter ref=\"A1:G2\"/>"))
+    }
+
+    @Test
+    fun `设置页生成带时间戳文件名的 Excel 待保存文档`() = runTest(dispatcher) {
+        val now = 1_752_830_645_000
+        val viewModel = SettingsViewModel(CsvGiftRepository(listOf(sampleItem())), now = { now })
+
+        viewModel.prepareExcelExport()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isPreparingExcel)
+        val document = viewModel.uiState.value.pendingExport
+        assertEquals("礼账_20250718_172405.xlsx", document?.fileName)
+        assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", document?.mimeType)
+        assertEquals(ExportFormat.EXCEL, document?.format)
+        assertEquals('P'.code.toByte(), document?.bytes?.get(0))
     }
 
     @Test
@@ -64,8 +105,8 @@ class CsvExportTest {
         viewModel.prepareCsvExport()
         advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.pendingCsv)
-        assertEquals(SettingsMessage.CSV_EMPTY, viewModel.uiState.value.message)
+        assertNull(viewModel.uiState.value.pendingExport)
+        assertEquals(SettingsMessage.EXPORT_EMPTY, viewModel.uiState.value.message)
     }
 
     private fun sampleItem(contactName: String = "张同学", notes: String? = "同学婚礼") = GiftRecordWithContact(
@@ -81,6 +122,26 @@ class CsvExportTest {
         ),
         contactName = contactName,
     )
+}
+
+private val REQUIRED_XLSX_ENTRIES = setOf(
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "xl/workbook.xml",
+    "xl/_rels/workbook.xml.rels",
+    "xl/styles.xml",
+    "xl/worksheets/sheet1.xml",
+)
+
+private fun ByteArray.unzipXmlEntries(): Map<String, String> = buildMap {
+    ZipInputStream(ByteArrayInputStream(this@unzipXmlEntries)).use { zip ->
+        var entry = zip.nextEntry
+        while (entry != null) {
+            put(entry.name, zip.readBytes().toString(Charsets.UTF_8))
+            zip.closeEntry()
+            entry = zip.nextEntry
+        }
+    }
 }
 
 private class CsvGiftRepository(private val records: List<GiftRecordWithContact>) : GiftRecordRepository {
