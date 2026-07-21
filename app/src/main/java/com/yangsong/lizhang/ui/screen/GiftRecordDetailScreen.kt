@@ -39,7 +39,7 @@ fun GiftRecordDetailScreen(
 
     Scaffold(
         topBar = { AppTopBar(stringResource(R.string.record_detail_title), onBack) },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
     ) { padding ->
         when {
             state.isLoading -> LoadingState()

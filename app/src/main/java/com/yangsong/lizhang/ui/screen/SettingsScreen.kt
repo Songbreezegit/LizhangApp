@@ -28,7 +28,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
@@ -45,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.component.AppTopBar
+import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
 import com.yangsong.lizhang.ui.component.SectionHeader
 import com.yangsong.lizhang.ui.component.SettingsRow
@@ -111,7 +111,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         state = state,
         onCsvExport = viewModel::prepareCsvExport,
         onUnavailable = { scope.launch { snackbar.showSnackbar(unavailable) } },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
 }
 

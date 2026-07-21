@@ -47,7 +47,7 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
