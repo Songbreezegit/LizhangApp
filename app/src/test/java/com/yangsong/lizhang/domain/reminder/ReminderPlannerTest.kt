@@ -54,6 +54,38 @@ class ReminderPlannerTest {
         assertTrue(planned.isEmpty())
     }
 
+    @Test
+    fun `提前一天提醒会在事件前一天触发`() {
+        val now = time(2026, 7, 21, 10)
+        val record = item(5, time(2024, 7, 25, 0))
+
+        val planned = ReminderPlanner.plan(
+            listOf(record),
+            now,
+            timeZone = utc,
+            advanceDays = 1,
+            reminderHour = 8,
+            reminderMinute = 30,
+        )
+
+        assertEquals(time(2026, 7, 24, 8, 30), planned.single().triggerAt)
+    }
+
+    @Test
+    fun `跨年事件的提前提醒落在上一年`() {
+        val now = time(2026, 12, 1, 10)
+        val record = item(6, time(2024, 1, 1, 0))
+
+        val planned = ReminderPlanner.plan(
+            listOf(record),
+            now,
+            timeZone = utc,
+            advanceDays = 1,
+        )
+
+        assertEquals(time(2026, 12, 31, 9), planned.single().triggerAt)
+    }
+
     private fun item(id: Long, eventDate: Long) = GiftRecordWithContact(
         record = GiftRecord(
             id = id,
@@ -66,9 +98,9 @@ class ReminderPlannerTest {
         contactName = "王阿姨",
     )
 
-    private fun time(year: Int, month: Int, day: Int, hour: Int): Long =
+    private fun time(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0): Long =
         Calendar.getInstance(utc).apply {
             clear()
-            set(year, month - 1, day, hour, 0, 0)
+            set(year, month - 1, day, hour, minute, 0)
         }.timeInMillis
 }

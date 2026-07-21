@@ -134,6 +134,9 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
 data class NotificationsUiState(
     val upcoming: List<GiftRecordWithContact> = emptyList(),
     val remindersEnabled: Boolean = false,
+    val reminderAdvanceDays: Int = 0,
+    val reminderHour: Int = 9,
+    val reminderMinute: Int = 0,
     val isLoading: Boolean = true,
     val error: Boolean = false,
 )
@@ -146,14 +149,24 @@ class NotificationsViewModel(
 ) : ViewModel() {
     val uiState: StateFlow<NotificationsUiState> = combine(
         repository.observeAll(),
-        reminderRepository.enabled,
-    ) { records, enabled ->
+        reminderRepository.settings,
+    ) { records, settings ->
         val recordsById = records.associateBy { it.record.id }
-        val upcoming = ReminderPlanner.plan(records, now(), timeZone = timeZone)
+        val upcoming = ReminderPlanner.plan(
+            records = records,
+            now = now(),
+            timeZone = timeZone,
+            advanceDays = settings.advanceDays,
+            reminderHour = settings.hour,
+            reminderMinute = settings.minute,
+        )
             .mapNotNull { recordsById[it.recordId] }
         NotificationsUiState(
             upcoming = upcoming,
-            remindersEnabled = enabled,
+            remindersEnabled = settings.enabled,
+            reminderAdvanceDays = settings.advanceDays,
+            reminderHour = settings.hour,
+            reminderMinute = settings.minute,
             isLoading = false,
         )
     }.catch {
@@ -161,6 +174,9 @@ class NotificationsViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
 
     fun setRemindersEnabled(enabled: Boolean) = reminderRepository.setEnabled(enabled)
+
+    fun updateReminderSchedule(advanceDays: Int, hour: Int, minute: Int) =
+        reminderRepository.updateSchedule(advanceDays, hour, minute)
 
     companion object {
         fun factory(

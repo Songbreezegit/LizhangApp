@@ -9,6 +9,7 @@ import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.ContactRepository
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
+import com.yangsong.lizhang.domain.reminder.ReminderSettings
 import java.util.Calendar
 import java.util.TimeZone
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +108,12 @@ class HomeAndContactsViewModelTest {
         viewModel.setRemindersEnabled(true)
         advanceUntilIdle()
         assertEquals(true, viewModel.uiState.value.remindersEnabled)
+
+        viewModel.updateReminderSchedule(1, 8, 30)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.uiState.value.reminderAdvanceDays)
+        assertEquals(8, viewModel.uiState.value.reminderHour)
+        assertEquals(30, viewModel.uiState.value.reminderMinute)
         collection.cancel()
     }
 
@@ -124,8 +131,11 @@ class HomeAndContactsViewModelTest {
 }
 
 private class TestReminderRepository : ReminderRepository {
-    override val enabled = MutableStateFlow(false)
-    override fun setEnabled(enabled: Boolean) { this.enabled.value = enabled }
+    override val settings = MutableStateFlow(ReminderSettings())
+    override fun setEnabled(enabled: Boolean) { settings.value = settings.value.copy(enabled = enabled) }
+    override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) {
+        settings.value = settings.value.copy(advanceDays = advanceDays, hour = hour, minute = minute)
+    }
     override fun synchronize(records: List<GiftRecordWithContact>) = Unit
 }
 

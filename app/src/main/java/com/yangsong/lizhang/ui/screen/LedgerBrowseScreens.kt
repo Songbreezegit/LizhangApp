@@ -16,8 +16,11 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -145,6 +148,8 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var showAdvanceDialog by remember { mutableStateOf(false) }
+    var showTimeDialog by remember { mutableStateOf(false) }
     val permissionDenied = stringResource(R.string.reminder_permission_denied)
     fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -193,7 +198,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    stringResource(R.string.reminder_switch_description),
+                                    stringResource(R.string.reminder_switch_description_configurable),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
@@ -211,6 +216,15 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
                         }
                     }
                 }
+                item {
+                    ReminderScheduleCard(
+                        advanceDays = state.reminderAdvanceDays,
+                        hour = state.reminderHour,
+                        minute = state.reminderMinute,
+                        onAdvanceClick = { showAdvanceDialog = true },
+                        onTimeClick = { showTimeDialog = true },
+                    )
+                }
                 item { Text(stringResource(R.string.notifications_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 if (state.upcoming.isEmpty()) {
                     item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }
@@ -220,4 +234,138 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
             }
         }
     }
+
+    if (showAdvanceDialog) {
+        ReminderAdvanceDialog(
+            selectedDays = state.reminderAdvanceDays,
+            onDismiss = { showAdvanceDialog = false },
+            onSelect = { days ->
+                viewModel.updateReminderSchedule(days, state.reminderHour, state.reminderMinute)
+                showAdvanceDialog = false
+            },
+        )
+    }
+    if (showTimeDialog) {
+        ReminderTimeDialog(
+            initialHour = state.reminderHour,
+            initialMinute = state.reminderMinute,
+            onDismiss = { showTimeDialog = false },
+            onConfirm = { hour, minute ->
+                viewModel.updateReminderSchedule(state.reminderAdvanceDays, hour, minute)
+                showTimeDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun ReminderScheduleCard(
+    advanceDays: Int,
+    hour: Int,
+    minute: Int,
+    onAdvanceClick: () -> Unit,
+    onTimeClick: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text(
+                stringResource(R.string.reminder_schedule_title),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            ReminderSettingRow(
+                title = stringResource(R.string.reminder_advance_title),
+                value = stringResource(
+                    if (advanceDays == 0) R.string.reminder_advance_same_day
+                    else R.string.reminder_advance_one_day,
+                ),
+                onClick = onAdvanceClick,
+            )
+            HorizontalDivider(Modifier.padding(horizontal = 18.dp), color = MaterialTheme.colorScheme.outline)
+            ReminderSettingRow(
+                title = stringResource(R.string.reminder_time_title),
+                value = stringResource(R.string.reminder_time_value, hour, minute),
+                onClick = onTimeClick,
+            )
+            Text(
+                stringResource(R.string.reminder_schedule_description),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, color = MaterialTheme.colorScheme.surface) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.reminder_advance_title)) },
+        text = {
+            Column {
+                listOf(
+                    0 to stringResource(R.string.reminder_advance_same_day),
+                    1 to stringResource(R.string.reminder_advance_one_day),
+                ).forEach { (days, label) ->
+                    Surface(onClick = { onSelect(days) }, color = MaterialTheme.colorScheme.surface) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = selectedDays == days, onClick = null)
+                            Text(label, Modifier.padding(start = 10.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderTimeDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int, Int) -> Unit,
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = true,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
+        text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(timePickerState) } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+                Text(stringResource(R.string.action_confirm))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }

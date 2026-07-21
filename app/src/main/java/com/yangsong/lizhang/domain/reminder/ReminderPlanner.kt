@@ -13,10 +13,22 @@ data class PlannedReminder(
     val triggerAt: Long,
 )
 
+data class ReminderSettings(
+    val enabled: Boolean = false,
+    val advanceDays: Int = 0,
+    val hour: Int = 9,
+    val minute: Int = 0,
+) {
+    init {
+        require(advanceDays in 0..1)
+        require(hour in 0..23)
+        require(minute in 0..59)
+    }
+}
+
 /** 将历史礼金日期换算为下一次年度日期提醒。 */
 object ReminderPlanner {
     const val DEFAULT_LOOKAHEAD_DAYS = 30
-    const val DEFAULT_REMINDER_HOUR = 9
     private const val immediateDelayMillis = 60_000L
 
     fun plan(
@@ -24,14 +36,27 @@ object ReminderPlanner {
         now: Long = System.currentTimeMillis(),
         lookaheadDays: Int = DEFAULT_LOOKAHEAD_DAYS,
         timeZone: TimeZone = TimeZone.getDefault(),
+        advanceDays: Int = 0,
+        reminderHour: Int = 9,
+        reminderMinute: Int = 0,
     ): List<PlannedReminder> {
         require(lookaheadDays in 1..366)
+        require(advanceDays in 0..1)
+        require(reminderHour in 0..23)
+        require(reminderMinute in 0..59)
         val end = Calendar.getInstance(timeZone).apply {
             timeInMillis = now
             add(Calendar.DAY_OF_YEAR, lookaheadDays)
         }.timeInMillis
         return records.mapNotNull { item ->
-            val triggerAt = nextTrigger(item.record.eventDate, now, timeZone)
+            val triggerAt = nextTrigger(
+                item.record.eventDate,
+                now,
+                timeZone,
+                advanceDays,
+                reminderHour,
+                reminderMinute,
+            )
             if (triggerAt > end) null else PlannedReminder(
                 recordId = item.record.id,
                 contactName = item.contactName,
@@ -41,7 +66,14 @@ object ReminderPlanner {
         }.distinctBy(PlannedReminder::recordId).sortedBy(PlannedReminder::triggerAt)
     }
 
-    private fun nextTrigger(eventDate: Long, now: Long, timeZone: TimeZone): Long {
+    private fun nextTrigger(
+        eventDate: Long,
+        now: Long,
+        timeZone: TimeZone,
+        advanceDays: Int,
+        reminderHour: Int,
+        reminderMinute: Int,
+    ): Long {
         val event = Calendar.getInstance(timeZone).apply { timeInMillis = eventDate }
         val current = Calendar.getInstance(timeZone).apply { timeInMillis = now }
         val eventIsToday = event.sameDate(current)
@@ -49,41 +81,60 @@ object ReminderPlanner {
             event.get(Calendar.DAY_OF_MONTH) == current.get(Calendar.DAY_OF_MONTH)
 
         if (eventDate >= startOfToday(current).timeInMillis) {
-            val actual = dateAt(
+            val actual = triggerAt(
                 event.get(Calendar.YEAR),
                 event.get(Calendar.MONTH),
                 event.get(Calendar.DAY_OF_MONTH),
                 timeZone,
+                advanceDays,
+                reminderHour,
+                reminderMinute,
             )
             return if (eventIsToday && actual <= now) now + immediateDelayMillis else actual
         }
 
-        var annual = dateAt(
+        var annual = triggerAt(
             current.get(Calendar.YEAR),
             event.get(Calendar.MONTH),
             event.get(Calendar.DAY_OF_MONTH),
             timeZone,
+            advanceDays,
+            reminderHour,
+            reminderMinute,
         )
-        if (sameMonthAndDay && annual <= now) return now + immediateDelayMillis
+        if (sameMonthAndDay && advanceDays == 0 && annual <= now) return now + immediateDelayMillis
         if (annual < startOfToday(current).timeInMillis) {
-            annual = dateAt(
+            annual = triggerAt(
                 current.get(Calendar.YEAR) + 1,
                 event.get(Calendar.MONTH),
                 event.get(Calendar.DAY_OF_MONTH),
                 timeZone,
+                advanceDays,
+                reminderHour,
+                reminderMinute,
             )
         }
         return annual
     }
 
-    private fun dateAt(year: Int, month: Int, day: Int, timeZone: TimeZone): Long =
+    private fun triggerAt(
+        year: Int,
+        month: Int,
+        day: Int,
+        timeZone: TimeZone,
+        advanceDays: Int,
+        reminderHour: Int,
+        reminderMinute: Int,
+    ): Long =
         Calendar.getInstance(timeZone).apply {
             clear()
             set(Calendar.YEAR, year)
             set(Calendar.MONTH, month)
             set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, DEFAULT_REMINDER_HOUR)
+            set(Calendar.HOUR_OF_DAY, reminderHour)
+            set(Calendar.MINUTE, reminderMinute)
             set(Calendar.DAY_OF_MONTH, min(day, getActualMaximum(Calendar.DAY_OF_MONTH)))
+            add(Calendar.DAY_OF_YEAR, -advanceDays)
         }.timeInMillis
 
     private fun startOfToday(calendar: Calendar) = (calendar.clone() as Calendar).apply {

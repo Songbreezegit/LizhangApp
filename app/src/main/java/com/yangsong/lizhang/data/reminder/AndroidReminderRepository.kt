@@ -21,6 +21,7 @@ import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.reminder.PlannedReminder
 import com.yangsong.lizhang.domain.reminder.ReminderPlanner
+import com.yangsong.lizhang.domain.reminder.ReminderSettings
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
@@ -35,8 +36,15 @@ import kotlinx.coroutines.launch
 class AndroidReminderRepository(private val context: Context) : ReminderRepository {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
-    private val _enabled = MutableStateFlow(preferences.getBoolean(KEY_ENABLED, false))
-    override val enabled = _enabled
+    private val _settings = MutableStateFlow(
+        ReminderSettings(
+            enabled = preferences.getBoolean(KEY_ENABLED, false),
+            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0),
+            hour = preferences.getInt(KEY_HOUR, 9),
+            minute = preferences.getInt(KEY_MINUTE, 0),
+        ),
+    )
+    override val settings = _settings
 
     init {
         createNotificationChannel()
@@ -44,14 +52,35 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
 
     override fun setEnabled(enabled: Boolean) {
         preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
-        _enabled.value = enabled
+        _settings.value = _settings.value.copy(enabled = enabled)
         if (!enabled) cancelScheduled()
+    }
+
+    override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) {
+        val updated = _settings.value.copy(
+            advanceDays = advanceDays,
+            hour = hour,
+            minute = minute,
+        )
+        preferences.edit()
+            .putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
+            .putInt(KEY_HOUR, updated.hour)
+            .putInt(KEY_MINUTE, updated.minute)
+            .apply()
+        _settings.value = updated
     }
 
     override fun synchronize(records: List<GiftRecordWithContact>) {
         cancelScheduled()
-        if (!enabled.value) return
-        val tokens = ReminderPlanner.plan(records, lookaheadDays = 366).map { reminder ->
+        val currentSettings = settings.value
+        if (!currentSettings.enabled) return
+        val tokens = ReminderPlanner.plan(
+            records = records,
+            lookaheadDays = 366,
+            advanceDays = currentSettings.advanceDays,
+            reminderHour = currentSettings.hour,
+            reminderMinute = currentSettings.minute,
+        ).map { reminder ->
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 reminder.triggerAt,
@@ -114,7 +143,7 @@ class ReminderCoordinator(
         if (synchronizationJob != null) return
         synchronizationJob = combine(
             giftRecordRepository.observeAll(),
-            reminderRepository.enabled,
+            reminderRepository.settings,
         ) { records, _ -> records }
             .onEach(reminderRepository::synchronize)
             .launchIn(scope)
@@ -193,6 +222,9 @@ private fun Context.eventTypeName(eventType: EventType): String = getString(
 
 private const val PREFERENCES_NAME = "reminder_preferences"
 private const val KEY_ENABLED = "enabled"
+private const val KEY_ADVANCE_DAYS = "advance_days"
+private const val KEY_HOUR = "hour"
+private const val KEY_MINUTE = "minute"
 private const val KEY_SCHEDULED = "scheduled"
 private const val CHANNEL_ID = "gift_date_reminders"
 private const val EXTRA_RECORD_ID = "record_id"
