@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.reminder.ReminderPlanner
+import com.yangsong.lizhang.domain.repository.ReminderRepository
 import java.util.Calendar
+import java.util.TimeZone
 import kotlinx.coroutines.flow.*
 
 data class DirectionRecordsUiState(
@@ -130,32 +133,43 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
 
 data class NotificationsUiState(
     val upcoming: List<GiftRecordWithContact> = emptyList(),
+    val remindersEnabled: Boolean = false,
     val isLoading: Boolean = true,
     val error: Boolean = false,
 )
 
-class NotificationsViewModel(repository: GiftRecordRepository) : ViewModel() {
-    val uiState: StateFlow<NotificationsUiState> = repository.observeAll().map { records ->
-        val start = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, 30) }
+class NotificationsViewModel(
+    repository: GiftRecordRepository,
+    private val reminderRepository: ReminderRepository,
+    private val now: () -> Long = System::currentTimeMillis,
+    private val timeZone: TimeZone = TimeZone.getDefault(),
+) : ViewModel() {
+    val uiState: StateFlow<NotificationsUiState> = combine(
+        repository.observeAll(),
+        reminderRepository.enabled,
+    ) { records, enabled ->
+        val recordsById = records.associateBy { it.record.id }
+        val upcoming = ReminderPlanner.plan(records, now(), timeZone = timeZone)
+            .mapNotNull { recordsById[it.recordId] }
         NotificationsUiState(
-            upcoming = records.filter { it.record.eventDate in start.timeInMillis..end.timeInMillis }
-                .sortedBy { it.record.eventDate },
+            upcoming = upcoming,
+            remindersEnabled = enabled,
             isLoading = false,
         )
     }.catch {
         emit(NotificationsUiState(isLoading = false, error = true))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
 
+    fun setRemindersEnabled(enabled: Boolean) = reminderRepository.setEnabled(enabled)
+
     companion object {
-        fun factory(repository: GiftRecordRepository) = object : ViewModelProvider.Factory {
+        fun factory(
+            repository: GiftRecordRepository,
+            reminderRepository: ReminderRepository,
+        ) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = NotificationsViewModel(repository) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                NotificationsViewModel(repository, reminderRepository) as T
         }
     }
 }

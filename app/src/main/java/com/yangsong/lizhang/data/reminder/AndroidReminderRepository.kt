@@ -1,0 +1,200 @@
+package com.yangsong.lizhang.data.reminder
+
+import android.Manifest
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import com.yangsong.lizhang.LiZhangApplication
+import com.yangsong.lizhang.MainActivity
+import com.yangsong.lizhang.R
+import com.yangsong.lizhang.domain.model.EventType
+import com.yangsong.lizhang.domain.model.GiftRecordWithContact
+import com.yangsong.lizhang.domain.reminder.PlannedReminder
+import com.yangsong.lizhang.domain.reminder.ReminderPlanner
+import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.repository.ReminderRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+
+class AndroidReminderRepository(private val context: Context) : ReminderRepository {
+    private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    private val alarmManager = context.getSystemService(AlarmManager::class.java)
+    private val _enabled = MutableStateFlow(preferences.getBoolean(KEY_ENABLED, false))
+    override val enabled = _enabled
+
+    init {
+        createNotificationChannel()
+    }
+
+    override fun setEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
+        _enabled.value = enabled
+        if (!enabled) cancelScheduled()
+    }
+
+    override fun synchronize(records: List<GiftRecordWithContact>) {
+        cancelScheduled()
+        if (!enabled.value) return
+        val tokens = ReminderPlanner.plan(records, lookaheadDays = 366).map { reminder ->
+            alarmManager.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                reminder.triggerAt,
+                reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT),
+            )
+            reminder.token()
+        }.toSet()
+        preferences.edit().putStringSet(KEY_SCHEDULED, tokens).apply()
+    }
+
+    private fun cancelScheduled() {
+        preferences.getStringSet(KEY_SCHEDULED, emptySet()).orEmpty().forEach { token ->
+            val parts = token.split('|')
+            val recordId = parts.getOrNull(0)?.toLongOrNull() ?: return@forEach
+            val triggerAt = parts.getOrNull(1)?.toLongOrNull() ?: return@forEach
+            val reminder = PlannedReminder(recordId, "", EventType.OTHER, triggerAt)
+            alarmManager.cancel(reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT))
+        }
+        preferences.edit().remove(KEY_SCHEDULED).apply()
+    }
+
+    private fun PlannedReminder.pendingIntent(extraFlags: Int): PendingIntent {
+        val intent = Intent(context, ReminderNotificationReceiver::class.java).apply {
+            data = reminderUri(recordId, triggerAt)
+            putExtra(EXTRA_RECORD_ID, recordId)
+            putExtra(EXTRA_CONTACT_NAME, contactName)
+            putExtra(EXTRA_EVENT_TYPE, eventType.name)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            extraFlags or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun createNotificationChannel() {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.reminder_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = context.getString(R.string.reminder_channel_description)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun PlannedReminder.token() = "$recordId|$triggerAt"
+}
+
+class ReminderCoordinator(
+    private val giftRecordRepository: GiftRecordRepository,
+    private val reminderRepository: ReminderRepository,
+    private val scope: CoroutineScope,
+) {
+    private var synchronizationJob: Job? = null
+
+    fun start() {
+        if (synchronizationJob != null) return
+        synchronizationJob = combine(
+            giftRecordRepository.observeAll(),
+            reminderRepository.enabled,
+        ) { records, _ -> records }
+            .onEach(reminderRepository::synchronize)
+            .launchIn(scope)
+    }
+
+    fun refresh() {
+        scope.launch {
+            reminderRepository.synchronize(giftRecordRepository.observeAll().first())
+        }
+    }
+}
+
+class ReminderNotificationReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        if (!preferences.getBoolean(KEY_ENABLED, false)) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val recordId = intent.getLongExtra(EXTRA_RECORD_ID, 0)
+        val contactName = intent.getStringExtra(EXTRA_CONTACT_NAME).orEmpty()
+        val eventType = runCatching {
+            enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
+        }.getOrDefault(EventType.OTHER)
+        val openApp = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_gift)
+            .setContentTitle(context.getString(R.string.reminder_notification_title, contactName))
+            .setContentText(context.getString(R.string.reminder_notification_text, context.eventTypeName(eventType)))
+            .setContentIntent(openApp)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(recordId.notificationId(), notification)
+        }
+    }
+}
+
+class ReminderRescheduleReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val application = context.applicationContext as? LiZhangApplication ?: return
+        application.appContainer.startReminderCoordination()
+        application.appContainer.refreshReminderSchedules()
+    }
+}
+
+private fun reminderUri(recordId: Long, triggerAt: Long): Uri = Uri.Builder()
+    .scheme("lizhang")
+    .authority("reminder")
+    .appendPath(recordId.toString())
+    .appendPath(triggerAt.toString())
+    .build()
+
+private fun Long.notificationId(): Int = (this xor (this ushr 32)).toInt()
+
+private fun Context.eventTypeName(eventType: EventType): String = getString(
+    when (eventType) {
+        EventType.WEDDING -> R.string.event_wedding
+        EventType.FULL_MONTH -> R.string.event_full_month
+        EventType.BIRTHDAY -> R.string.event_birthday
+        EventType.HOUSEWARMING -> R.string.event_housewarming
+        EventType.FESTIVAL -> R.string.event_festival
+        EventType.OTHER -> R.string.event_other
+    },
+)
+
+private const val PREFERENCES_NAME = "reminder_preferences"
+private const val KEY_ENABLED = "enabled"
+private const val KEY_SCHEDULED = "scheduled"
+private const val CHANNEL_ID = "gift_date_reminders"
+private const val EXTRA_RECORD_ID = "record_id"
+private const val EXTRA_CONTACT_NAME = "contact_name"
+private const val EXTRA_EVENT_TYPE = "event_type"

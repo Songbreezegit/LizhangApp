@@ -1,5 +1,10 @@
 package com.yangsong.lizhang.ui.screen
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,16 +15,22 @@ import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun DirectionRecordsScreen(
@@ -131,7 +142,30 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 @Composable
 fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) }) { padding ->
+    val context = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val permissionDenied = stringResource(R.string.reminder_permission_denied)
+    fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) viewModel.setRemindersEnabled(true)
+        else scope.launch { snackbar.showSnackbar(permissionDenied) }
+    }
+
+    LaunchedEffect(state.remindersEnabled) {
+        if (state.remindersEnabled && !hasNotificationPermission()) {
+            viewModel.setRemindersEnabled(false)
+        }
+    }
+
+    Scaffold(
+        topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
+    ) { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState { }
@@ -141,6 +175,42 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp)) }
+                item {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.reminder_switch_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    stringResource(R.string.reminder_switch_description),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                            Switch(
+                                checked = state.remindersEnabled,
+                                onCheckedChange = { enabled ->
+                                    when {
+                                        !enabled -> viewModel.setRemindersEnabled(false)
+                                        hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
+                                        else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
                 item { Text(stringResource(R.string.notifications_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 if (state.upcoming.isEmpty()) {
                     item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }

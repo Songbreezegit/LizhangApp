@@ -8,11 +8,14 @@ import com.yangsong.lizhang.domain.model.GiftRecord
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.ContactRepository
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.repository.ReminderRepository
 import java.util.Calendar
+import java.util.TimeZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -77,6 +80,36 @@ class HomeAndContactsViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `提醒页展示未来三十天年度日期并同步开关状态`() = runTest(dispatcher) {
+        val utc = TimeZone.getTimeZone("UTC")
+        val now = Calendar.getInstance(utc).apply {
+            clear()
+            set(2026, Calendar.JULY, 21, 10, 0, 0)
+        }.timeInMillis
+        val eventDate = Calendar.getInstance(utc).apply {
+            clear()
+            set(2024, Calendar.JULY, 25, 0, 0, 0)
+        }.timeInMillis
+        val reminders = TestReminderRepository()
+        val viewModel = NotificationsViewModel(
+            TestGiftRepository(listOf(record(20, 20_000, GiftDirection.RECEIVED, eventDate))),
+            reminders,
+            now = { now },
+            timeZone = utc,
+        )
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+
+        advanceUntilIdle()
+        assertEquals(listOf(20L), viewModel.uiState.value.upcoming.map { it.record.id })
+        assertFalse(viewModel.uiState.value.remindersEnabled)
+
+        viewModel.setRemindersEnabled(true)
+        advanceUntilIdle()
+        assertEquals(true, viewModel.uiState.value.remindersEnabled)
+        collection.cancel()
+    }
+
     private fun dateInYear(year: Int) = Calendar.getInstance().apply {
         set(year, Calendar.JANUARY, 2, 12, 0, 0)
         set(Calendar.MILLISECOND, 0)
@@ -88,6 +121,12 @@ class HomeAndContactsViewModelTest {
     )
 
     private fun summary(id: Long, name: String) = ContactLedgerSummary(Contact(id = id, name = name), 0, 0)
+}
+
+private class TestReminderRepository : ReminderRepository {
+    override val enabled = MutableStateFlow(false)
+    override fun setEnabled(enabled: Boolean) { this.enabled.value = enabled }
+    override fun synchronize(records: List<GiftRecordWithContact>) = Unit
 }
 
 private class TestContactRepository(private val summaries: List<ContactLedgerSummary>) : ContactRepository {

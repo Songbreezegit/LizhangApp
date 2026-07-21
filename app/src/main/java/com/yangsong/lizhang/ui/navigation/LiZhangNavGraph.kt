@@ -128,7 +128,16 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             CalendarScreen(viewModel(factory = CalendarViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
         }
         composable(AppDestination.Notifications.route) {
-            NotificationsScreen(viewModel(factory = NotificationsViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
+            NotificationsScreen(
+                viewModel(
+                    factory = NotificationsViewModel.factory(
+                        appContainer.giftRecordRepository,
+                        appContainer.reminderRepository,
+                    ),
+                ),
+                nav::popBackStack,
+                openRecord,
+            )
         }
         composable(AppDestination.Search.route) {
             SearchScreen(viewModel(factory = SearchViewModel.factory(appContainer.giftRecordRepository)), nav::popBackStack, openRecord)
