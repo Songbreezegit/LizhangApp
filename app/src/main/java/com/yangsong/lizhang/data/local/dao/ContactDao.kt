@@ -15,11 +15,20 @@ interface ContactDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(contact: ContactEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(contacts: List<ContactEntity>)
+
     @Update
     suspend fun update(contact: ContactEntity)
 
     @Delete
     suspend fun delete(contact: ContactEntity)
+
+    @Query("SELECT * FROM contacts ORDER BY id")
+    suspend fun getAllForBackup(): List<ContactEntity>
+
+    @Query("DELETE FROM contacts")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM contacts WHERE id = :contactId LIMIT 1")
     fun observeById(contactId: Long): Flow<ContactEntity?>

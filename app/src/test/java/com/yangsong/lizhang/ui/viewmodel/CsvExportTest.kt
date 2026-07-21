@@ -7,6 +7,9 @@ import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.repository.BackupDocument
+import com.yangsong.lizhang.domain.repository.BackupRepository
+import com.yangsong.lizhang.domain.repository.BackupSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +20,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -50,7 +54,11 @@ class CsvExportTest {
     @Test
     fun `设置页生成带时间戳文件名的 CSV 待保存文档`() = runTest(dispatcher) {
         val now = 1_752_830_645_000
-        val viewModel = SettingsViewModel(CsvGiftRepository(listOf(sampleItem())), now = { now })
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(listOf(sampleItem())),
+            backupRepository = FakeBackupRepository(),
+            now = { now },
+        )
 
         viewModel.prepareCsvExport()
         advanceUntilIdle()
@@ -85,7 +93,11 @@ class CsvExportTest {
     @Test
     fun `设置页生成带时间戳文件名的 Excel 待保存文档`() = runTest(dispatcher) {
         val now = 1_752_830_645_000
-        val viewModel = SettingsViewModel(CsvGiftRepository(listOf(sampleItem())), now = { now })
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(listOf(sampleItem())),
+            backupRepository = FakeBackupRepository(),
+            now = { now },
+        )
 
         viewModel.prepareExcelExport()
         advanceUntilIdle()
@@ -100,13 +112,58 @@ class CsvExportTest {
 
     @Test
     fun `没有记录时不启动文件保存器`() = runTest(dispatcher) {
-        val viewModel = SettingsViewModel(CsvGiftRepository(emptyList()))
+        val viewModel = SettingsViewModel(CsvGiftRepository(emptyList()), FakeBackupRepository())
 
         viewModel.prepareCsvExport()
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.pendingExport)
         assertEquals(SettingsMessage.EXPORT_EMPTY, viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `设置页生成带时间戳文件名的礼账备份`() = runTest(dispatcher) {
+        val now = 1_752_830_645_000
+        val backupRepository = FakeBackupRepository()
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(emptyList()),
+            backupRepository = backupRepository,
+            now = { now },
+            backgroundDispatcher = dispatcher,
+            computeDispatcher = dispatcher,
+        )
+
+        viewModel.prepareBackupExport()
+        advanceUntilIdle()
+
+        val document = viewModel.uiState.value.pendingExport
+        assertFalse(viewModel.uiState.value.isPreparingBackup)
+        assertEquals("礼账备份_20250718_172405.lizhangbackup", document?.fileName)
+        assertEquals(ExportFormat.BACKUP, document?.format)
+        assertArrayEquals(backupRepository.backupBytes, document?.bytes)
+    }
+
+    @Test
+    fun `校验备份后必须确认才执行恢复`() = runTest(dispatcher) {
+        val backupRepository = FakeBackupRepository()
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(emptyList()),
+            backupRepository,
+            backgroundDispatcher = dispatcher,
+            computeDispatcher = dispatcher,
+        )
+
+        viewModel.inspectBackup(backupRepository.backupBytes)
+        advanceUntilIdle()
+        assertEquals(backupRepository.summary, viewModel.uiState.value.pendingRestore?.summary)
+        assertNull(backupRepository.restoredBytes)
+
+        viewModel.confirmRestore()
+        advanceUntilIdle()
+
+        assertArrayEquals(backupRepository.backupBytes, backupRepository.restoredBytes)
+        assertNull(viewModel.uiState.value.pendingRestore)
+        assertEquals(SettingsMessage.BACKUP_RESTORE_SUCCESS, viewModel.uiState.value.message)
     }
 
     private fun sampleItem(contactName: String = "张同学", notes: String? = "同学婚礼") = GiftRecordWithContact(
@@ -122,6 +179,24 @@ class CsvExportTest {
         ),
         contactName = contactName,
     )
+}
+
+private class FakeBackupRepository : BackupRepository {
+    val backupBytes = byteArrayOf(1, 2, 3)
+    val summary = BackupSummary(createdTime = 1, contactCount = 2, giftRecordCount = 3)
+    var restoredBytes: ByteArray? = null
+
+    override suspend fun createBackup() = BackupDocument(
+        bytes = backupBytes,
+        summary = summary,
+    )
+
+    override fun inspectBackup(bytes: ByteArray) = summary
+
+    override suspend fun restoreBackup(bytes: ByteArray): BackupSummary {
+        restoredBytes = bytes
+        return summary
+    }
 }
 
 private val REQUIRED_XLSX_ENTRIES = setOf(

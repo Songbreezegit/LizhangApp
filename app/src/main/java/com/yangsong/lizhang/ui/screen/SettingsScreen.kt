@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,11 +26,15 @@ import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +48,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.util.DateFormatter
+import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
@@ -56,6 +63,8 @@ import com.yangsong.lizhang.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
@@ -64,6 +73,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var documentToSave by remember { mutableStateOf<ExportDocument?>(null) }
+    var showBackupActions by remember { mutableStateOf(false) }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
         val document = documentToSave?.takeIf { it.format == format }
@@ -92,6 +102,24 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     ) { uri ->
         saveDocument(uri, ExportFormat.EXCEL)
     }
+    val createBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BackupArchiveCodec.MIME_TYPE),
+    ) { uri ->
+        saveDocument(uri, ExportFormat.BACKUP)
+    }
+    val openBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let {
+            scope.launch {
+                val bytes = withContext(Dispatchers.IO) {
+                    runCatching {
+                        context.contentResolver.openInputStream(it)?.use { stream -> stream.readBackupBytes() }
+                            ?: error("无法读取备份文件")
+                    }
+                }
+                bytes.onSuccess(viewModel::inspectBackup).onFailure { viewModel.reportBackupReadFailed() }
+            }
+        }
+    }
 
     LaunchedEffect(state.pendingExport) {
         state.pendingExport?.let { document ->
@@ -100,6 +128,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             when (document.format) {
                 ExportFormat.CSV -> createCsv.launch(document.fileName)
                 ExportFormat.EXCEL -> createExcel.launch(document.fileName)
+                ExportFormat.BACKUP -> createBackup.launch(document.fileName)
             }
         }
     }
@@ -114,6 +143,13 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         SettingsMessage.EXCEL_SAVE_FAILED -> stringResource(R.string.settings_excel_save_failed)
         SettingsMessage.CSV_SAVE_CANCELLED -> stringResource(R.string.settings_csv_cancelled)
         SettingsMessage.EXCEL_SAVE_CANCELLED -> stringResource(R.string.settings_excel_cancelled)
+        SettingsMessage.BACKUP_PREPARE_FAILED -> stringResource(R.string.settings_backup_prepare_failed)
+        SettingsMessage.BACKUP_SAVE_SUCCESS -> stringResource(R.string.settings_backup_saved)
+        SettingsMessage.BACKUP_SAVE_FAILED -> stringResource(R.string.settings_backup_save_failed)
+        SettingsMessage.BACKUP_SAVE_CANCELLED -> stringResource(R.string.settings_backup_save_cancelled)
+        SettingsMessage.BACKUP_READ_FAILED -> stringResource(R.string.settings_backup_read_failed)
+        SettingsMessage.BACKUP_RESTORE_SUCCESS -> stringResource(R.string.settings_backup_restore_success)
+        SettingsMessage.BACKUP_RESTORE_FAILED -> stringResource(R.string.settings_backup_restore_failed)
         null -> null
     }
     LaunchedEffect(message) {
@@ -128,9 +164,70 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         state = state,
         onCsvExport = viewModel::prepareCsvExport,
         onExcelExport = viewModel::prepareExcelExport,
+        onBackup = { showBackupActions = true },
         onUnavailable = { scope.launch { snackbar.showSnackbar(unavailable) } },
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
+
+    if (showBackupActions) {
+        AlertDialog(
+            onDismissRequest = { showBackupActions = false },
+            title = { Text(stringResource(R.string.settings_backup)) },
+            text = { Text(stringResource(R.string.settings_backup_description)) },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            showBackupActions = false
+                            openBackup.launch(arrayOf(BackupArchiveCodec.MIME_TYPE))
+                        },
+                    ) { Text(stringResource(R.string.settings_backup_restore_action)) }
+                    Button(
+                        onClick = {
+                            showBackupActions = false
+                            viewModel.prepareBackupExport()
+                        },
+                    ) { Text(stringResource(R.string.settings_backup_create_action)) }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBackupActions = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    state.pendingRestore?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { if (!state.isRestoringBackup) viewModel.cancelRestore() },
+            title = { Text(stringResource(R.string.settings_backup_restore_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.settings_backup_restore_message,
+                        DateFormatter.format(pending.summary.createdTime, "yyyy-MM-dd HH:mm"),
+                        pending.summary.contactCount,
+                        pending.summary.giftRecordCount,
+                    ),
+                )
+            },
+            confirmButton = {
+                Button(onClick = viewModel::confirmRestore, enabled = !state.isRestoringBackup) {
+                    if (state.isRestoringBackup) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.settings_backup_restore_confirm))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::cancelRestore, enabled = !state.isRestoringBackup) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -138,6 +235,7 @@ fun SettingsContent(
     state: SettingsUiState,
     onCsvExport: () -> Unit,
     onExcelExport: () -> Unit,
+    onBackup: () -> Unit,
     onUnavailable: () -> Unit,
     snackbarHost: @Composable () -> Unit = {},
 ) {
@@ -153,7 +251,16 @@ fun SettingsContent(
             item { PageIllustration(R.drawable.page_settings_cat, Modifier.fillMaxWidth().height(190.dp)) }
             item {
                 SettingsGroup(stringResource(R.string.settings_data)) {
-                    SettingsRow(Icons.Outlined.Backup, stringResource(R.string.settings_backup), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.Backup,
+                        stringResource(R.string.settings_backup),
+                        onClick = onBackup,
+                        trailing = if (
+                            state.isPreparingBackup || state.isReadingBackup || state.isRestoringBackup
+                        ) {
+                            { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
+                        } else null,
+                    )
                     SettingsRow(
                         Icons.Outlined.TableView,
                         stringResource(R.string.settings_excel),
@@ -193,6 +300,20 @@ fun SettingsContent(
             }
         }
     }
+}
+
+private fun InputStream.readBackupBytes(): ByteArray {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    var total = 0
+    while (true) {
+        val read = read(buffer)
+        if (read < 0) break
+        total += read
+        require(total <= BackupArchiveCodec.MAX_FILE_BYTES) { "备份文件超过大小限制" }
+        output.write(buffer, 0, read)
+    }
+    return output.toByteArray()
 }
 
 @Composable

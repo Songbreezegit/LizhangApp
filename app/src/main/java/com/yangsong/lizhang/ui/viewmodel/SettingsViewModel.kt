@@ -4,22 +4,33 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.core.util.DateFormatter
+import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
 import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
+import com.yangsong.lizhang.domain.repository.BackupRepository
+import com.yangsong.lizhang.domain.repository.BackupSummary
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-enum class ExportFormat { CSV, EXCEL }
+enum class ExportFormat { CSV, EXCEL, BACKUP }
 
 data class ExportDocument(
     val fileName: String,
     val mimeType: String,
     val bytes: ByteArray,
     val format: ExportFormat,
+)
+
+data class PendingRestore(
+    val bytes: ByteArray,
+    val summary: BackupSummary,
 )
 
 enum class SettingsMessage {
@@ -32,18 +43,32 @@ enum class SettingsMessage {
     EXCEL_SAVE_FAILED,
     CSV_SAVE_CANCELLED,
     EXCEL_SAVE_CANCELLED,
+    BACKUP_PREPARE_FAILED,
+    BACKUP_SAVE_SUCCESS,
+    BACKUP_SAVE_FAILED,
+    BACKUP_SAVE_CANCELLED,
+    BACKUP_READ_FAILED,
+    BACKUP_RESTORE_SUCCESS,
+    BACKUP_RESTORE_FAILED,
 }
 
 data class SettingsUiState(
     val isPreparingCsv: Boolean = false,
     val isPreparingExcel: Boolean = false,
+    val isPreparingBackup: Boolean = false,
+    val isReadingBackup: Boolean = false,
+    val isRestoringBackup: Boolean = false,
     val pendingExport: ExportDocument? = null,
+    val pendingRestore: PendingRestore? = null,
     val message: SettingsMessage? = null,
 )
 
 class SettingsViewModel(
     private val repository: GiftRecordRepository,
+    private val backupRepository: BackupRepository,
     private val now: () -> Long = System::currentTimeMillis,
+    private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
@@ -52,8 +77,83 @@ class SettingsViewModel(
 
     fun prepareExcelExport() = prepareExport(ExportFormat.EXCEL)
 
+    fun prepareBackupExport() {
+        if (_uiState.value.isBusy()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPreparingBackup = true, message = null) }
+            runCatching { withContext(backgroundDispatcher) { backupRepository.createBackup() } }
+                .onSuccess { backup ->
+                    val timestamp = DateFormatter.format(now(), "yyyyMMdd_HHmmss")
+                    _uiState.update {
+                        it.copy(
+                            isPreparingBackup = false,
+                            pendingExport = ExportDocument(
+                                fileName = "礼账备份_$timestamp.${BackupArchiveCodec.FILE_EXTENSION}",
+                                mimeType = BackupArchiveCodec.MIME_TYPE,
+                                bytes = backup.bytes,
+                                format = ExportFormat.BACKUP,
+                            ),
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(isPreparingBackup = false, message = SettingsMessage.BACKUP_PREPARE_FAILED)
+                    }
+                }
+        }
+    }
+
+    fun inspectBackup(bytes: ByteArray) {
+        if (_uiState.value.isBusy()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isReadingBackup = true, message = null) }
+            runCatching { withContext(computeDispatcher) { backupRepository.inspectBackup(bytes) } }
+                .onSuccess { summary ->
+                    _uiState.update {
+                        it.copy(isReadingBackup = false, pendingRestore = PendingRestore(bytes, summary))
+                    }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(isReadingBackup = false, message = SettingsMessage.BACKUP_READ_FAILED)
+                    }
+                }
+        }
+    }
+
+    fun reportBackupReadFailed() = _uiState.update {
+        it.copy(isReadingBackup = false, message = SettingsMessage.BACKUP_READ_FAILED)
+    }
+
+    fun cancelRestore() = _uiState.update { it.copy(pendingRestore = null) }
+
+    fun confirmRestore() {
+        val pending = _uiState.value.pendingRestore ?: return
+        if (_uiState.value.isBusy()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRestoringBackup = true, message = null) }
+            runCatching { withContext(backgroundDispatcher) { backupRepository.restoreBackup(pending.bytes) } }
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isRestoringBackup = false,
+                            pendingRestore = null,
+                            message = SettingsMessage.BACKUP_RESTORE_SUCCESS,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(isRestoringBackup = false, message = SettingsMessage.BACKUP_RESTORE_FAILED)
+                    }
+                }
+        }
+    }
+
     private fun prepareExport(format: ExportFormat) {
-        if (_uiState.value.isPreparingCsv || _uiState.value.isPreparingExcel) return
+        require(format != ExportFormat.BACKUP)
+        if (_uiState.value.isBusy()) return
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
@@ -87,6 +187,7 @@ class SettingsViewModel(
                                 bytes = GiftRecordXlsxFormatter.format(records),
                                 format = format,
                             )
+                            ExportFormat.BACKUP -> error("备份导出使用独立流程")
                         }
                         _uiState.update {
                             it.copy(
@@ -119,28 +220,35 @@ class SettingsViewModel(
         val message = when {
             format == ExportFormat.CSV && success -> SettingsMessage.CSV_SAVE_SUCCESS
             format == ExportFormat.CSV -> SettingsMessage.CSV_SAVE_FAILED
-            success -> SettingsMessage.EXCEL_SAVE_SUCCESS
-            else -> SettingsMessage.EXCEL_SAVE_FAILED
+            format == ExportFormat.EXCEL && success -> SettingsMessage.EXCEL_SAVE_SUCCESS
+            format == ExportFormat.EXCEL -> SettingsMessage.EXCEL_SAVE_FAILED
+            success -> SettingsMessage.BACKUP_SAVE_SUCCESS
+            else -> SettingsMessage.BACKUP_SAVE_FAILED
         }
         it.copy(message = message)
     }
 
     fun reportSaveCancelled(format: ExportFormat) = _uiState.update {
         it.copy(
-            message = if (format == ExportFormat.CSV) {
-                SettingsMessage.CSV_SAVE_CANCELLED
-            } else {
-                SettingsMessage.EXCEL_SAVE_CANCELLED
+            message = when (format) {
+                ExportFormat.CSV -> SettingsMessage.CSV_SAVE_CANCELLED
+                ExportFormat.EXCEL -> SettingsMessage.EXCEL_SAVE_CANCELLED
+                ExportFormat.BACKUP -> SettingsMessage.BACKUP_SAVE_CANCELLED
             },
         )
     }
 
     fun consumeMessage() = _uiState.update { it.copy(message = null) }
 
+    private fun SettingsUiState.isBusy(): Boolean =
+        isPreparingCsv || isPreparingExcel || isPreparingBackup || isReadingBackup || isRestoringBackup
+
     companion object {
-        fun factory(repository: GiftRecordRepository) = object : ViewModelProvider.Factory {
+        fun factory(repository: GiftRecordRepository, backupRepository: BackupRepository) =
+            object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = SettingsViewModel(repository) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                SettingsViewModel(repository, backupRepository) as T
         }
     }
 }

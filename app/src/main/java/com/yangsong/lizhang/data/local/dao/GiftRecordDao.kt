@@ -16,11 +16,20 @@ interface GiftRecordDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(record: GiftRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertAll(records: List<GiftRecordEntity>)
+
     @Update
     suspend fun update(record: GiftRecordEntity)
 
     @Delete
     suspend fun delete(record: GiftRecordEntity)
+
+    @Query("SELECT * FROM gift_records ORDER BY id")
+    suspend fun getAllForBackup(): List<GiftRecordEntity>
+
+    @Query("DELETE FROM gift_records")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM gift_records WHERE contactId = :contactId ORDER BY eventDate DESC, createdTime DESC")
     fun observeByContact(contactId: Long): Flow<List<GiftRecordEntity>>

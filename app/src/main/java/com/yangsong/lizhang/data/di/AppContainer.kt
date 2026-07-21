@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import com.yangsong.lizhang.core.common.DatabaseConstants
 import com.yangsong.lizhang.data.local.LiZhangDatabase
+import com.yangsong.lizhang.data.repository.RoomBackupRepository
 import com.yangsong.lizhang.data.repository.RoomContactRepository
 import com.yangsong.lizhang.data.repository.RoomGiftRecordRepository
+import com.yangsong.lizhang.domain.repository.BackupRepository
 import com.yangsong.lizhang.domain.repository.ContactRepository
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 
@@ -19,4 +21,5 @@ class AppContainer(context: Context) {
 
     val contactRepository: ContactRepository = RoomContactRepository(database.contactDao())
     val giftRecordRepository: GiftRecordRepository = RoomGiftRecordRepository(database.giftRecordDao())
+    val backupRepository: BackupRepository = RoomBackupRepository(database)
 }
