@@ -156,7 +156,16 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             )
         }
         composable(AppDestination.OcrImport.route) {
-            OcrImportScreen(viewModel(factory = OcrImportViewModel.factory()), nav::popBackStack)
+            OcrImportScreen(
+                viewModel(
+                    factory = OcrImportViewModel.factory(
+                        appContainer.ocrRecognitionRepository,
+                        appContainer.ocrImportRepository,
+                        appContainer.giftRecordRepository,
+                    ),
+                ),
+                nav::popBackStack,
+            )
         }
     }
     currentMainTab?.let { tab ->
