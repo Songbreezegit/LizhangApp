@@ -5,6 +5,10 @@ import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.ocr.OcrImportDraft
+import com.yangsong.lizhang.domain.ocr.OcrEngine
+import com.yangsong.lizhang.domain.ocr.OcrFallbackReason
+import com.yangsong.lizhang.domain.ocr.OcrProcessingStage
+import com.yangsong.lizhang.domain.ocr.OcrRecognitionResult
 import com.yangsong.lizhang.domain.ocr.OcrTextLine
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.OcrImportRepository
@@ -82,10 +86,44 @@ class OcrImportViewModelTest {
         assertEquals(OcrStage.SUCCESS, viewModel.uiState.value.stage)
         assertEquals(1, viewModel.uiState.value.importedCount)
     }
+
+    @Test
+    fun `云端降级后仍进入校对列表并保留降级原因`() = runTest(dispatcher) {
+        val viewModel = OcrImportViewModel(
+            recognitionRepository = StagedRecognitionRepository(),
+            importRepository = TestOcrImportRepository(),
+            giftRecordRepository = TestOcrGiftRepository(emptyList()),
+        )
+
+        viewModel.recognize("content://test/image", allowCloud = true)
+        advanceUntilIdle()
+
+        assertEquals(OcrStage.PENDING, viewModel.uiState.value.stage)
+        assertEquals(OcrEngine.ML_KIT, viewModel.uiState.value.engine)
+        assertEquals(OcrFallbackReason.RATE_LIMITED, viewModel.uiState.value.fallbackReason)
+        assertEquals(1, viewModel.uiState.value.records.size)
+    }
 }
 
 private class TestRecognitionRepository(private val text: String) : OcrRecognitionRepository {
     override suspend fun recognize(imageUri: String) = listOf(OcrTextLine(text, 0.95f, 0, 0, 400, 40))
+}
+
+private class StagedRecognitionRepository : OcrRecognitionRepository {
+    override suspend fun recognize(imageUri: String) = emptyList<OcrTextLine>()
+    override suspend fun recognizeDetailed(
+        imageUri: String,
+        allowCloud: Boolean,
+        onStage: (OcrProcessingStage) -> Unit,
+    ): OcrRecognitionResult {
+        onStage(OcrProcessingStage.UPLOADING)
+        onStage(OcrProcessingStage.OFFLINE_RECOGNIZING)
+        return OcrRecognitionResult(
+            lines = listOf(OcrTextLine("周阿姨 300元 2026-07-24", 0.8f, 0, 0, 300, 40)),
+            engine = OcrEngine.ML_KIT,
+            fallbackReason = OcrFallbackReason.RATE_LIMITED,
+        )
+    }
 }
 
 private class TestOcrImportRepository : OcrImportRepository {

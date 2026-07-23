@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.domain.ocr.OcrImportDraft
 import com.yangsong.lizhang.domain.ocr.OcrLedgerParser
+import com.yangsong.lizhang.domain.ocr.OcrEngine
+import com.yangsong.lizhang.domain.ocr.OcrFallbackReason
+import com.yangsong.lizhang.domain.ocr.OcrProcessingStage
+import com.yangsong.lizhang.domain.ocr.OcrRecognitionResult
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.OcrImportRepository
 import com.yangsong.lizhang.domain.repository.OcrRecognitionRepository
@@ -19,7 +23,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class OcrStage { INTRO, RECOGNIZING, PENDING, EMPTY, ERROR, IMPORTING, SUCCESS }
+enum class OcrStage {
+    INTRO,
+    PREPROCESSING,
+    UPLOADING,
+    PRIMARY_RECOGNIZING,
+    WAITING_RESULT,
+    VL_RECOGNIZING,
+    OFFLINE_RECOGNIZING,
+    PENDING,
+    EMPTY,
+    ERROR,
+    IMPORTING,
+    SUCCESS,
+}
 
 data class OcrPendingRecordUi(
     val id: Long,
@@ -28,6 +45,7 @@ data class OcrPendingRecordUi(
     val date: String,
     val lowConfidence: Boolean = false,
     val possibleDuplicate: Boolean = false,
+    val modelConflict: Boolean = false,
 )
 
 data class OcrImportUiState(
@@ -35,6 +53,9 @@ data class OcrImportUiState(
     val records: List<OcrPendingRecordUi> = emptyList(),
     val validationFailed: Boolean = false,
     val importedCount: Int = 0,
+    val engine: OcrEngine? = null,
+    val fallbackReason: OcrFallbackReason? = null,
+    val warnings: List<String> = emptyList(),
 )
 
 class OcrImportViewModel(
@@ -45,19 +66,24 @@ class OcrImportViewModel(
     private val mutableUiState = MutableStateFlow(OcrImportUiState())
     val uiState: StateFlow<OcrImportUiState> = mutableUiState.asStateFlow()
 
-    fun recognize(imageUri: String) {
+    fun recognize(imageUri: String, allowCloud: Boolean = true) {
         viewModelScope.launch {
-            mutableUiState.value = OcrImportUiState(stage = OcrStage.RECOGNIZING)
+            mutableUiState.value = OcrImportUiState(stage = OcrStage.PREPROCESSING)
             runCatching {
-                val drafts = OcrLedgerParser.parse(recognitionRepository.recognize(imageUri))
+                val result = recognitionRepository.recognizeDetailed(imageUri, allowCloud, ::updateStage)
+                val primaryDrafts = OcrLedgerParser.parse(result.lines)
+                val alternativeDrafts = OcrLedgerParser.parse(result.alternativeLines)
+                val drafts = mergeCandidates(primaryDrafts, alternativeDrafts)
                 val existing = giftRecordRepository.observeAll().first()
-                drafts.mapIndexed { index, draft ->
+                val records = drafts.mapIndexed { index, candidate ->
+                    val draft = candidate.first
                     OcrPendingRecordUi(
                         id = index.toLong() + 1,
                         name = draft.name,
                         amount = BigDecimal.valueOf(draft.amountInCents, 2).stripTrailingZeros().toPlainString(),
                         date = draft.date.toString(),
-                        lowConfidence = draft.lowConfidence,
+                        lowConfidence = draft.lowConfidence || candidate.second,
+                        modelConflict = candidate.second,
                         possibleDuplicate = existing.any { item ->
                             item.contactName.trim() == draft.name.trim() &&
                                 item.record.amountInCents == draft.amountInCents &&
@@ -65,14 +91,48 @@ class OcrImportViewModel(
                         },
                     )
                 }
-            }.onSuccess { records ->
+                result to records
+            }.onSuccess { (result, records) ->
                 mutableUiState.value = OcrImportUiState(
                     stage = if (records.isEmpty()) OcrStage.EMPTY else OcrStage.PENDING,
                     records = records,
+                    engine = result.engine,
+                    fallbackReason = result.fallbackReason,
+                    warnings = result.warnings,
                 )
             }.onFailure {
                 mutableUiState.value = OcrImportUiState(stage = OcrStage.ERROR)
             }
+        }
+    }
+
+    private fun updateStage(stage: OcrProcessingStage) {
+        val uiStage = when (stage) {
+            OcrProcessingStage.PREPROCESSING -> OcrStage.PREPROCESSING
+            OcrProcessingStage.UPLOADING -> OcrStage.UPLOADING
+            OcrProcessingStage.PRIMARY_RECOGNIZING -> OcrStage.PRIMARY_RECOGNIZING
+            OcrProcessingStage.WAITING_RESULT -> OcrStage.WAITING_RESULT
+            OcrProcessingStage.VL_RECOGNIZING -> OcrStage.VL_RECOGNIZING
+            OcrProcessingStage.OFFLINE_RECOGNIZING -> OcrStage.OFFLINE_RECOGNIZING
+            OcrProcessingStage.COMPLETED -> return
+        }
+        mutableUiState.update { it.copy(stage = uiStage) }
+    }
+
+    private fun mergeCandidates(
+        primary: List<OcrImportDraft>,
+        alternatives: List<OcrImportDraft>,
+    ): List<Pair<OcrImportDraft, Boolean>> {
+        if (alternatives.isEmpty()) return primary.map { it to false }
+        val alternativeKeys = alternatives.map { "${it.name}|${it.amountInCents}|${it.date}" }.toSet()
+        val primaryKeys = primary.map { "${it.name}|${it.amountInCents}|${it.date}" }.toSet()
+        return buildList {
+            primary.forEach { draft ->
+                val key = "${draft.name}|${draft.amountInCents}|${draft.date}"
+                add(draft to (key !in alternativeKeys))
+            }
+            alternatives.filter { "${it.name}|${it.amountInCents}|${it.date}" !in primaryKeys }
+                .forEach { add(it to true) }
         }
     }
 

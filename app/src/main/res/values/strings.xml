@@ -31,4 +31,18 @@
     <string name="ocr_default_fields">识别记录默认按“收到 / 其他”导入，可在导入后进入详情继续修改。</string>
     <string name="ocr_validation_failed">请检查姓名、金额和日期；日期格式应为 2026-07-21。</string>
     <string name="ocr_success_count">已成功导入 %1$d 条记录</string>
+    <string name="ocr_cloud_consent_title">使用测试版云端识别？</string>
+    <string name="ocr_cloud_consent_message">当前为测试版云端识别。礼簿图片将上传至 AI Studio OCR 服务，图片可能包含姓名、金额等信息，请确认后继续。</string>
+    <string name="ocr_use_cloud">使用云端识别</string>
+    <string name="ocr_use_offline">使用离线识别</string>
+    <string name="ocr_preprocessing">正在预处理图片…</string>
+    <string name="ocr_uploading">正在安全上传图片…</string>
+    <string name="ocr_primary_recognizing">PP-OCRv6 正在识别…</string>
+    <string name="ocr_waiting_result">正在等待云端结果…</string>
+    <string name="ocr_vl_recognizing">正在使用 PaddleOCR-VL 二次识别…</string>
+    <string name="ocr_offline_recognizing">正在使用离线识别…</string>
+    <string name="ocr_quota_fallback">今日云端 OCR 额度可能已经用尽，已切换为离线识别，请仔细校对。</string>
+    <string name="ocr_token_fallback">AI Studio 令牌无效或权限不足，已切换为离线识别。</string>
+    <string name="ocr_cloud_fallback">云端识别暂不可用，已切换为离线识别，请仔细校对。</string>
+    <string name="ocr_offline_selected">本次使用离线识别，请仔细校对识别结果。</string>
 </resources>
