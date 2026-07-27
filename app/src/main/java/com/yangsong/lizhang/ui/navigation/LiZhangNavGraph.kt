@@ -61,7 +61,7 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 viewModel(key = "contact-$id", factory = ContactDetailViewModel.factory(id, appContainer.contactRepository, appContainer.giftRecordRepository)),
                 nav::popBackStack,
                 { nav.navigate(AppDestination.ContactEditor.createRoute(id)) },
-                { nav.open(AppDestination.ManualGift) },
+                { nav.open(AppDestination.AddGift) },
                 openRecord,
             )
         }
@@ -76,12 +76,6 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             ) { nav.popBackStack(AppDestination.Contacts.route, false) }
         }
         composable(AppDestination.AddGift.route) {
-            GiftEntryScreen(
-                onManual = { nav.navigate(AppDestination.ManualGift.route) },
-                onOcr = { nav.navigate(AppDestination.OcrImport.route) },
-            )
-        }
-        composable(AppDestination.ManualGift.route) {
             AddGiftScreen(
                 viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository)),
                 nav::popBackStack,
@@ -151,24 +145,27 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                     factory = SettingsViewModel.factory(
                         appContainer.giftRecordRepository,
                         appContainer.backupRepository,
+                        appContainer.themeRepository,
                     ),
                 ),
+                onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
+                onAbout = { nav.navigate(AppDestination.About.route) },
+                onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
             )
         }
-        composable(AppDestination.OcrImport.route) {
-            OcrImportScreen(
-                viewModel(
-                    factory = OcrImportViewModel.factory(
-                        appContainer.ocrRecognitionRepository,
-                        appContainer.ocrImportRepository,
-                        appContainer.giftRecordRepository,
-                    ),
-                ),
-                nav::popBackStack,
-            )
+        composable(AppDestination.FontGuide.route) {
+            FontGuideScreen(nav::popBackStack)
+        }
+        composable(AppDestination.About.route) {
+            AboutScreen(nav::popBackStack)
+        }
+        composable(AppDestination.Privacy.route) {
+            PrivacyScreen(nav::popBackStack)
         }
     }
-    currentMainTab?.let { tab ->
+    currentMainTab
+        ?.takeUnless { it == AppDestination.AddGift }
+        ?.let { tab ->
         BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
     }
     }

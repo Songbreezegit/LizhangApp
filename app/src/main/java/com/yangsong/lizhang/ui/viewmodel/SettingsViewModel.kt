@@ -10,6 +10,8 @@ import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
 import com.yangsong.lizhang.domain.repository.BackupRepository
 import com.yangsong.lizhang.domain.repository.BackupSummary
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.repository.ThemeRepository
+import com.yangsong.lizhang.domain.model.AppThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +55,7 @@ enum class SettingsMessage {
 }
 
 data class SettingsUiState(
+    val themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val isPreparingCsv: Boolean = false,
     val isPreparingExcel: Boolean = false,
     val isPreparingBackup: Boolean = false,
@@ -66,12 +69,28 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val repository: GiftRecordRepository,
     private val backupRepository: BackupRepository,
+    private val themeRepository: ThemeRepository? = null,
     private val now: () -> Long = System::currentTimeMillis,
     private val backgroundDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
+
+    init {
+        themeRepository?.let { themes ->
+            viewModelScope.launch {
+                themes.themeMode.collect { mode ->
+                    _uiState.update { it.copy(themeMode = mode) }
+                }
+            }
+        }
+    }
+
+    fun setThemeMode(mode: AppThemeMode) {
+        themeRepository?.setThemeMode(mode)
+        _uiState.update { it.copy(themeMode = mode) }
+    }
 
     fun prepareCsvExport() = prepareExport(ExportFormat.CSV)
 
@@ -244,11 +263,15 @@ class SettingsViewModel(
         isPreparingCsv || isPreparingExcel || isPreparingBackup || isReadingBackup || isRestoringBackup
 
     companion object {
-        fun factory(repository: GiftRecordRepository, backupRepository: BackupRepository) =
+        fun factory(
+            repository: GiftRecordRepository,
+            backupRepository: BackupRepository,
+            themeRepository: ThemeRepository,
+        ) =
             object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                SettingsViewModel(repository, backupRepository) as T
+                SettingsViewModel(repository, backupRepository, themeRepository) as T
         }
     }
 }

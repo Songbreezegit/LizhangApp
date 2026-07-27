@@ -39,14 +39,17 @@ class GiftRecordViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isLoading)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
         assertEquals("100", viewModel.uiState.value.amount)
         assertEquals(record.contactId, viewModel.uiState.value.contactId)
 
         viewModel.update { it.copy(amount = "288.88", notes = "已修改") }
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
         viewModel.save()
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
         assertEquals(28_888L, giftRepository.updatedRecord?.amountInCents)
         assertEquals("已修改", giftRepository.updatedRecord?.notes)
         assertEquals(record.createdTime, giftRepository.updatedRecord?.createdTime)

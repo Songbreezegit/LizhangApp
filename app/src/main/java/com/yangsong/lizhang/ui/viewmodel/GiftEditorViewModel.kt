@@ -33,6 +33,7 @@ data class GiftEditorUiState(
     val operationFailed: Boolean = false,
     val isSaved: Boolean = false,
     val isSaving: Boolean = false,
+    val hasUnsavedChanges: Boolean = false,
     val contacts: List<Contact> = emptyList(),
     val isCreatingContact: Boolean = false,
 ) {
@@ -71,7 +72,12 @@ class GiftEditorViewModel(
 
     fun update(transform: (GiftEditorUiState) -> GiftEditorUiState) {
         mutableUiState.update {
-            transform(it).copy(validationError = null, isSaved = false, operationFailed = false)
+            transform(it).copy(
+                validationError = null,
+                isSaved = false,
+                operationFailed = false,
+                hasUnsavedChanges = true,
+            )
         }
     }
 
@@ -89,7 +95,12 @@ class GiftEditorViewModel(
                 )
             }.onSuccess { contactId ->
                 mutableUiState.update {
-                    it.copy(contactId = contactId, isCreatingContact = false, validationError = null)
+                    it.copy(
+                        contactId = contactId,
+                        isCreatingContact = false,
+                        validationError = null,
+                        hasUnsavedChanges = true,
+                    )
                 }
             }.onFailure {
                 mutableUiState.update { it.copy(isCreatingContact = false, operationFailed = true) }
@@ -121,7 +132,13 @@ class GiftEditorViewModel(
                     if (record.id == NavigationConstants.NEW_RECORD_ID) repository.create(record)
                     else repository.update(record)
                 }.onSuccess {
-                    mutableUiState.update { it.copy(isSaved = true, isSaving = false) }
+                    mutableUiState.update {
+                        it.copy(
+                            isSaved = true,
+                            isSaving = false,
+                            hasUnsavedChanges = false,
+                        )
+                    }
                 }.onFailure {
                     mutableUiState.update { it.copy(isSaving = false, operationFailed = true) }
                 }
@@ -140,6 +157,7 @@ class GiftEditorViewModel(
         createdTime = record.createdTime,
         isLoading = false,
         loadFailed = false,
+        hasUnsavedChanges = false,
     )
 
     companion object {

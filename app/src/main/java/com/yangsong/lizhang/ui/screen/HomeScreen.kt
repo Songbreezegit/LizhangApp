@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,18 +30,21 @@ import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(state, onNavigate, onRecordClick)
+    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit = {}) {
-    var showEntryOptions by remember { mutableStateOf(false) }
+fun HomeContent(
+    state: HomeUiState,
+    onNavigate: (AppDestination) -> Unit,
+    onRecordClick: (Long) -> Unit = {},
+    onYearSelected: (Int) -> Unit = {},
+) {
     Scaffold(
         floatingActionButton = {
             Box(Modifier.padding(bottom=96.dp)) {
                 FloatingActionButton(
-                    onClick = { showEntryOptions = true },
+                    onClick = { onNavigate(AppDestination.AddGift) },
                     containerColor = CoralPrimary,
                     contentColor = Color.White,
                     shape = CircleShape,
@@ -57,7 +61,7 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
-                item { HeroSummaryCard(state) }
+                item { HeroSummaryCard(state, onYearSelected) }
                 item {
                     QuickActions(
                         onReceived = { onNavigate(AppDestination.ReceivedRecords) },
@@ -75,7 +79,7 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
                                     stringResource(R.string.home_empty_title),
                                     stringResource(R.string.home_empty_desc),
                                     stringResource(R.string.action_add_gift),
-                                    { showEntryOptions = true },
+                                    { onNavigate(AppDestination.AddGift) },
                                     R.drawable.page_add_cat,
                                 )
                             } else {
@@ -87,30 +91,6 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
                         }
                     }
                 }
-            }
-        }
-    }
-    if (showEntryOptions) {
-        ModalBottomSheet(onDismissRequest = { showEntryOptions = false }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.entry_choose_title), style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.entry_choose_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                GiftEntryOption(
-                    stringResource(R.string.entry_manual_title),
-                    stringResource(R.string.entry_manual_desc),
-                    Icons.Outlined.EditNote,
-                    CoralContainer,
-                    CoralStrong,
-                    { showEntryOptions = false; onNavigate(AppDestination.ManualGift) },
-                )
-                GiftEntryOption(
-                    stringResource(R.string.entry_ocr_title),
-                    stringResource(R.string.entry_ocr_desc),
-                    Icons.Outlined.PhotoCamera,
-                    MintContainer,
-                    MintPrimary,
-                    { showEntryOptions = false; onNavigate(AppDestination.OcrImport) },
-                )
             }
         }
     }
@@ -131,15 +111,43 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 }
 
 @Composable
-private fun HeroSummaryCard(state: HomeUiState) {
-    Card(Modifier.fillMaxWidth().height(220.dp), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = BlushSurface), elevation = CardDefaults.cardElevation(2.dp)) {
+private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
+    val largeText = LocalDensity.current.fontScale >= 1.2f
+    var yearMenuExpanded by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth().height(if (largeText) 254.dp else 220.dp), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = BlushSurface), elevation = CardDefaults.cardElevation(2.dp)) {
         Box(Modifier.fillMaxSize()) {
             Image(painterResource(R.drawable.home_hero_cat), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxHeight().width(225.dp).padding(18.dp)) {
-                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .9f)) {
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
-                        Icon(Icons.Outlined.KeyboardArrowDown, null)
+                Box {
+                    Surface(
+                        onClick = { yearMenuExpanded = true },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = .9f),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
+                            Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year))
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = yearMenuExpanded,
+                        onDismissRequest = { yearMenuExpanded = false },
+                    ) {
+                        state.availableYears.forEach { year ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.year_format, year)) },
+                                onClick = {
+                                    yearMenuExpanded = false
+                                    onYearSelected(year)
+                                },
+                                leadingIcon = if (year == state.year) {
+                                    { Icon(Icons.Outlined.Check, null) }
+                                } else null,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(18.dp))

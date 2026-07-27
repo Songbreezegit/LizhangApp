@@ -51,6 +51,7 @@ class HomeAndContactsViewModelTest {
             }
             add(record(id = 10, amount = 2_500, direction = GiftDirection.GIVEN, date = currentYearDate))
             add(record(id = 11, amount = 99_900, direction = GiftDirection.RECEIVED, date = previousYearDate))
+            add(record(id = 12, amount = 88_800, direction = GiftDirection.RECEIVED, date = dateInYear(year + 1)))
         }
         val viewModel = HomeViewModel(TestContactRepository(emptyList()), TestGiftRepository(records))
         val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
@@ -62,6 +63,14 @@ class HomeAndContactsViewModelTest {
         assertEquals(2_500L, viewModel.uiState.value.given)
         assertEquals(6_500L, viewModel.uiState.value.net)
         assertEquals(8, viewModel.uiState.value.recentRecords.size)
+        assertEquals(listOf(year, year - 1), viewModel.uiState.value.availableYears)
+        assertFalse(viewModel.uiState.value.availableYears.contains(year + 1))
+
+        viewModel.selectYear(year - 1)
+        advanceUntilIdle()
+        assertEquals(year - 1, viewModel.uiState.value.year)
+        assertEquals(99_900L, viewModel.uiState.value.received)
+        assertEquals(0L, viewModel.uiState.value.given)
         collection.cancel()
     }
 

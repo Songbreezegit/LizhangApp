@@ -5,7 +5,6 @@ import com.yangsong.lizhang.core.common.NavigationConstants
 sealed class AppDestination(val route: String) {
     data object Home : AppDestination("home")
     data object AddGift : AppDestination("add_gift")
-    data object ManualGift : AppDestination("manual_gift")
     data object GiftRecordDetail : AppDestination("gift_record/{${NavigationConstants.RECORD_ID_ARGUMENT}}") {
         fun createRoute(recordId: Long) = "gift_record/$recordId"
     }
@@ -22,7 +21,9 @@ sealed class AppDestination(val route: String) {
     data object Statistics : AppDestination("statistics")
     data object Search : AppDestination("search")
     data object Settings : AppDestination("settings")
-    data object OcrImport : AppDestination("ocr_import")
+    data object FontGuide : AppDestination("font_guide")
+    data object About : AppDestination("about")
+    data object Privacy : AppDestination("privacy")
     data object ReceivedRecords : AppDestination("records_received")
     data object GivenRecords : AppDestination("records_given")
     data object Calendar : AppDestination("calendar")

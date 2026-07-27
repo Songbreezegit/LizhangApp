@@ -2,7 +2,6 @@ package com.yangsong.lizhang.ui.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -33,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
+import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
@@ -67,13 +68,19 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onFontGuide: () -> Unit,
+    onAbout: () -> Unit,
+    onPrivacy: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var documentToSave by remember { mutableStateOf<ExportDocument?>(null) }
     var showBackupActions by remember { mutableStateOf(false) }
+    var showThemeOptions by remember { mutableStateOf(false) }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
         val document = documentToSave?.takeIf { it.format == format }
@@ -159,13 +166,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
     }
 
-    val unavailable = stringResource(R.string.settings_unavailable)
     SettingsContent(
         state = state,
         onCsvExport = viewModel::prepareCsvExport,
         onExcelExport = viewModel::prepareExcelExport,
         onBackup = { showBackupActions = true },
-        onUnavailable = { scope.launch { snackbar.showSnackbar(unavailable) } },
+        onThemeModeChange = viewModel::setThemeMode,
+        onThemeOptions = { showThemeOptions = true },
+        onFontGuide = onFontGuide,
+        onAbout = onAbout,
+        onPrivacy = onPrivacy,
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
 
@@ -193,6 +203,25 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             dismissButton = {
                 TextButton(onClick = { showBackupActions = false }) {
                     Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (showThemeOptions) {
+        AlertDialog(
+            onDismissRequest = { showThemeOptions = false },
+            title = { Text(stringResource(R.string.settings_theme)) },
+            text = {
+                Column {
+                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, viewModel::setThemeMode)
+                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, viewModel::setThemeMode)
+                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, viewModel::setThemeMode)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeOptions = false }) {
+                    Text(stringResource(R.string.action_done))
                 }
             },
         )
@@ -236,7 +265,11 @@ fun SettingsContent(
     onCsvExport: () -> Unit,
     onExcelExport: () -> Unit,
     onBackup: () -> Unit,
-    onUnavailable: () -> Unit,
+    onThemeModeChange: (AppThemeMode) -> Unit,
+    onThemeOptions: () -> Unit = {},
+    onFontGuide: () -> Unit = {},
+    onAbout: () -> Unit = {},
+    onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
     Scaffold(
@@ -281,24 +314,79 @@ fun SettingsContent(
             }
             item {
                 SettingsGroup(stringResource(R.string.settings_display)) {
-                    SettingsRow(Icons.Outlined.Palette, stringResource(R.string.settings_theme), stringResource(R.string.settings_follow_system), onClick = onUnavailable)
+                    val themeDescription = when (state.themeMode) {
+                        AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+                        AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+                        AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+                    }
+                    SettingsRow(
+                        Icons.Outlined.Palette,
+                        stringResource(R.string.settings_theme),
+                        themeDescription,
+                        onClick = onThemeOptions,
+                    )
                     SettingsRow(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
-                        stringResource(R.string.settings_follow_system),
-                        onClick = onUnavailable,
-                        trailing = { Switch(isSystemInDarkTheme(), null) },
+                        themeDescription,
+                        onClick = {
+                            onThemeModeChange(
+                                if (state.themeMode == AppThemeMode.DARK) AppThemeMode.LIGHT else AppThemeMode.DARK,
+                            )
+                        },
+                        trailing = {
+                            Switch(
+                                checked = state.themeMode == AppThemeMode.DARK,
+                                onCheckedChange = {
+                                    onThemeModeChange(if (it) AppThemeMode.DARK else AppThemeMode.LIGHT)
+                                },
+                            )
+                        },
                     )
-                    SettingsRow(Icons.Outlined.TextFields, stringResource(R.string.settings_font), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.TextFields,
+                        stringResource(R.string.settings_font),
+                        stringResource(R.string.settings_font_description),
+                        onClick = onFontGuide,
+                    )
                 }
             }
             item {
                 SettingsGroup(stringResource(R.string.settings_about_group)) {
-                    SettingsRow(Icons.Outlined.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version), onClick = onUnavailable)
-                    SettingsRow(Icons.Outlined.PrivacyTip, stringResource(R.string.settings_privacy), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.Info,
+                        stringResource(R.string.settings_about),
+                        stringResource(R.string.settings_version),
+                        onClick = onAbout,
+                    )
+                    SettingsRow(
+                        Icons.Outlined.PrivacyTip,
+                        stringResource(R.string.settings_privacy),
+                        stringResource(R.string.settings_privacy_description),
+                        onClick = onPrivacy,
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeModeOption(
+    mode: AppThemeMode,
+    selected: AppThemeMode,
+    onSelect: (AppThemeMode) -> Unit,
+) {
+    val label = when (mode) {
+        AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+        AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+        AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        RadioButton(selected = selected == mode, onClick = { onSelect(mode) })
+        Text(label, Modifier.padding(top = 12.dp))
     }
 }
 

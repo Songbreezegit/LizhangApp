@@ -1,5 +1,6 @@
 package com.yangsong.lizhang.ui.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -32,39 +33,145 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
     var showContacts by remember{mutableStateOf(false)}
     var showCreateContact by remember{mutableStateOf(false)}
     var showDatePicker by remember{mutableStateOf(false)}
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
     val savedMessage=stringResource(if(state.isEditing)R.string.record_updated else R.string.saved_success)
     val operationFailed=stringResource(R.string.record_save_failed)
+    val requestBack = {
+        when {
+            state.isSaving -> Unit
+            state.hasUnsavedChanges -> showDiscardConfirmation = true
+            else -> onBack()
+        }
+    }
+    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving) {
+        requestBack()
+    }
     LaunchedEffect(state.isSaved){if(state.isSaved){snackbar.showSnackbar(savedMessage);delay(450);onBack()}}
     LaunchedEffect(state.operationFailed){if(state.operationFailed)snackbar.showSnackbar(operationFailed)}
+    AddGiftContent(
+        state = state,
+        onBack = requestBack,
+        onContactClick = { showContacts = true },
+        onAmountChange = { value -> viewModel.update { it.copy(amount = value) } },
+        onDateClick = { showDatePicker = true },
+        onDirectionChange = { value -> viewModel.update { it.copy(direction = value) } },
+        onEventTypeChange = { value -> viewModel.update { it.copy(eventType = value) } },
+        onNotesChange = { value -> viewModel.update { it.copy(notes = value) } },
+        onSave = viewModel::save,
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
+    )
+    if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
+    if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})
+    if(showDatePicker)GiftDatePicker(state.eventDate,{millis->viewModel.update{it.copy(eventDate=millis)};showDatePicker=false},{showDatePicker=false})
+    if (showDiscardConfirmation) {
+        DiscardGiftChangesDialog(
+            onConfirm = onBack,
+            onDismiss = { showDiscardConfirmation = false },
+        )
+    }
+}
+
+@Composable
+fun AddGiftContent(
+    state: GiftEditorUiState,
+    onBack: () -> Unit,
+    onContactClick: () -> Unit,
+    onAmountChange: (String) -> Unit,
+    onDateClick: () -> Unit,
+    onDirectionChange: (com.yangsong.lizhang.domain.model.GiftDirection) -> Unit,
+    onEventTypeChange: (com.yangsong.lizhang.domain.model.EventType) -> Unit,
+    onNotesChange: (String) -> Unit,
+    onSave: () -> Unit,
+    snackbarHost: @Composable () -> Unit = {},
+) {
     Scaffold(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
-        snackbarHost={CenteredSnackbarHost(snackbar)},
+        snackbarHost=snackbarHost,
+        bottomBar = {
+            if (!state.isLoading && !state.loadFailed) {
+                GiftSaveBar(
+                    isSaving = state.isSaving,
+                    onSave = onSave,
+                )
+            }
+        },
     ){padding->
-        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState{}};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(190.dp))
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState{}};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
             Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
                     SelectionRow(
                         text=state.contacts.firstOrNull{it.id==state.contactId}?.name?:stringResource(R.string.field_contact_hint),
                         icon=Icons.Outlined.PersonSearch,
-                        onClick={showContacts=true},
+                        onClick=onContactClick,
                     )
                     if(state.validationError==GiftRecordValidationError.CONTACT_REQUIRED)Text(stringResource(R.string.error_contact_required),color=MaterialTheme.colorScheme.error)
-                    AmountTextField(state.amount,{value->viewModel.update{it.copy(amount=value)}},if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
-                    SelectionRow(DateFormatter.format(state.eventDate),Icons.Outlined.CalendarMonth){showDatePicker=true}
-                    DirectionSelector(state.direction){value->viewModel.update{it.copy(direction=value)}}
-                    EventTypeSelector(state.eventType){value->viewModel.update{it.copy(eventType=value)}}
-                    AppTextField(state.notes,{value->viewModel.update{it.copy(notes=value)}},stringResource(R.string.field_notes),placeholder=stringResource(R.string.field_notes_hint))
-                    PrimaryButton(stringResource(R.string.action_save_record),viewModel::save,Modifier.fillMaxWidth(),state.isSaving)
+                    AmountTextField(state.amount,onAmountChange,if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
+                    SelectionRow(DateFormatter.format(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
+                    DirectionSelector(state.direction,onDirectionChange)
+                    EventTypeSelector(state.eventType,onEventTypeChange)
+                    AppMultilineTextField(
+                        state.notes,
+                        onNotesChange,
+                        stringResource(R.string.field_notes),
+                        placeholder = stringResource(R.string.field_notes_hint),
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))
         }}
     }
-    if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
-    if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})
-    if(showDatePicker)GiftDatePicker(state.eventDate,{millis->viewModel.update{it.copy(eventDate=millis)};showDatePicker=false},{showDatePicker=false})
+}
+
+@Composable
+private fun GiftSaveBar(
+    isSaving: Boolean,
+    onSave: () -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        PrimaryButton(
+            text = stringResource(R.string.action_save_record),
+            onClick = onSave,
+            modifier = Modifier.fillMaxWidth(),
+            loading = isSaving,
+            icon = Icons.Outlined.Check,
+        )
+    }
+}
+
+@Composable
+fun DiscardGiftChangesDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.record_discard_title)) },
+        text = { Text(stringResource(R.string.record_discard_message)) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+            ) {
+                Text(stringResource(R.string.record_discard_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_continue_editing))
+            }
+        },
+    )
 }
 
 @Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.background){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}

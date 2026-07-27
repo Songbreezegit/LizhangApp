@@ -6,14 +6,18 @@ import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
+import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.BackupDocument
 import com.yangsong.lizhang.domain.repository.BackupRepository
 import com.yangsong.lizhang.domain.repository.BackupSummary
+import com.yangsong.lizhang.domain.repository.ThemeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -39,6 +43,22 @@ class CsvExportTest {
 
     @After
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun `主题选择立即保存并反映到设置状态`() = runTest(dispatcher) {
+        val themes = FakeThemeRepository()
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(emptyList()),
+            FakeBackupRepository(),
+            themes,
+        )
+
+        viewModel.setThemeMode(AppThemeMode.DARK)
+        advanceUntilIdle()
+
+        assertEquals(AppThemeMode.DARK, themes.themeMode.value)
+        assertEquals(AppThemeMode.DARK, viewModel.uiState.value.themeMode)
+    }
 
     @Test
     fun `CSV 使用 BOM 中文表头并正确转义特殊字符`() {
@@ -179,6 +199,15 @@ class CsvExportTest {
         ),
         contactName = contactName,
     )
+}
+
+private class FakeThemeRepository : ThemeRepository {
+    private val mutableThemeMode = MutableStateFlow(AppThemeMode.SYSTEM)
+    override val themeMode: StateFlow<AppThemeMode> = mutableThemeMode
+
+    override fun setThemeMode(mode: AppThemeMode) {
+        mutableThemeMode.value = mode
+    }
 }
 
 private class FakeBackupRepository : BackupRepository {

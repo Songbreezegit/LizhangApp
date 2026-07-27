@@ -9,14 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -26,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +43,7 @@ import com.yangsong.lizhang.ui.component.PageIllustration
 import com.yangsong.lizhang.ui.viewmodel.ContactSort
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 import com.yangsong.lizhang.ui.viewmodel.ContactsViewModel
+import com.yangsong.lizhang.ui.theme.CoralPrimary
 
 @Composable
 fun ContactsScreen(
@@ -69,11 +73,18 @@ fun ContactsContent(
         topBar = { AppTopBar(stringResource(R.string.nav_contacts)) },
         floatingActionButton = {
             Box(Modifier.padding(bottom = 96.dp)) {
-                ExtendedFloatingActionButton(
+                FloatingActionButton(
                     onClick = onAddContact,
-                    icon = { Icon(Icons.Outlined.PersonAdd, null) },
-                    text = { Text(stringResource(R.string.contact_create)) },
-                )
+                    containerColor = CoralPrimary,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                ) {
+                    Icon(
+                        Icons.Outlined.PersonAdd,
+                        stringResource(R.string.contact_create),
+                        Modifier.size(28.dp),
+                    )
+                }
             }
         },
     ) { padding ->
