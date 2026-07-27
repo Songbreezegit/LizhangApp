@@ -164,6 +164,28 @@ class CsvExportTest {
     }
 
     @Test
+    fun `设置页生成加密备份时使用独立文件名并传递密码`() = runTest(dispatcher) {
+        val now = 1_752_830_645_000
+        val backupRepository = FakeBackupRepository()
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(emptyList()),
+            backupRepository = backupRepository,
+            now = { now },
+            backgroundDispatcher = dispatcher,
+            computeDispatcher = dispatcher,
+        )
+
+        viewModel.prepareBackupExport("安全密码123")
+        advanceUntilIdle()
+
+        assertEquals("安全密码123", backupRepository.createdPassword)
+        assertEquals(
+            "礼账加密备份_20250718_172405.lizhangbackup",
+            viewModel.uiState.value.pendingExport?.fileName,
+        )
+    }
+
+    @Test
     fun `校验备份后必须确认才执行恢复`() = runTest(dispatcher) {
         val backupRepository = FakeBackupRepository()
         val viewModel = SettingsViewModel(
@@ -184,6 +206,38 @@ class CsvExportTest {
         assertArrayEquals(backupRepository.backupBytes, backupRepository.restoredBytes)
         assertNull(viewModel.uiState.value.pendingRestore)
         assertEquals(SettingsMessage.BACKUP_RESTORE_SUCCESS, viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `加密备份需要正确密码后才能进入恢复确认`() = runTest(dispatcher) {
+        val backupRepository = FakeBackupRepository()
+        val viewModel = SettingsViewModel(
+            CsvGiftRepository(emptyList()),
+            backupRepository,
+            backgroundDispatcher = dispatcher,
+            computeDispatcher = dispatcher,
+        )
+
+        viewModel.inspectBackup(backupRepository.encryptedBytes)
+        assertArrayEquals(
+            backupRepository.encryptedBytes,
+            viewModel.uiState.value.encryptedBackupAwaitingPassword,
+        )
+        assertNull(viewModel.uiState.value.pendingRestore)
+
+        viewModel.unlockEncryptedBackup("错误密码")
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isBackupPasswordInvalid)
+        assertNull(viewModel.uiState.value.pendingRestore)
+
+        viewModel.unlockEncryptedBackup("安全密码123")
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isBackupPasswordInvalid)
+        assertEquals(backupRepository.summary, viewModel.uiState.value.pendingRestore?.summary)
+
+        viewModel.confirmRestore()
+        advanceUntilIdle()
+        assertEquals("安全密码123", backupRepository.restoredPassword)
     }
 
     private fun sampleItem(contactName: String = "张同学", notes: String? = "同学婚礼") = GiftRecordWithContact(
@@ -212,18 +266,32 @@ private class FakeThemeRepository : ThemeRepository {
 
 private class FakeBackupRepository : BackupRepository {
     val backupBytes = byteArrayOf(1, 2, 3)
+    val encryptedBytes = byteArrayOf(9, 2, 3)
     val summary = BackupSummary(createdTime = 1, contactCount = 2, giftRecordCount = 3)
     var restoredBytes: ByteArray? = null
+    var createdPassword: String? = null
+    var restoredPassword: String? = null
 
-    override suspend fun createBackup() = BackupDocument(
-        bytes = backupBytes,
-        summary = summary,
-    )
+    override suspend fun createBackup(password: String?): BackupDocument {
+        createdPassword = password
+        return BackupDocument(
+            bytes = if (password == null) backupBytes else encryptedBytes,
+            summary = summary,
+        )
+    }
 
-    override fun inspectBackup(bytes: ByteArray) = summary
+    override fun requiresPassword(bytes: ByteArray): Boolean = bytes.contentEquals(encryptedBytes)
 
-    override suspend fun restoreBackup(bytes: ByteArray): BackupSummary {
+    override fun inspectBackup(bytes: ByteArray, password: String?): BackupSummary {
+        if (requiresPassword(bytes) && password != "安全密码123") {
+            throw com.yangsong.lizhang.domain.backup.InvalidBackupPasswordException()
+        }
+        return summary
+    }
+
+    override suspend fun restoreBackup(bytes: ByteArray, password: String?): BackupSummary {
         restoredBytes = bytes
+        restoredPassword = password
         return summary
     }
 }

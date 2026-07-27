@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
@@ -45,11 +47,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
+import com.yangsong.lizhang.domain.backup.BackupEncryptionCodec
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
@@ -80,6 +85,7 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     var documentToSave by remember { mutableStateOf<ExportDocument?>(null) }
     var showBackupActions by remember { mutableStateOf(false) }
+    var showCreateBackupPassword by remember { mutableStateOf(false) }
     var showThemeOptions by remember { mutableStateOf(false) }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
@@ -183,28 +189,65 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showBackupActions = false },
             title = { Text(stringResource(R.string.settings_backup)) },
-            text = { Text(stringResource(R.string.settings_backup_description)) },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.settings_backup_description))
+                    Button(
+                        onClick = {
+                            showBackupActions = false
+                            showCreateBackupPassword = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_create_encrypted))
+                    }
+                    TextButton(
+                        onClick = {
+                            showBackupActions = false
+                            viewModel.prepareBackupExport()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_create_plain))
+                    }
                     TextButton(
                         onClick = {
                             showBackupActions = false
                             openBackup.launch(arrayOf(BackupArchiveCodec.MIME_TYPE))
                         },
-                    ) { Text(stringResource(R.string.settings_backup_restore_action)) }
-                    Button(
-                        onClick = {
-                            showBackupActions = false
-                            viewModel.prepareBackupExport()
-                        },
-                    ) { Text(stringResource(R.string.settings_backup_create_action)) }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_restore_action))
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showBackupActions = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
+        )
+    }
+
+    if (showCreateBackupPassword) {
+        CreateEncryptedBackupDialog(
+            isPreparing = state.isPreparingBackup,
+            onConfirm = { password ->
+                showCreateBackupPassword = false
+                viewModel.prepareBackupExport(password)
+            },
+            onDismiss = { showCreateBackupPassword = false },
+        )
+    }
+
+    state.encryptedBackupAwaitingPassword?.let { encryptedBytes ->
+        RestoreBackupPasswordDialog(
+            fileIdentity = encryptedBytes,
+            isReading = state.isReadingBackup,
+            isPasswordInvalid = state.isBackupPasswordInvalid,
+            onConfirm = viewModel::unlockEncryptedBackup,
+            onDismiss = viewModel::cancelBackupPassword,
         )
     }
 
@@ -257,6 +300,138 @@ fun SettingsScreen(
             },
         )
     }
+}
+
+@Composable
+fun CreateEncryptedBackupDialog(
+    isPreparing: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var attempted by remember { mutableStateOf(false) }
+    val passwordTooShort = attempted && password.length < BackupEncryptionCodec.MIN_PASSWORD_LENGTH
+    val confirmationMismatch = attempted && password != confirmation
+
+    AlertDialog(
+        onDismissRequest = { if (!isPreparing) onDismiss() },
+        title = { Text(stringResource(R.string.settings_backup_password_create_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.settings_backup_password_create_description))
+                PasswordField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.settings_backup_password),
+                    isError = passwordTooShort,
+                    supportingText = if (passwordTooShort) {
+                        stringResource(
+                            R.string.settings_backup_password_too_short,
+                            BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
+                        )
+                    } else null,
+                )
+                PasswordField(
+                    value = confirmation,
+                    onValueChange = { confirmation = it },
+                    label = stringResource(R.string.settings_backup_password_confirm),
+                    isError = confirmationMismatch,
+                    supportingText = if (confirmationMismatch) {
+                        stringResource(R.string.settings_backup_password_mismatch)
+                    } else null,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    attempted = true
+                    if (password.length >= BackupEncryptionCodec.MIN_PASSWORD_LENGTH &&
+                        password == confirmation
+                    ) {
+                        onConfirm(password)
+                    }
+                },
+                enabled = !isPreparing,
+            ) {
+                Text(stringResource(R.string.settings_backup_create_encrypted))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isPreparing) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+fun RestoreBackupPasswordDialog(
+    fileIdentity: ByteArray,
+    isReading: Boolean,
+    isPasswordInvalid: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember(fileIdentity) { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!isReading) onDismiss() },
+        title = { Text(stringResource(R.string.settings_backup_password_restore_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.settings_backup_password_restore_description))
+                PasswordField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.settings_backup_password),
+                    isError = isPasswordInvalid,
+                    supportingText = if (isPasswordInvalid) {
+                        stringResource(R.string.settings_backup_password_invalid)
+                    } else null,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (password.isNotEmpty()) onConfirm(password) },
+                enabled = password.isNotEmpty() && !isReading,
+            ) {
+                if (isReading) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isReading) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    isError: Boolean,
+    supportingText: String?,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        isError = isError,
+        supportingText = supportingText?.let { message -> { Text(message) } },
+        shape = RoundedCornerShape(18.dp),
+    )
 }
 
 @Composable
@@ -398,7 +573,7 @@ private fun InputStream.readBackupBytes(): ByteArray {
         val read = read(buffer)
         if (read < 0) break
         total += read
-        require(total <= BackupArchiveCodec.MAX_FILE_BYTES) { "备份文件超过大小限制" }
+        require(total <= BackupEncryptionCodec.MAX_DOCUMENT_BYTES) { "备份文件超过大小限制" }
         output.write(buffer, 0, read)
     }
     return output.toByteArray()

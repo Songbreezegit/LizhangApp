@@ -6,6 +6,7 @@ import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BackupArchiveCodecTest {
@@ -36,6 +37,44 @@ class BackupArchiveCodecTest {
 
         assertThrows(IllegalArgumentException::class.java) {
             BackupArchiveCodec.encode(invalid)
+        }
+    }
+
+    @Test
+    fun `密码加密备份可使用相同密码完整恢复`() {
+        val plainBytes = BackupArchiveCodec.encode(sampleArchive())
+
+        val encrypted = BackupEncryptionCodec.encrypt(plainBytes, "家庭账本密码123")
+        val restored = BackupArchiveCodec.decode(
+            BackupEncryptionCodec.decrypt(encrypted, "家庭账本密码123"),
+        )
+
+        assertTrue(BackupEncryptionCodec.isEncrypted(encrypted))
+        assertEquals(sampleArchive(), restored)
+    }
+
+    @Test
+    fun `加密备份使用错误密码时拒绝解密`() {
+        val encrypted = BackupEncryptionCodec.encrypt(
+            BackupArchiveCodec.encode(sampleArchive()),
+            "正确密码1234",
+        )
+
+        assertThrows(InvalidBackupPasswordException::class.java) {
+            BackupEncryptionCodec.decrypt(encrypted, "错误密码4567")
+        }
+    }
+
+    @Test
+    fun `加密备份内容被篡改时拒绝解密`() {
+        val encrypted = BackupEncryptionCodec.encrypt(
+            BackupArchiveCodec.encode(sampleArchive()),
+            "正确密码1234",
+        )
+        encrypted[encrypted.lastIndex] = (encrypted.last().toInt() xor 1).toByte()
+
+        assertThrows(InvalidBackupPasswordException::class.java) {
+            BackupEncryptionCodec.decrypt(encrypted, "正确密码1234")
         }
     }
 

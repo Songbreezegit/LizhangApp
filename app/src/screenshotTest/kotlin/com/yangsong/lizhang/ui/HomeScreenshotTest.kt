@@ -18,6 +18,8 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.screen.HomeContent
 import com.yangsong.lizhang.ui.screen.ContactsContent
 import com.yangsong.lizhang.ui.screen.SettingsContent
+import com.yangsong.lizhang.ui.screen.CreateEncryptedBackupDialog
+import com.yangsong.lizhang.ui.screen.RestoreBackupPasswordDialog
 import com.yangsong.lizhang.ui.screen.PrivacyContent
 import com.yangsong.lizhang.ui.screen.AddGiftContent
 import com.yangsong.lizhang.ui.screen.DiscardGiftChangesDialog
@@ -229,6 +231,34 @@ fun SettingsDarkScreenshotTest() {
             )
             BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
         }
+    }
+}
+
+@PreviewTest
+@Preview(name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun CreateEncryptedBackupScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        CreateEncryptedBackupDialog(
+            isPreparing = false,
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun RestoreEncryptedBackupErrorScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        RestoreBackupPasswordDialog(
+            fileIdentity = byteArrayOf(1),
+            isReading = false,
+            isPasswordInvalid = true,
+            onConfirm = {},
+            onDismiss = {},
+        )
     }
 }
 

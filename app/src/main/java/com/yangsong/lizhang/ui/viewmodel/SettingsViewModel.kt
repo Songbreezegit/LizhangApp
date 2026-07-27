@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
+import com.yangsong.lizhang.domain.backup.InvalidBackupPasswordException
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
 import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
 import com.yangsong.lizhang.domain.repository.BackupRepository
@@ -33,6 +34,7 @@ data class ExportDocument(
 data class PendingRestore(
     val bytes: ByteArray,
     val summary: BackupSummary,
+    val password: String? = null,
 )
 
 enum class SettingsMessage {
@@ -63,6 +65,8 @@ data class SettingsUiState(
     val isRestoringBackup: Boolean = false,
     val pendingExport: ExportDocument? = null,
     val pendingRestore: PendingRestore? = null,
+    val encryptedBackupAwaitingPassword: ByteArray? = null,
+    val isBackupPasswordInvalid: Boolean = false,
     val message: SettingsMessage? = null,
 )
 
@@ -96,18 +100,19 @@ class SettingsViewModel(
 
     fun prepareExcelExport() = prepareExport(ExportFormat.EXCEL)
 
-    fun prepareBackupExport() {
+    fun prepareBackupExport(password: String? = null) {
         if (_uiState.value.isBusy()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isPreparingBackup = true, message = null) }
-            runCatching { withContext(backgroundDispatcher) { backupRepository.createBackup() } }
+            runCatching { withContext(backgroundDispatcher) { backupRepository.createBackup(password) } }
                 .onSuccess { backup ->
                     val timestamp = DateFormatter.format(now(), "yyyyMMdd_HHmmss")
+                    val filePrefix = if (password.isNullOrEmpty()) "礼账备份" else "礼账加密备份"
                     _uiState.update {
                         it.copy(
                             isPreparingBackup = false,
                             pendingExport = ExportDocument(
-                                fileName = "礼账备份_$timestamp.${BackupArchiveCodec.FILE_EXTENSION}",
+                                fileName = "${filePrefix}_$timestamp.${BackupArchiveCodec.FILE_EXTENSION}",
                                 mimeType = BackupArchiveCodec.MIME_TYPE,
                                 bytes = backup.bytes,
                                 format = ExportFormat.BACKUP,
@@ -123,26 +128,72 @@ class SettingsViewModel(
         }
     }
 
-    fun inspectBackup(bytes: ByteArray) {
+    fun inspectBackup(bytes: ByteArray, password: String? = null) {
         if (_uiState.value.isBusy()) return
+        if (backupRepository.requiresPassword(bytes) && password == null) {
+            _uiState.update {
+                it.copy(
+                    encryptedBackupAwaitingPassword = bytes,
+                    isBackupPasswordInvalid = false,
+                    message = null,
+                )
+            }
+            return
+        }
         viewModelScope.launch {
-            _uiState.update { it.copy(isReadingBackup = true, message = null) }
-            runCatching { withContext(computeDispatcher) { backupRepository.inspectBackup(bytes) } }
+            _uiState.update {
+                it.copy(
+                    isReadingBackup = true,
+                    isBackupPasswordInvalid = false,
+                    message = null,
+                )
+            }
+            runCatching {
+                withContext(computeDispatcher) { backupRepository.inspectBackup(bytes, password) }
+            }
                 .onSuccess { summary ->
                     _uiState.update {
-                        it.copy(isReadingBackup = false, pendingRestore = PendingRestore(bytes, summary))
+                        it.copy(
+                            isReadingBackup = false,
+                            pendingRestore = PendingRestore(bytes, summary, password),
+                            encryptedBackupAwaitingPassword = null,
+                            isBackupPasswordInvalid = false,
+                        )
                     }
                 }
-                .onFailure {
+                .onFailure { error ->
                     _uiState.update {
-                        it.copy(isReadingBackup = false, message = SettingsMessage.BACKUP_READ_FAILED)
+                        if (error is InvalidBackupPasswordException) {
+                            it.copy(isReadingBackup = false, isBackupPasswordInvalid = true)
+                        } else {
+                            it.copy(
+                                isReadingBackup = false,
+                                encryptedBackupAwaitingPassword = null,
+                                isBackupPasswordInvalid = false,
+                                message = SettingsMessage.BACKUP_READ_FAILED,
+                            )
+                        }
                     }
                 }
         }
     }
 
+    fun unlockEncryptedBackup(password: String) {
+        val bytes = _uiState.value.encryptedBackupAwaitingPassword ?: return
+        inspectBackup(bytes, password)
+    }
+
+    fun cancelBackupPassword() = _uiState.update {
+        it.copy(encryptedBackupAwaitingPassword = null, isBackupPasswordInvalid = false)
+    }
+
     fun reportBackupReadFailed() = _uiState.update {
-        it.copy(isReadingBackup = false, message = SettingsMessage.BACKUP_READ_FAILED)
+        it.copy(
+            isReadingBackup = false,
+            encryptedBackupAwaitingPassword = null,
+            isBackupPasswordInvalid = false,
+            message = SettingsMessage.BACKUP_READ_FAILED,
+        )
     }
 
     fun cancelRestore() = _uiState.update { it.copy(pendingRestore = null) }
@@ -152,7 +203,11 @@ class SettingsViewModel(
         if (_uiState.value.isBusy()) return
         viewModelScope.launch {
             _uiState.update { it.copy(isRestoringBackup = true, message = null) }
-            runCatching { withContext(backgroundDispatcher) { backupRepository.restoreBackup(pending.bytes) } }
+            runCatching {
+                withContext(backgroundDispatcher) {
+                    backupRepository.restoreBackup(pending.bytes, pending.password)
+                }
+            }
                 .onSuccess {
                     _uiState.update {
                         it.copy(
