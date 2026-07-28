@@ -14,6 +14,7 @@ data class BackupArchive(
     val createdTime: Long,
     val contacts: List<Contact>,
     val giftRecords: List<GiftRecord>,
+    val sourceDatabaseVersion: Int = 1,
 )
 
 class InvalidBackupException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -26,7 +27,7 @@ class InvalidBackupException(message: String, cause: Throwable? = null) : Except
 object BackupArchiveCodec {
     const val FILE_EXTENSION = "lizhangbackup"
     const val MIME_TYPE = "application/octet-stream"
-    const val FORMAT_VERSION = 1
+    const val FORMAT_VERSION = 2
     const val MAX_FILE_BYTES = 32 * 1024 * 1024 + 51
 
     private val magic = "LIZHANG-BACKUP\n".toByteArray(Charsets.US_ASCII)
@@ -42,6 +43,7 @@ object BackupArchiveCodec {
             DataOutputStream(buffer).use { output ->
                 output.writeInt(FORMAT_VERSION)
                 output.writeLong(archive.createdTime)
+                output.writeInt(archive.sourceDatabaseVersion)
                 output.writeInt(archive.contacts.size)
                 archive.contacts.forEach { contact ->
                     output.writeLong(contact.id)
@@ -107,8 +109,11 @@ object BackupArchiveCodec {
     private fun decodeBody(body: ByteArray): BackupArchive =
         DataInputStream(ByteArrayInputStream(body)).use { input ->
             val version = input.readInt()
-            if (version != FORMAT_VERSION) throw InvalidBackupException("暂不支持此备份版本：$version")
+            if (version !in LEGACY_FORMAT_VERSION..FORMAT_VERSION) {
+                throw InvalidBackupException("暂不支持此备份版本：$version")
+            }
             val createdTime = input.readLong()
+            val sourceDatabaseVersion = if (version >= 2) input.readInt() else 1
             val contacts = List(input.readCount(maxContacts, "联系人")) {
                 Contact(
                     id = input.readLong(),
@@ -132,11 +137,12 @@ object BackupArchiveCodec {
                 )
             }
             if (input.read() != -1) throw InvalidBackupException("备份数据包含未知字段")
-            BackupArchive(createdTime, contacts, records)
+            BackupArchive(createdTime, contacts, records, sourceDatabaseVersion)
         }
 
     private fun validate(archive: BackupArchive) {
         require(archive.createdTime > 0) { "备份生成时间无效" }
+        require(archive.sourceDatabaseVersion > 0) { "来源数据库版本无效" }
         require(archive.contacts.size <= maxContacts) { "联系人数量超过限制" }
         require(archive.giftRecords.size <= maxGiftRecords) { "礼金记录数量超过限制" }
         val contactIds = archive.contacts.map { contact ->
@@ -189,4 +195,6 @@ object BackupArchiveCodec {
         }
 
     private fun ByteArray.sha256(): ByteArray = MessageDigest.getInstance("SHA-256").digest(this)
+
+    private const val LEGACY_FORMAT_VERSION = 1
 }

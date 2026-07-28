@@ -2,6 +2,7 @@ package com.yangsong.lizhang.data.repository
 
 import androidx.room.withTransaction
 import com.yangsong.lizhang.data.local.LiZhangDatabase
+import com.yangsong.lizhang.data.local.LIZHANG_DATABASE_VERSION
 import com.yangsong.lizhang.data.mapper.toDomain
 import com.yangsong.lizhang.data.mapper.toEntity
 import com.yangsong.lizhang.domain.backup.BackupArchive
@@ -22,6 +23,7 @@ class RoomBackupRepository(
                 createdTime = now(),
                 contacts = database.contactDao().getAllForBackup().map { it.toDomain() },
                 giftRecords = database.giftRecordDao().getAllForBackup().map { it.toDomain() },
+                sourceDatabaseVersion = LIZHANG_DATABASE_VERSION,
             )
         }
         val plainBytes = BackupArchiveCodec.encode(archive)
@@ -62,5 +64,6 @@ class RoomBackupRepository(
         createdTime = createdTime,
         contactCount = contacts.size,
         giftRecordCount = giftRecords.size,
+        sourceDatabaseVersion = sourceDatabaseVersion,
     )
 }

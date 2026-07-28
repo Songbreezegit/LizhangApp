@@ -4,6 +4,7 @@ data class BackupSummary(
     val createdTime: Long,
     val contactCount: Int,
     val giftRecordCount: Int,
+    val sourceDatabaseVersion: Int = 1,
 )
 
 data class BackupDocument(

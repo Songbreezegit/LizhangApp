@@ -281,6 +281,7 @@ fun SettingsScreen(
                         DateFormatter.format(pending.summary.createdTime, "yyyy-MM-dd HH:mm"),
                         pending.summary.contactCount,
                         pending.summary.giftRecordCount,
+                        pending.summary.sourceDatabaseVersion,
                     ),
                 )
             },

@@ -8,9 +8,11 @@ import com.yangsong.lizhang.data.local.dao.GiftRecordDao
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.entity.GiftRecordEntity
 
+const val LIZHANG_DATABASE_VERSION = 1
+
 @Database(
     entities = [ContactEntity::class, GiftRecordEntity::class],
-    version = 1,
+    version = LIZHANG_DATABASE_VERSION,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
