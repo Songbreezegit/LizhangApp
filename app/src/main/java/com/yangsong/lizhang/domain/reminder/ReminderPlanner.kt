@@ -11,7 +11,12 @@ data class PlannedReminder(
     val contactName: String,
     val eventType: EventType,
     val triggerAt: Long,
+    val advanceDays: Int = 0,
 )
+
+val supportedReminderAdvanceDays = listOf(0, 1, 3, 7)
+
+fun isSupportedReminderAdvanceDays(days: Int): Boolean = days in supportedReminderAdvanceDays
 
 data class ReminderSettings(
     val enabled: Boolean = false,
@@ -20,7 +25,7 @@ data class ReminderSettings(
     val minute: Int = 0,
 ) {
     init {
-        require(advanceDays in 0..1)
+        require(isSupportedReminderAdvanceDays(advanceDays))
         require(hour in 0..23)
         require(minute in 0..59)
     }
@@ -41,7 +46,7 @@ object ReminderPlanner {
         reminderMinute: Int = 0,
     ): List<PlannedReminder> {
         require(lookaheadDays in 1..366)
-        require(advanceDays in 0..1)
+        require(isSupportedReminderAdvanceDays(advanceDays))
         require(reminderHour in 0..23)
         require(reminderMinute in 0..59)
         val end = Calendar.getInstance(timeZone).apply {
@@ -62,6 +67,7 @@ object ReminderPlanner {
                 contactName = item.contactName,
                 eventType = item.record.eventType,
                 triggerAt = triggerAt,
+                advanceDays = advanceDays,
             )
         }.distinctBy(PlannedReminder::recordId).sortedBy(PlannedReminder::triggerAt)
     }

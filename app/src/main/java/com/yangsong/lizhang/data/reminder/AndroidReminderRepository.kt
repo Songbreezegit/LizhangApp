@@ -22,6 +22,7 @@ import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.reminder.PlannedReminder
 import com.yangsong.lizhang.domain.reminder.ReminderPlanner
 import com.yangsong.lizhang.domain.reminder.ReminderSettings
+import com.yangsong.lizhang.domain.reminder.isSupportedReminderAdvanceDays
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +40,8 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     private val _settings = MutableStateFlow(
         ReminderSettings(
             enabled = preferences.getBoolean(KEY_ENABLED, false),
-            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0),
+            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0)
+                .takeIf(::isSupportedReminderAdvanceDays) ?: 0,
             hour = preferences.getInt(KEY_HOUR, 9),
             minute = preferences.getInt(KEY_MINUTE, 0),
         ),
@@ -108,6 +110,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             putExtra(EXTRA_RECORD_ID, recordId)
             putExtra(EXTRA_CONTACT_NAME, contactName)
             putExtra(EXTRA_EVENT_TYPE, eventType.name)
+            putExtra(EXTRA_ADVANCE_DAYS, advanceDays)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -170,6 +173,7 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val eventType = runCatching {
             enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
         }.getOrDefault(EventType.OTHER)
+        val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
         val openApp = PendingIntent.getActivity(
             context,
             0,
@@ -181,7 +185,20 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_gift)
             .setContentTitle(context.getString(R.string.reminder_notification_title, contactName))
-            .setContentText(context.getString(R.string.reminder_notification_text, context.eventTypeName(eventType)))
+            .setContentText(
+                if (advanceDays == 0) {
+                    context.getString(
+                        R.string.reminder_notification_text,
+                        context.eventTypeName(eventType),
+                    )
+                } else {
+                    context.getString(
+                        R.string.reminder_notification_text_advance,
+                        context.eventTypeName(eventType),
+                        advanceDays,
+                    )
+                },
+            )
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -230,3 +247,4 @@ private const val CHANNEL_ID = "gift_date_reminders"
 private const val EXTRA_RECORD_ID = "record_id"
 private const val EXTRA_CONTACT_NAME = "contact_name"
 private const val EXTRA_EVENT_TYPE = "event_type"
+private const val EXTRA_ADVANCE_DAYS = "advance_days"

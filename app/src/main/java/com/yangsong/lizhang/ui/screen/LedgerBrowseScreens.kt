@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.GiftDirection
+import com.yangsong.lizhang.domain.reminder.supportedReminderAdvanceDays
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.*
 import kotlinx.coroutines.launch
@@ -280,10 +281,7 @@ private fun ReminderScheduleCard(
             )
             ReminderSettingRow(
                 title = stringResource(R.string.reminder_advance_title),
-                value = stringResource(
-                    if (advanceDays == 0) R.string.reminder_advance_same_day
-                    else R.string.reminder_advance_one_day,
-                ),
+                value = reminderAdvanceLabel(advanceDays),
                 onClick = onAdvanceClick,
             )
             HorizontalDivider(Modifier.padding(horizontal = 18.dp), color = MaterialTheme.colorScheme.outline)
@@ -323,10 +321,8 @@ private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSe
         title = { Text(stringResource(R.string.reminder_advance_title)) },
         text = {
             Column {
-                listOf(
-                    0 to stringResource(R.string.reminder_advance_same_day),
-                    1 to stringResource(R.string.reminder_advance_one_day),
-                ).forEach { (days, label) ->
+                supportedReminderAdvanceDays.forEach { days ->
+                    val label = reminderAdvanceLabel(days)
                     Surface(onClick = { onSelect(days) }, color = MaterialTheme.colorScheme.surface) {
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 10.dp),
@@ -343,6 +339,16 @@ private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSe
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
+
+@Composable
+private fun reminderAdvanceLabel(days: Int): String = stringResource(
+    when (days) {
+        1 -> R.string.reminder_advance_one_day
+        3 -> R.string.reminder_advance_three_days
+        7 -> R.string.reminder_advance_seven_days
+        else -> R.string.reminder_advance_same_day
+    },
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

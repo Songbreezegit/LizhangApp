@@ -118,9 +118,9 @@ class HomeAndContactsViewModelTest {
         advanceUntilIdle()
         assertEquals(true, viewModel.uiState.value.remindersEnabled)
 
-        viewModel.updateReminderSchedule(1, 8, 30)
+        viewModel.updateReminderSchedule(3, 8, 30)
         advanceUntilIdle()
-        assertEquals(1, viewModel.uiState.value.reminderAdvanceDays)
+        assertEquals(3, viewModel.uiState.value.reminderAdvanceDays)
         assertEquals(8, viewModel.uiState.value.reminderHour)
         assertEquals(30, viewModel.uiState.value.reminderMinute)
         collection.cancel()
