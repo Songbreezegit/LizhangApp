@@ -15,8 +15,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.yangsong.lizhang.LiZhangApplication
-import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.reminder.PlannedReminder
@@ -176,10 +176,8 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
         val openApp = PendingIntent.getActivity(
             context,
-            0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            },
+            recordId.notificationId(),
+            ReminderNavigationContract.createOpenRecordIntent(context, recordId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
