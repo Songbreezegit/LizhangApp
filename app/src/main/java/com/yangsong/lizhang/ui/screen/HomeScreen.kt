@@ -151,11 +151,11 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(CurrencyFormatter.formatCents(state.received), color = CoralStrong, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.home_year_received), color = InkOnIllustration)
+                Text(CurrencyFormatter.formatCents(state.received), color = CoralOnContainer, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                Text("${stringResource(R.string.home_year_given)}  ${CurrencyFormatter.formatCents(state.given)}", color = MintPrimary, fontWeight = FontWeight.SemiBold)
-                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text("${stringResource(R.string.home_year_given)}  ${CurrencyFormatter.formatCents(state.given)}", color = MintOnContainer, fontWeight = FontWeight.SemiBold)
+                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = InkOnIllustration, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -165,10 +165,10 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
 private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar: () -> Unit, onStats: () -> Unit) {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralStrong, onReceived)
-            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintPrimary, onGiven)
-            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotPrimary, onCalendar)
-            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, LavenderContainer, LavenderPrimary, onStats)
+            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralOnContainer, onReceived)
+            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintOnContainer, onGiven)
+            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotOnContainer, onCalendar)
+            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, LavenderContainer, LavenderOnContainer, onStats)
         }
     }
 }

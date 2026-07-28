@@ -199,6 +199,31 @@ fun AddGiftDarkLargeTextScreenshotTest() {
 }
 
 @PreviewTest
+@Preview(
+    name = "记一笔深色大字体空表单",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
+@Composable
+fun AddGiftDarkLargeEmptyScreenshotTest() {
+    LiZhangTheme(darkTheme = true) {
+        AddGiftContent(
+            state = GiftEditorUiState(),
+            onBack = {},
+            onContactClick = {},
+            onAmountChange = {},
+            onDateClick = {},
+            onDirectionChange = {},
+            onEventTypeChange = {},
+            onNotesChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@PreviewTest
 @Preview(name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun SettingsScreenshotTest() {
