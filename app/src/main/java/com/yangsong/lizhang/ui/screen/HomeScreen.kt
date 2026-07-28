@@ -30,7 +30,7 @@ import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear)
+    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry)
 }
 
 @Composable
@@ -39,6 +39,7 @@ fun HomeContent(
     onNavigate: (AppDestination) -> Unit,
     onRecordClick: (Long) -> Unit = {},
     onYearSelected: (Int) -> Unit = {},
+    onRetry: () -> Unit = {},
 ) {
     Scaffold(
         floatingActionButton = {
@@ -54,7 +55,7 @@ fun HomeContent(
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(onRetry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),

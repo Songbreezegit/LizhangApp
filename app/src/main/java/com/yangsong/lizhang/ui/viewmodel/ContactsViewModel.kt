@@ -1,12 +1,85 @@
 package com.yangsong.lizhang.ui.viewmodel
-import androidx.lifecycle.*
-import com.yangsong.lizhang.domain.model.*
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.yangsong.lizhang.domain.model.ContactLedgerSummary
 import com.yangsong.lizhang.domain.repository.ContactRepository
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.text.Collator
 import java.util.Locale
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+
 enum class ContactSort { RECENT, NAME }
-data class ContactsUiState(val query:String="", val sort:ContactSort=ContactSort.RECENT, val contacts:List<ContactLedgerSummary> = emptyList(), val isLoading:Boolean=true, val error:Boolean=false)
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class ContactsViewModel(private val repository:ContactRepository):ViewModel(){ private val query=MutableStateFlow(""); private val sort=MutableStateFlow(ContactSort.RECENT); private val chineseCollator=Collator.getInstance(Locale.CHINA); val uiState=combine(query,sort){q,s->q to s}.flatMapLatest{(q,s)->repository.observeContactSummaries(q).map{ list->ContactsUiState(q,s,if(s==ContactSort.NAME)list.sortedWith{a,b->chineseCollator.compare(a.contact.name,b.contact.name)}else list,isLoading=false)}}.catch{emit(ContactsUiState(isLoading=false,error=true))}.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),ContactsUiState()); fun updateQuery(v:String){query.value=v}; fun updateSort(v:ContactSort){sort.value=v}; fun save(c:Contact)=viewModelScope.launch{if(c.id==0L)repository.create(c)else repository.update(c)}; companion object{fun factory(r:ContactRepository)=object:ViewModelProvider.Factory{@Suppress("UNCHECKED_CAST") override fun<T:ViewModel>create(modelClass:Class<T>)=ContactsViewModel(r)as T}}}
+
+data class ContactsUiState(
+    val query: String = "",
+    val sort: ContactSort = ContactSort.RECENT,
+    val contacts: List<ContactLedgerSummary> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: Boolean = false,
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ContactsViewModel(
+    private val repository: ContactRepository,
+) : ViewModel() {
+    private val query = MutableStateFlow("")
+    private val sort = MutableStateFlow(ContactSort.RECENT)
+    private val retrySignal = RetrySignal()
+    private val chineseCollator = Collator.getInstance(Locale.CHINA)
+
+    val uiState: StateFlow<ContactsUiState> = retrySignal.flow(
+        source = {
+            combine(query, sort) { currentQuery, currentSort -> currentQuery to currentSort }
+                .flatMapLatest { (currentQuery, currentSort) ->
+                    repository.observeContactSummaries(currentQuery).map { list ->
+                        ContactsUiState(
+                            query = currentQuery,
+                            sort = currentSort,
+                            contacts = if (currentSort == ContactSort.NAME) {
+                                list.sortedWith { first, second ->
+                                    chineseCollator.compare(first.contact.name, second.contact.name)
+                                }
+                            } else {
+                                list
+                            },
+                            isLoading = false,
+                        )
+                    }
+                }
+        },
+        onError = {
+            ContactsUiState(
+                query = query.value,
+                sort = sort.value,
+                isLoading = false,
+                error = true,
+            )
+        },
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ContactsUiState())
+
+    fun updateQuery(value: String) {
+        query.value = value
+    }
+
+    fun updateSort(value: ContactSort) {
+        sort.value = value
+    }
+
+    fun retry() = retrySignal.retry()
+
+    companion object {
+        fun factory(repository: ContactRepository) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                ContactsViewModel(repository) as T
+        }
+    }
+}

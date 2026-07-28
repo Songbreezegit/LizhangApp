@@ -27,11 +27,25 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
     var showFilter by remember{mutableStateOf(false)}
     val visibleRecords=remember(state.records,filter){state.records.filter{filter==null||it.direction==filter}}
     Scaffold(
-        topBar={AppTopBar(state.contact?.name?:stringResource(R.string.nav_contact_detail),onBack){IconButton(onEdit){Icon(Icons.Outlined.Edit,stringResource(R.string.contact_edit))}}},
+        topBar={
+            AppTopBar(
+                state.contact?.name?:stringResource(R.string.nav_contact_detail),
+                onBack,
+                if (state.contact != null) {
+                    { IconButton(onEdit){Icon(Icons.Outlined.Edit,stringResource(R.string.contact_edit))} }
+                } else null,
+            )
+        },
     ){padding->
         when{
             state.isLoading->LoadingState()
-            state.error->ErrorState{}
+            state.error->ErrorState(viewModel::retry)
+            state.notFound->EmptyState(
+                stringResource(R.string.contact_not_found),
+                action=stringResource(R.string.action_back),
+                onAction=onBack,
+                image=R.drawable.page_contacts_cat,
+            )
             else->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
                 item{PageIllustration(R.drawable.page_contacts_cat,Modifier.fillMaxWidth().height(135.dp))}
                 item{state.contact?.let{contact->Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){Column(Modifier.fillMaxWidth().padding(18.dp)){Text(contact.name,style=MaterialTheme.typography.titleLarge);Text(listOfNotNull(contact.relationship,contact.phone).joinToString(" · "),color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}

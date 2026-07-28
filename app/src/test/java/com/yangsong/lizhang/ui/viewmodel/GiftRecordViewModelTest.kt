@@ -75,6 +75,45 @@ class GiftRecordViewModelTest {
         collection.cancel()
     }
 
+    @Test
+    fun `从联系人详情记一笔时自动预选当前联系人`() = runTest(dispatcher) {
+        val contact = sampleContact()
+        val viewModel = GiftEditorViewModel(
+            FakeGiftRecordRepository(sampleRecord()),
+            FakeContactRepository(contact),
+            initialContactId = contact.id,
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(contact.id, viewModel.uiState.value.contactId)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun `礼金日期晚于今天时阻止保存`() = runTest(dispatcher) {
+        val now = 1_753_200_000_000
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val viewModel = GiftEditorViewModel(
+            repository,
+            FakeContactRepository(sampleContact()),
+            initialContactId = 3,
+            now = { now },
+        )
+        viewModel.update {
+            it.copy(
+                amount = "200",
+                eventDate = now + 86_400_000,
+            )
+        }
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(GiftRecordValidationError.DATE_IN_FUTURE, viewModel.uiState.value.validationError)
+        assertNull(repository.createdRecord)
+    }
+
     private fun sampleContact() = Contact(id = 3, name = "测试联系人", phone = "13800000000")
 
     private fun sampleRecord() = GiftRecord(
@@ -93,6 +132,7 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
     private val record = MutableStateFlow<GiftRecord?>(initial)
     private val item = MutableStateFlow<GiftRecordWithContact?>(GiftRecordWithContact(initial, "测试联系人"))
     var updatedRecord: GiftRecord? = null
+    var createdRecord: GiftRecord? = null
     var deletedRecord: GiftRecord? = null
 
     override fun observeRecent(limit: Int): Flow<List<GiftRecordWithContact>> = flowOf(item.value?.let(::listOf).orEmpty())
@@ -103,7 +143,10 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
     override fun observeRecordWithContact(recordId: Long): Flow<GiftRecordWithContact?> = item
     override fun observeByContact(contactId: Long): Flow<List<GiftRecord>> = flowOf(record.value?.let(::listOf).orEmpty())
     override fun observeSearch(query: String): Flow<List<GiftRecordWithContact>> = flowOf(item.value?.let(::listOf).orEmpty())
-    override suspend fun create(record: GiftRecord): Long = 1
+    override suspend fun create(record: GiftRecord): Long {
+        createdRecord = record
+        return 1
+    }
     override suspend fun update(record: GiftRecord) {
         updatedRecord = record
         this.record.value = record

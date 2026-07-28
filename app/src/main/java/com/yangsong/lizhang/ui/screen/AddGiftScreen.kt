@@ -58,6 +58,7 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
         onEventTypeChange = { value -> viewModel.update { it.copy(eventType = value) } },
         onNotesChange = { value -> viewModel.update { it.copy(notes = value) } },
         onSave = viewModel::save,
+        onRetry = viewModel::retryLoad,
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
     if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
@@ -82,6 +83,7 @@ fun AddGiftContent(
     onEventTypeChange: (com.yangsong.lizhang.domain.model.EventType) -> Unit,
     onNotesChange: (String) -> Unit,
     onSave: () -> Unit,
+    onRetry: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
     Scaffold(
@@ -96,7 +98,7 @@ fun AddGiftContent(
             }
         },
     ){padding->
-        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState{}};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
             Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
@@ -109,6 +111,12 @@ fun AddGiftContent(
                     if(state.validationError==GiftRecordValidationError.CONTACT_REQUIRED)Text(stringResource(R.string.error_contact_required),color=MaterialTheme.colorScheme.error)
                     AmountTextField(state.amount,onAmountChange,if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
                     SelectionRow(DateFormatter.format(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
+                    if (state.validationError == GiftRecordValidationError.DATE_IN_FUTURE) {
+                        Text(
+                            stringResource(R.string.error_date_in_future),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                     DirectionSelector(state.direction,onDirectionChange)
                     EventTypeSelector(state.eventType,onEventTypeChange)
                     AppMultilineTextField(
@@ -183,21 +191,47 @@ fun DiscardGiftChangesDialog(
 
 @Composable
 private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit){
-    val initialDate=remember(initial){Calendar.getInstance().apply{timeInMillis=initial}}
-    var year by remember{mutableIntStateOf(initialDate.get(Calendar.YEAR))}
-    var month by remember{mutableIntStateOf(initialDate.get(Calendar.MONTH)+1)}
-    var day by remember{mutableIntStateOf(initialDate.get(Calendar.DAY_OF_MONTH))}
-    val maxDay=remember(year,month){Calendar.getInstance().apply{set(Calendar.YEAR,year);set(Calendar.MONTH,month-1)}.getActualMaximum(Calendar.DAY_OF_MONTH)}
-    LaunchedEffect(maxDay){if(day>maxDay)day=maxDay}
+    val today = remember { Calendar.getInstance() }
+    val currentYear = today.get(Calendar.YEAR)
+    val currentMonth = today.get(Calendar.MONTH) + 1
+    val currentDay = today.get(Calendar.DAY_OF_MONTH)
+    val initialDate = remember(initial) { Calendar.getInstance().apply { timeInMillis = initial } }
+    var year by remember { mutableIntStateOf(initialDate.get(Calendar.YEAR).coerceIn(MIN_GIFT_YEAR, currentYear)) }
+    var month by remember { mutableIntStateOf(initialDate.get(Calendar.MONTH) + 1) }
+    var day by remember { mutableIntStateOf(initialDate.get(Calendar.DAY_OF_MONTH)) }
+    val maxMonth = if (year == currentYear) currentMonth else 12
+    val calendarMaxDay = remember(year, month) {
+        Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+        }.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+    val maxDay = if (year == currentYear && month == currentMonth) {
+        minOf(calendarMaxDay, currentDay)
+    } else {
+        calendarMaxDay
+    }
+    LaunchedEffect(maxMonth) {
+        if (month > maxMonth) month = maxMonth
+    }
+    LaunchedEffect(maxDay) {
+        if (day > maxDay) day = maxDay
+    }
     AlertDialog(
         onDismissRequest=onDismiss,
         title={Text(stringResource(R.string.date_choose))},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){IconButton({year--}){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.action_back))};Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium);IconButton({year++}){Icon(Icons.Outlined.ChevronRight,null)}}
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..12).toList()){value->FilterChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
+                IconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
+                Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
+                IconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
+            }
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->FilterChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->FilterChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
         }},
         confirmButton={TextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},
         dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}},
     )
 }
+
+private const val MIN_GIFT_YEAR = 1900

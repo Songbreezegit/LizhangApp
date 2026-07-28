@@ -25,7 +25,7 @@ fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
     Scaffold(topBar={AppTopBar(stringResource(R.string.nav_statistics),onBack)}){padding->
         when{
             state.isLoading->LoadingState()
-            state.error->ErrorState{}
+            state.error->ErrorState(viewModel::retry)
             else->LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),

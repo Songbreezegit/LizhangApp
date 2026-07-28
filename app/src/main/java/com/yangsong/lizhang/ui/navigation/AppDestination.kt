@@ -5,6 +5,11 @@ import com.yangsong.lizhang.core.common.NavigationConstants
 sealed class AppDestination(val route: String) {
     data object Home : AppDestination("home")
     data object AddGift : AppDestination("add_gift")
+    data object AddGiftForContact : AppDestination(
+        "add_gift/contact/{${NavigationConstants.CONTACT_ID_ARGUMENT}}",
+    ) {
+        fun createRoute(contactId: Long) = "add_gift/contact/$contactId"
+    }
     data object GiftRecordDetail : AppDestination("gift_record/{${NavigationConstants.RECORD_ID_ARGUMENT}}") {
         fun createRoute(recordId: Long) = "gift_record/$recordId"
     }

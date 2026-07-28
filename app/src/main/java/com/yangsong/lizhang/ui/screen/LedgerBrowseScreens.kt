@@ -48,7 +48,7 @@ fun DirectionRecordsScreen(
     Scaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -83,7 +83,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
     Scaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -174,7 +174,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

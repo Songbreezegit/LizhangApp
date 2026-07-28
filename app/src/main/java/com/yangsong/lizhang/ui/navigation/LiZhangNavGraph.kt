@@ -98,7 +98,7 @@ fun LiZhangNavGraph(
                 viewModel(key = "contact-$id", factory = ContactDetailViewModel.factory(id, appContainer.contactRepository, appContainer.giftRecordRepository)),
                 nav::popBackStack,
                 { nav.navigate(AppDestination.ContactEditor.createRoute(id)) },
-                { nav.open(AppDestination.AddGift) },
+                { nav.navigate(AppDestination.AddGiftForContact.createRoute(id)) },
                 openRecord,
             )
         }
@@ -115,6 +115,23 @@ fun LiZhangNavGraph(
         composable(AppDestination.AddGift.route) {
             AddGiftScreen(
                 viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository)),
+                nav::popBackStack,
+            )
+        }
+        composable(
+            AppDestination.AddGiftForContact.route,
+            arguments = listOf(navArgument(NavigationConstants.CONTACT_ID_ARGUMENT) { type = NavType.LongType }),
+        ) { entry ->
+            val contactId = entry.arguments?.getLong(NavigationConstants.CONTACT_ID_ARGUMENT) ?: return@composable
+            AddGiftScreen(
+                viewModel(
+                    key = "gift-for-contact-$contactId",
+                    factory = GiftEditorViewModel.factory(
+                        appContainer.giftRecordRepository,
+                        appContainer.contactRepository,
+                        initialContactId = contactId,
+                    ),
+                ),
                 nav::popBackStack,
             )
         }

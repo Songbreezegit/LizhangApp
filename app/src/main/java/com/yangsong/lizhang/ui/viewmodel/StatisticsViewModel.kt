@@ -25,10 +25,14 @@ data class StatisticsUiState(
 
 class StatisticsViewModel(repository:GiftRecordRepository):ViewModel(){
     private val selectedYear=MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
-    val uiState:StateFlow<StatisticsUiState> = combine(repository.observeRecent(Int.MAX_VALUE),selectedYear){records,year->aggregate(records,year)}
-        .catch{emit(StatisticsUiState(isLoading=false,error=true))}
+    private val retrySignal=RetrySignal()
+    val uiState:StateFlow<StatisticsUiState> = retrySignal.flow(
+        source={combine(repository.observeRecent(Int.MAX_VALUE),selectedYear){records,year->aggregate(records,year)}},
+        onError={StatisticsUiState(isLoading=false,error=true)},
+    )
         .stateIn(viewModelScope,SharingStarted.WhileSubscribed(5_000),StatisticsUiState())
     fun selectYear(year:Int){selectedYear.value=year}
+    fun retry()=retrySignal.retry()
     companion object{
         fun factory(repository:GiftRecordRepository)=object:ViewModelProvider.Factory{
             @Suppress("UNCHECKED_CAST") override fun<T:ViewModel>create(modelClass:Class<T>)=StatisticsViewModel(repository)as T
@@ -37,6 +41,7 @@ class StatisticsViewModel(repository:GiftRecordRepository):ViewModel(){
 }
 
 private fun aggregate(records:List<GiftRecordWithContact>,year:Int):StatisticsUiState{
+    val currentYear=Calendar.getInstance().get(Calendar.YEAR)
     fun recordYear(item:GiftRecordWithContact)=Calendar.getInstance().apply{timeInMillis=item.record.eventDate}.get(Calendar.YEAR)
     fun recordMonth(item:GiftRecordWithContact)=Calendar.getInstance().apply{timeInMillis=item.record.eventDate}.get(Calendar.MONTH)+1
     val filtered=records.filter{recordYear(it)==year}
@@ -48,7 +53,9 @@ private fun aggregate(records:List<GiftRecordWithContact>,year:Int):StatisticsUi
     }
     return StatisticsUiState(
         year=year,
-        years=(records.map(::recordYear)+year).distinct().sortedDescending(),
+        years=(records.map(::recordYear).filter{it in 1..currentYear}+year)
+            .distinct()
+            .sortedDescending(),
         received=received,
         given=given,
         months=months,

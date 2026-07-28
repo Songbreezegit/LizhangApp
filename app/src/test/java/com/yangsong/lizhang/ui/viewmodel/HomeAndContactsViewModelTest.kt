@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -123,6 +124,25 @@ class HomeAndContactsViewModelTest {
         assertEquals(3, viewModel.uiState.value.reminderAdvanceDays)
         assertEquals(8, viewModel.uiState.value.reminderHour)
         assertEquals(30, viewModel.uiState.value.reminderMinute)
+        collection.cancel()
+    }
+
+    @Test
+    fun `联系人不存在时详情页进入安全空状态`() = runTest(dispatcher) {
+        val viewModel = ContactDetailViewModel(
+            404,
+            TestContactRepository(emptyList()),
+            TestGiftRepository(emptyList()),
+        )
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.notFound)
+        assertFalse(viewModel.uiState.value.error)
         collection.cancel()
     }
 

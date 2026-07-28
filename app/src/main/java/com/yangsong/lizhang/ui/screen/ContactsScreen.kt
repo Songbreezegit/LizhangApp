@@ -58,6 +58,7 @@ fun ContactsScreen(
         onSortChange = viewModel::updateSort,
         onContactClick = onContactClick,
         onAddContact = onAddContact,
+        onRetry = viewModel::retry,
     )
 }
 
@@ -68,6 +69,7 @@ fun ContactsContent(
     onSortChange: (ContactSort) -> Unit,
     onContactClick: (Long) -> Unit,
     onAddContact: () -> Unit,
+    onRetry: () -> Unit = {},
 ) {
     Scaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_contacts)) },
@@ -124,7 +126,7 @@ fun ContactsContent(
                 ) {
                     when {
                         state.isLoading -> Box(Modifier.height(220.dp)) { LoadingState() }
-                        state.error -> ErrorState { }
+                        state.error -> ErrorState(onRetry)
                         state.contacts.isEmpty() -> EmptyState(
                             if (state.query.isBlank()) stringResource(R.string.contact_empty) else stringResource(R.string.contact_no_result),
                             image = R.drawable.page_contacts_cat,

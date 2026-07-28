@@ -15,21 +15,29 @@ import kotlinx.coroutines.flow.stateIn
 data class SearchUiState(
     val query: String = "",
     val records: List<GiftRecordWithContact> = emptyList(),
+    val error: Boolean = false,
 )
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SearchViewModel(repository: GiftRecordRepository) : ViewModel() {
     private val query = MutableStateFlow("")
+    private val retrySignal = RetrySignal()
 
-    val uiState: StateFlow<SearchUiState> = query
-        .flatMapLatest { currentQuery ->
-            repository.observeSearch(currentQuery).map { SearchUiState(currentQuery, it) }
-        }
+    val uiState: StateFlow<SearchUiState> = retrySignal.flow(
+        source = {
+            query.flatMapLatest { currentQuery ->
+                repository.observeSearch(currentQuery).map { SearchUiState(currentQuery, it) }
+            }
+        },
+        onError = { SearchUiState(query = query.value, error = true) },
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
 
     fun updateQuery(value: String) {
         query.value = value
     }
+
+    fun retry() = retrySignal.retry()
 
     companion object {
         fun factory(repository: GiftRecordRepository) = object : ViewModelProvider.Factory {
