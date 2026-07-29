@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.data.preferences
 
 import android.content.Context
+import androidx.core.content.edit
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.domain.repository.ThemeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +16,7 @@ class SharedPreferencesThemeRepository(context: Context) : ThemeRepository {
 
     override fun setThemeMode(mode: AppThemeMode) {
         if (_themeMode.value == mode) return
-        preferences.edit().putString(KEY_THEME_MODE, mode.name).apply()
+        preferences.edit { putString(KEY_THEME_MODE, mode.name) }
         _themeMode.value = mode
     }
 

@@ -3,6 +3,7 @@ package com.yangsong.lizhang.ui.screen
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -185,7 +186,101 @@ fun DiscardGiftChangesDialog(
 @Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.background){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun ContactPickerSheet(contacts:List<Contact>,selectedId:Long?,onSelect:(Contact)->Unit,onCreate:()->Unit,onDismiss:()->Unit){var query by remember{mutableStateOf("")};val shown=remember(query,contacts){contacts.filter{it.name.contains(query,true)||it.phone.orEmpty().contains(query)}};ModalBottomSheet(onDismissRequest=onDismiss){Column(Modifier.fillMaxWidth().padding(horizontal=18.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){Text(stringResource(R.string.contact_choose),style=MaterialTheme.typography.titleLarge);AppTextField(query,{query=it},stringResource(R.string.contact_search_hint),leadingIcon=Icons.Outlined.Search);shown.forEach{contact->Surface(onClick={onSelect(contact)},modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=if(contact.id==selectedId)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface){Row(Modifier.padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(Icons.Outlined.AccountCircle,null);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(contact.name);Text(contact.phone?:contact.relationship.orEmpty(),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)};if(contact.id==selectedId)Icon(Icons.Outlined.Check,null,tint=MaterialTheme.colorScheme.primary)}}};SecondaryButton(stringResource(R.string.contact_create_quick),onCreate,Modifier.fillMaxWidth(),Icons.Outlined.PersonAdd)}}}
+@Composable
+private fun ContactPickerSheet(
+    contacts: List<Contact>,
+    selectedId: Long?,
+    onSelect: (Contact) -> Unit,
+    onCreate: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val shown = remember(query, contacts) {
+        contacts.filter {
+            it.name.contains(query, ignoreCase = true) ||
+                it.phone.orEmpty().contains(query)
+        }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 18.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                stringResource(R.string.contact_choose),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            AppTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = stringResource(R.string.contact_search_hint),
+                leadingIcon = Icons.Outlined.Search,
+            )
+            if (shown.isEmpty()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                ) {
+                    EmptyState(stringResource(R.string.contact_no_result))
+                }
+            } else {
+                LazyColumn(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(shown, key = Contact::id) { contact ->
+                        Surface(
+                            onClick = { onSelect(contact) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (contact.id == selectedId) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            },
+                        ) {
+                            Row(
+                                Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Outlined.AccountCircle, null)
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(contact.name)
+                                    Text(
+                                        contact.phone ?: contact.relationship.orEmpty(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (contact.id == selectedId) {
+                                    Icon(
+                                        Icons.Outlined.Check,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            SecondaryButton(
+                text = stringResource(R.string.contact_create_quick),
+                onClick = onCreate,
+                modifier = Modifier.fillMaxWidth(),
+                icon = Icons.Outlined.PersonAdd,
+            )
+        }
+    }
+}
 
 @Composable private fun QuickContactDialog(isSaving:Boolean,onConfirm:(String,String,String)->Unit,onDismiss:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var relationship by remember{mutableStateOf("")};var attempted by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=onDismiss,title={Text(stringResource(R.string.contact_create_quick))},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){AppTextField(name,{name=it},stringResource(R.string.contact_name),error=if(attempted&&name.isBlank())stringResource(R.string.contact_name_required)else null);AppTextField(phone,{phone=it},stringResource(R.string.contact_phone));AppTextField(relationship,{relationship=it},stringResource(R.string.contact_relationship))}},confirmButton={Button({attempted=true;if(name.isNotBlank())onConfirm(name,phone,relationship)},enabled=!isSaving){Text(stringResource(R.string.action_confirm))}},dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}})}
 

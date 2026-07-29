@@ -49,7 +49,8 @@ interface ContactDao {
         """
         SELECT contacts.*,
             COALESCE(SUM(CASE WHEN gift_records.direction = 'RECEIVED' THEN gift_records.amountInCents ELSE 0 END), 0) AS receivedInCents,
-            COALESCE(SUM(CASE WHEN gift_records.direction = 'GIVEN' THEN gift_records.amountInCents ELSE 0 END), 0) AS givenInCents
+            COALESCE(SUM(CASE WHEN gift_records.direction = 'GIVEN' THEN gift_records.amountInCents ELSE 0 END), 0) AS givenInCents,
+            COALESCE(MAX(gift_records.eventDate), contacts.createdTime) AS lastInteractionTime
         FROM contacts
         LEFT JOIN gift_records ON contacts.id = gift_records.contactId
         WHERE contacts.name LIKE '%' || :query || '%' COLLATE NOCASE
@@ -57,7 +58,7 @@ interface ContactDao {
            OR contacts.relationship LIKE '%' || :query || '%' COLLATE NOCASE
            OR contacts.notes LIKE '%' || :query || '%' COLLATE NOCASE
         GROUP BY contacts.id
-        ORDER BY contacts.name COLLATE NOCASE, contacts.createdTime DESC
+        ORDER BY lastInteractionTime DESC, contacts.createdTime DESC, contacts.name COLLATE NOCASE
         """,
     )
     fun observeSummaries(query: String): Flow<List<ContactSummaryRow>>

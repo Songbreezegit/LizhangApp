@@ -34,6 +34,11 @@ class ContactsViewModel(
     private val sort = MutableStateFlow(ContactSort.RECENT)
     private val retrySignal = RetrySignal()
     private val chineseCollator = Collator.getInstance(Locale.CHINA)
+    private val recentComparator = Comparator<ContactLedgerSummary> { first, second ->
+        val timeResult = second.lastInteractionTime.compareTo(first.lastInteractionTime)
+        if (timeResult != 0) timeResult
+        else chineseCollator.compare(first.contact.name, second.contact.name)
+    }
 
     val uiState: StateFlow<ContactsUiState> = retrySignal.flow(
         source = {
@@ -43,12 +48,11 @@ class ContactsViewModel(
                         ContactsUiState(
                             query = currentQuery,
                             sort = currentSort,
-                            contacts = if (currentSort == ContactSort.NAME) {
-                                list.sortedWith { first, second ->
+                            contacts = when (currentSort) {
+                                ContactSort.NAME -> list.sortedWith { first, second ->
                                     chineseCollator.compare(first.contact.name, second.contact.name)
                                 }
-                            } else {
-                                list
+                                ContactSort.RECENT -> list.sortedWith(recentComparator)
                             },
                             isLoading = false,
                         )

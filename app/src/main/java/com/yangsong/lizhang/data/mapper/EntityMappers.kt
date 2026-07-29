@@ -15,5 +15,10 @@ fun Contact.toEntity() = ContactEntity(id, name.trim(), phone?.trim()?.ifEmpty {
 fun GiftRecordEntity.toDomain() = GiftRecord(id, contactId, amountInCents, eventType, eventDate, direction, notes, createdTime)
 fun GiftRecord.toEntity() = GiftRecordEntity(id, contactId, amountInCents, eventType, eventDate, direction, notes?.trim()?.ifEmpty { null }, createdTime)
 
-fun ContactSummaryRow.toDomain() = ContactLedgerSummary(contact.toDomain(), receivedInCents, givenInCents)
+fun ContactSummaryRow.toDomain() = ContactLedgerSummary(
+    contact = contact.toDomain(),
+    receivedInCents = receivedInCents,
+    givenInCents = givenInCents,
+    lastInteractionTime = lastInteractionTime,
+)
 fun GiftRecordWithContactRow.toDomain() = GiftRecordWithContact(record.toDomain(), contactName)

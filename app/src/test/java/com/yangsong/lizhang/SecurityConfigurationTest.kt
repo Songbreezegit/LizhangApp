@@ -41,6 +41,26 @@ class SecurityConfigurationTest {
         assertTrue(rules.contains("<device-transfer>"))
     }
 
+    @Test
+    fun `应用图标完整且系统广播接收器限制外部调用`() {
+        val project = projectRoot()
+        val manifest = File(project, "app/src/main/AndroidManifest.xml").readText()
+        val reminderSource = File(
+            project,
+            "app/src/main/java/com/yangsong/lizhang/data/reminder/AndroidReminderRepository.kt",
+        ).readText()
+
+        assertTrue(manifest.contains("""android:icon="@mipmap/ic_launcher""""))
+        assertTrue(manifest.contains("""android:roundIcon="@mipmap/ic_launcher_round""""))
+        assertTrue(File(project, "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml").isFile)
+        assertTrue(
+            Regex(
+                """android:name="\.data\.reminder\.ReminderRescheduleReceiver"[\s\S]*?android:exported="false"""",
+            ).containsMatchIn(manifest),
+        )
+        assertTrue(reminderSource.contains("if (intent.action !in rescheduleActions) return"))
+    }
+
     private fun projectRoot(): File {
         val workingDirectory = requireNotNull(System.getProperty("user.dir")) { "无法读取工作目录" }
         return requireNotNull(File(workingDirectory).parentFile) { "无法定位项目根目录" }

@@ -92,6 +92,27 @@ class HomeAndContactsViewModelTest {
     }
 
     @Test
+    fun `联系人最近往来按最后礼金日期倒序而不是姓名顺序`() = runTest(dispatcher) {
+        val summaries = listOf(
+            summary(1, "赵阿姨", lastInteractionTime = 100),
+            summary(2, "陈叔叔", lastInteractionTime = 300),
+            summary(3, "王同学", lastInteractionTime = 200),
+        )
+        val viewModel = ContactsViewModel(TestContactRepository(summaries))
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("陈叔叔", "王同学", "赵阿姨"),
+            viewModel.uiState.value.contacts.map { it.contact.name },
+        )
+        collection.cancel()
+    }
+
+    @Test
     fun `提醒页展示未来三十天年度日期并同步开关状态`() = runTest(dispatcher) {
         val utc = TimeZone.getTimeZone("UTC")
         val now = Calendar.getInstance(utc).apply {
@@ -156,7 +177,16 @@ class HomeAndContactsViewModelTest {
         "联系人",
     )
 
-    private fun summary(id: Long, name: String) = ContactLedgerSummary(Contact(id = id, name = name), 0, 0)
+    private fun summary(
+        id: Long,
+        name: String,
+        lastInteractionTime: Long = 0,
+    ) = ContactLedgerSummary(
+        contact = Contact(id = id, name = name),
+        receivedInCents = 0,
+        givenInCents = 0,
+        lastInteractionTime = lastInteractionTime,
+    )
 }
 
 private class TestReminderRepository : ReminderRepository {

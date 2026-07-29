@@ -14,6 +14,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
@@ -53,7 +54,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     }
 
     override fun setEnabled(enabled: Boolean) {
-        preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
+        preferences.edit { putBoolean(KEY_ENABLED, enabled) }
         _settings.value = _settings.value.copy(enabled = enabled)
         if (!enabled) cancelScheduled()
     }
@@ -64,11 +65,11 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             hour = hour,
             minute = minute,
         )
-        preferences.edit()
-            .putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
-            .putInt(KEY_HOUR, updated.hour)
-            .putInt(KEY_MINUTE, updated.minute)
-            .apply()
+        preferences.edit {
+            putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
+            putInt(KEY_HOUR, updated.hour)
+            putInt(KEY_MINUTE, updated.minute)
+        }
         _settings.value = updated
     }
 
@@ -90,7 +91,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             )
             reminder.token()
         }.toSet()
-        preferences.edit().putStringSet(KEY_SCHEDULED, tokens).apply()
+        preferences.edit { putStringSet(KEY_SCHEDULED, tokens) }
     }
 
     private fun cancelScheduled() {
@@ -101,7 +102,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             val reminder = PlannedReminder(recordId, "", EventType.OTHER, triggerAt)
             alarmManager.cancel(reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT))
         }
-        preferences.edit().remove(KEY_SCHEDULED).apply()
+        preferences.edit { remove(KEY_SCHEDULED) }
     }
 
     private fun PlannedReminder.pendingIntent(extraFlags: Int): PendingIntent {
@@ -209,6 +210,7 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action !in rescheduleActions) return
         val application = context.applicationContext as? LiZhangApplication ?: return
         application.appContainer.startReminderCoordination()
         application.appContainer.refreshReminderSchedules()
@@ -246,3 +248,11 @@ private const val EXTRA_RECORD_ID = "record_id"
 private const val EXTRA_CONTACT_NAME = "contact_name"
 private const val EXTRA_EVENT_TYPE = "event_type"
 private const val EXTRA_ADVANCE_DAYS = "advance_days"
+
+private val rescheduleActions = setOf(
+    Intent.ACTION_BOOT_COMPLETED,
+    Intent.ACTION_MY_PACKAGE_REPLACED,
+    Intent.ACTION_TIME_CHANGED,
+    Intent.ACTION_TIMEZONE_CHANGED,
+    Intent.ACTION_DATE_CHANGED,
+)

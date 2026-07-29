@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.ui.screen
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -144,6 +145,7 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 }
 
 @Composable
+@SuppressLint("InlinedApi")
 fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val context = LocalContext.current

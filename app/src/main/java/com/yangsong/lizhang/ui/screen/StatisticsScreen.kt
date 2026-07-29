@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.util.CurrencyFormatter
+import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.mapper.labelRes
 import com.yangsong.lizhang.ui.theme.*
@@ -39,7 +40,13 @@ fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
                     item{EmptyState(stringResource(R.string.stats_empty),image=R.drawable.page_statistics_cat)}
                 }else{
                     item{StatsCard(stringResource(R.string.stats_monthly)){MonthlyChart(state.months)}}
-                    item{StatsCard(stringResource(R.string.stats_event)){state.events.forEach{(event,amount)->StatLine(stringResource(event.labelRes()),amount)}}}
+                    item {
+                        StatsCard(stringResource(R.string.stats_event)) {
+                            state.events.forEach { stat ->
+                                EventStatLine(stat)
+                            }
+                        }
+                    }
                     item{StatsCard(stringResource(R.string.stats_contact)){state.contacts.forEach{(name,amount)->StatLine(name,amount)}}}
                 }
             }
@@ -50,3 +57,37 @@ fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
 @Composable private fun StatsCard(title:String,content:@Composable ColumnScope.()->Unit){Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){Column(Modifier.padding(16.dp)){SectionHeader(title);content()}}}
 @Composable private fun MonthlyChart(months:List<MonthStat>){val max=(months.maxOfOrNull{it.received+it.given}?:1).coerceAtLeast(1);Row(Modifier.fillMaxWidth().height(150.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.Bottom){months.forEach{month->Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.fillMaxWidth().height((100f*(month.received+month.given)/max).dp.coerceAtLeast(3.dp)).background(if(month.month%2==0)CoralPrimary else LavenderPrimary,RoundedCornerShape(topStart=5.dp,topEnd=5.dp)));Text("${month.month}",style=MaterialTheme.typography.labelSmall)}}}}
 @Composable private fun StatLine(label:String,amount:Long){Row(Modifier.fillMaxWidth().padding(vertical=9.dp)){Text(label,Modifier.weight(1f));Text(CurrencyFormatter.formatCents(amount),fontWeight=FontWeight.SemiBold)}}
+
+@Composable
+private fun EventStatLine(stat: EventStat) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            stringResource(stat.eventType.labelRes()),
+            fontWeight = FontWeight.SemiBold,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                stringResource(GiftDirection.RECEIVED.labelRes()),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                CurrencyFormatter.formatCents(stat.received),
+                Modifier.weight(1f),
+                color = CoralStrong,
+            )
+            Text(
+                stringResource(GiftDirection.GIVEN.labelRes()),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                CurrencyFormatter.formatCents(stat.given),
+                color = MintPrimary,
+            )
+        }
+    }
+}
