@@ -63,6 +63,12 @@ class LargeDatasetPerformanceInstrumentedTest {
             val contactResult = measure {
                 contactRepository.observeContactSummaries("联系人").first()
             }
+            val yearlyResult = measure {
+                giftRepository.observeYearlySummaries().first()
+            }
+            val monthResult = measure {
+                giftRepository.observeBetween(yearStart(), yearStart() + 31 * DAY_MILLIS).first()
+            }
             val statisticsResult = measure {
                 aggregateStatistics(
                     records = allResult.value,
@@ -74,12 +80,15 @@ class LargeDatasetPerformanceInstrumentedTest {
             assertEquals(count, allResult.value.size)
             assertEquals(count, searchResult.value.size)
             assertEquals(count, contactResult.value.size)
+            assertEquals(1, yearlyResult.value.size)
+            assertEquals((1..count).count { it % 365 < 31 }, monthResult.value.size)
             assertEquals(count * AMOUNT_IN_CENTS, statisticsResult.value.received + statisticsResult.value.given)
 
             Log.i(
                 LOG_TAG,
                 "数量=$count；全量读取=${allResult.elapsedMillis}ms；" +
                     "搜索=${searchResult.elapsedMillis}ms；联系人汇总=${contactResult.elapsedMillis}ms；" +
+                    "年度汇总=${yearlyResult.elapsedMillis}ms；月度范围=${monthResult.elapsedMillis}ms；" +
                     "内存统计=${statisticsResult.elapsedMillis}ms",
             )
         }
@@ -96,10 +105,7 @@ class LargeDatasetPerformanceInstrumentedTest {
                 createdTime = sequence.toLong(),
             )
         }
-        val yearStart = Calendar.getInstance().apply {
-            clear()
-            set(TEST_YEAR, Calendar.JANUARY, 1)
-        }.timeInMillis
+        val yearStart = yearStart()
         val records = (1..count).map { sequence ->
             GiftRecordEntity(
                 id = sequence.toLong(),
@@ -128,6 +134,11 @@ class LargeDatasetPerformanceInstrumentedTest {
         val elapsedMillis = (SystemClock.elapsedRealtimeNanos() - startedAt) / 1_000_000.0
         return TimedResult(value, elapsedMillis)
     }
+
+    private fun yearStart(): Long = Calendar.getInstance().apply {
+        clear()
+        set(TEST_YEAR, Calendar.JANUARY, 1)
+    }.timeInMillis
 
     private data class TimedResult<T>(
         val value: T,

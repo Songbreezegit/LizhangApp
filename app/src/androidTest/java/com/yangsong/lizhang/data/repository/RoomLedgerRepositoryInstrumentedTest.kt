@@ -9,6 +9,7 @@ import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
+import java.util.Calendar
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -131,6 +132,31 @@ class RoomLedgerRepositoryInstrumentedTest {
         assertNull(giftRepository.observeRecord(recordId).first())
         assertEquals(emptyList<GiftRecord>(), database.giftRecordDao().getAllForBackup())
     }
+
+    @Test
+    fun 首页年度汇总和日历范围查询不读取无关年份记录() = runBlocking {
+        val contactId = contactRepository.create(Contact(name = "年度测试联系人"))
+        val jan2026 = date(2026, Calendar.JANUARY, 12)
+        val feb2026 = date(2026, Calendar.FEBRUARY, 1)
+        giftRepository.create(gift(contactId, 10_000, GiftDirection.RECEIVED, jan2026))
+        giftRepository.create(gift(contactId, 5_000, GiftDirection.GIVEN, feb2026))
+
+        val summary = giftRepository.observeYearlySummaries().first().single()
+        assertEquals(2026, summary.year)
+        assertEquals(10_000L, summary.receivedInCents)
+        assertEquals(5_000L, summary.givenInCents)
+        assertEquals(
+            listOf(jan2026),
+            giftRepository.observeBetween(date(2026, Calendar.JANUARY, 1), date(2026, Calendar.FEBRUARY, 1))
+                .first()
+                .map { it.record.eventDate },
+        )
+    }
+
+    private fun date(year: Int, month: Int, day: Int): Long = Calendar.getInstance().apply {
+        clear()
+        set(year, month, day, 12, 0, 0)
+    }.timeInMillis
 
     private fun gift(
         contactId: Long,

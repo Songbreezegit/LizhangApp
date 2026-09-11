@@ -95,7 +95,12 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
                 if (state.selectedRecords.isEmpty()) {
                     item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
                 } else {
-                    items(state.selectedRecords) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
+                    items(
+                        items = state.selectedRecords,
+                        key = { item -> item.record.id },
+                    ) { item ->
+                        GiftRecordListItem(item) { onRecordClick(item.record.id) }
+                    }
                 }
             }
         }

@@ -8,7 +8,15 @@ import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import java.util.Calendar
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 
 data class MonthStat(
     val month: Int,
@@ -38,9 +46,11 @@ data class StatisticsUiState(
     val net get() = received - given
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StatisticsViewModel(
     repository: GiftRecordRepository,
     now: () -> Long = System::currentTimeMillis,
+    private val computeDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModel() {
     private val currentYear = Calendar.getInstance().apply {
         timeInMillis = now()
@@ -50,9 +60,12 @@ class StatisticsViewModel(
 
     val uiState: StateFlow<StatisticsUiState> = retrySignal.flow(
         source = {
-            combine(repository.observeAll(), selectedYear) { records, year ->
-                aggregateStatistics(records, year, currentYear)
-            }
+            combine(repository.observeAll(), selectedYear) { records, year -> records to year }
+                .mapLatest { (records, year) ->
+                    withContext(computeDispatcher) {
+                        aggregateStatistics(records, year, currentYear)
+                    }
+                }
         },
         onError = { StatisticsUiState(isLoading = false, error = true) },
     )
@@ -82,60 +95,50 @@ internal fun aggregateStatistics(
     year: Int,
     currentYear: Int,
 ): StatisticsUiState {
-    fun recordYear(item: GiftRecordWithContact) = Calendar.getInstance().apply {
-        timeInMillis = item.record.eventDate
-    }.get(Calendar.YEAR)
+    val calendar = Calendar.getInstance()
+    val knownYears = HashSet<Int>()
+    val monthlyReceived = LongArray(12)
+    val monthlyGiven = LongArray(12)
+    // 金额相同时保留原记录的首次出现顺序，与优化前的分组排序一致。
+    val events = LinkedHashMap<EventType, LongArray>()
+    val contacts = LinkedHashMap<String, Long>()
+    var received = 0L
+    var given = 0L
 
-    fun recordMonth(item: GiftRecordWithContact) = Calendar.getInstance().apply {
-        timeInMillis = item.record.eventDate
-    }.get(Calendar.MONTH) + 1
+    records.forEach { item ->
+        calendar.timeInMillis = item.record.eventDate
+        val recordYear = calendar.get(Calendar.YEAR)
+        if (recordYear in 1..currentYear) knownYears += recordYear
+        if (recordYear != year) return@forEach
 
-    val filtered = records.filter { recordYear(it) == year }
-    val received = filtered
-        .filter { it.record.direction == GiftDirection.RECEIVED }
-        .sumOf { it.record.amountInCents }
-    val given = filtered
-        .filter { it.record.direction == GiftDirection.GIVEN }
-        .sumOf { it.record.amountInCents }
-    val months = (1..12).map { month ->
-        val monthRecords = filtered.filter { recordMonth(it) == month }
-        MonthStat(
-            month = month,
-            received = monthRecords
-                .filter { it.record.direction == GiftDirection.RECEIVED }
-                .sumOf { it.record.amountInCents },
-            given = monthRecords
-                .filter { it.record.direction == GiftDirection.GIVEN }
-                .sumOf { it.record.amountInCents },
-        )
+        val amount = item.record.amountInCents
+        val monthIndex = calendar.get(Calendar.MONTH)
+        val eventAmounts = events.getOrPut(item.record.eventType) { LongArray(2) }
+        if (item.record.direction == GiftDirection.RECEIVED) {
+            received += amount
+            monthlyReceived[monthIndex] += amount
+            eventAmounts[0] += amount
+        } else {
+            given += amount
+            monthlyGiven[monthIndex] += amount
+            eventAmounts[1] += amount
+        }
+        contacts[item.contactName] = (contacts[item.contactName] ?: 0) + amount
     }
+
     return StatisticsUiState(
         year = year,
-        years = (records.map(::recordYear).filter { it in 1..currentYear } + year)
-            .distinct()
-            .sortedDescending(),
+        years = (knownYears + year).sortedDescending(),
         received = received,
         given = given,
-        months = months,
-        events = filtered
-            .groupBy { it.record.eventType }
-            .map { (eventType, eventRecords) ->
-                EventStat(
-                    eventType = eventType,
-                    received = eventRecords
-                        .filter { it.record.direction == GiftDirection.RECEIVED }
-                        .sumOf { it.record.amountInCents },
-                    given = eventRecords
-                        .filter { it.record.direction == GiftDirection.GIVEN }
-                        .sumOf { it.record.amountInCents },
-                )
-            }
+        months = (0 until 12).map { monthIndex ->
+            MonthStat(monthIndex + 1, monthlyReceived[monthIndex], monthlyGiven[monthIndex])
+        },
+        events = events
+            .map { (eventType, amounts) -> EventStat(eventType, amounts[0], amounts[1]) }
             .sortedByDescending(EventStat::total),
-        contacts = filtered
-            .groupBy { it.contactName }
-            .map { (name, contactRecords) ->
-                name to contactRecords.sumOf { it.record.amountInCents }
-            }
+        contacts = contacts
+            .map { (name, amount) -> name to amount }
             .sortedByDescending { it.second }
             .take(5),
         isLoading = false,

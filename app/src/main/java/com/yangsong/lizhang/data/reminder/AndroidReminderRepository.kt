@@ -28,8 +28,9 @@ import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -48,10 +49,6 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
         ),
     )
     override val settings = _settings
-
-    init {
-        createNotificationChannel()
-    }
 
     override fun setEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_ENABLED, enabled) }
@@ -77,6 +74,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
         cancelScheduled()
         val currentSettings = settings.value
         if (!currentSettings.enabled) return
+        createNotificationChannel()
         val tokens = ReminderPlanner.plan(
             records = records,
             lookaheadDays = 366,
@@ -136,6 +134,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     private fun PlannedReminder.token() = "$recordId|$triggerAt"
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ReminderCoordinator(
     private val giftRecordRepository: GiftRecordRepository,
     private val reminderRepository: ReminderRepository,
@@ -145,15 +144,16 @@ class ReminderCoordinator(
 
     fun start() {
         if (synchronizationJob != null) return
-        synchronizationJob = combine(
-            giftRecordRepository.observeAll(),
-            reminderRepository.settings,
-        ) { records, _ -> records }
+        synchronizationJob = reminderRepository.settings
+            .flatMapLatest { settings ->
+                if (settings.enabled) giftRecordRepository.observeAll() else emptyFlow()
+            }
             .onEach(reminderRepository::synchronize)
             .launchIn(scope)
     }
 
     fun refresh() {
+        if (!reminderRepository.settings.value.enabled) return
         scope.launch {
             reminderRepository.synchronize(giftRecordRepository.observeAll().first())
         }
