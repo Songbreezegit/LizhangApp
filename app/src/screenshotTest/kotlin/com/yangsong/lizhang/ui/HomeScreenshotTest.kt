@@ -17,13 +17,18 @@ import com.yangsong.lizhang.ui.component.BottomNavBar
 import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.screen.HomeContent
 import com.yangsong.lizhang.ui.screen.ContactsContent
-import com.yangsong.lizhang.ui.screen.GiftEntryScreen
 import com.yangsong.lizhang.ui.screen.SettingsContent
+import com.yangsong.lizhang.ui.screen.CreateEncryptedBackupDialog
+import com.yangsong.lizhang.ui.screen.RestoreBackupPasswordDialog
+import com.yangsong.lizhang.ui.screen.PrivacyContent
+import com.yangsong.lizhang.ui.screen.AddGiftContent
+import com.yangsong.lizhang.ui.screen.DiscardGiftChangesDialog
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.ContactSort
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 import com.yangsong.lizhang.ui.viewmodel.SettingsUiState
+import com.yangsong.lizhang.ui.viewmodel.GiftEditorUiState
 
 @PreviewTest
 @Preview(name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
@@ -42,6 +47,27 @@ fun HomeStandardScreenshotTest() {
                     received = 866_000,
                     given = 295_000,
                 ),
+                onNavigate = {},
+            )
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "首页空状态大字体",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
+@Composable
+fun HomeEmptyLargeTextScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        Box(Modifier.fillMaxSize()) {
+            HomeContent(
+                state = HomeUiState(isLoading = false, year = 2026),
                 onNavigate = {},
             )
             BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
@@ -83,14 +109,117 @@ fun ContactsStandardScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "记一笔入口", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(
+    name = "联系人空状态大字体",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
 @Composable
-fun GiftEntryScreenshotTest() {
+fun ContactsEmptyLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
         Box(Modifier.fillMaxSize()) {
-            GiftEntryScreen(onManual = {}, onOcr = {})
-            BottomNavBar(AppDestination.AddGift, {}, Modifier.align(Alignment.BottomCenter))
+            ContactsContent(
+                state = ContactsUiState(isLoading = false),
+                onQueryChange = {},
+                onSortChange = {},
+                onContactClick = {},
+                onAddContact = {},
+            )
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
         }
+    }
+}
+
+@PreviewTest
+@Preview(name = "记一笔标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun AddGiftStandardScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        AddGiftContent(
+            state = GiftEditorUiState(
+                contactId = 1,
+                amount = "200",
+                contacts = listOf(Contact(id = 1, name = "王阿姨")),
+                direction = GiftDirection.GIVEN,
+                eventType = EventType.BIRTHDAY,
+            ),
+            onBack = {},
+            onContactClick = {},
+            onAmountChange = {},
+            onDateClick = {},
+            onDirectionChange = {},
+            onEventTypeChange = {},
+            onNotesChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "记一笔放弃填写确认", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun AddGiftDiscardConfirmationScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        DiscardGiftChangesDialog(
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "记一笔深色大字体",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
+@Composable
+fun AddGiftDarkLargeTextScreenshotTest() {
+    LiZhangTheme(darkTheme = true) {
+        AddGiftContent(
+            state = GiftEditorUiState(
+                contactId = 1,
+                amount = "800",
+                contacts = listOf(Contact(id = 1, name = "王阿姨")),
+            ),
+            onBack = {},
+            onContactClick = {},
+            onAmountChange = {},
+            onDateClick = {},
+            onDirectionChange = {},
+            onEventTypeChange = {},
+            onNotesChange = {},
+            onSave = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "记一笔深色大字体空表单",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
+@Composable
+fun AddGiftDarkLargeEmptyScreenshotTest() {
+    LiZhangTheme(darkTheme = true) {
+        AddGiftContent(
+            state = GiftEditorUiState(),
+            onBack = {},
+            onContactClick = {},
+            onAmountChange = {},
+            onDateClick = {},
+            onDirectionChange = {},
+            onEventTypeChange = {},
+            onNotesChange = {},
+            onSave = {},
+        )
     }
 }
 
@@ -105,10 +234,71 @@ fun SettingsScreenshotTest() {
                 onCsvExport = {},
                 onExcelExport = {},
                 onBackup = {},
-                onUnavailable = {},
+                onThemeModeChange = {},
             )
             BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
         }
+    }
+}
+
+@PreviewTest
+@Preview(name = "我的深色模式", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun SettingsDarkScreenshotTest() {
+    LiZhangTheme(darkTheme = true) {
+        Box(Modifier.fillMaxSize()) {
+            SettingsContent(
+                SettingsUiState(),
+                onCsvExport = {},
+                onExcelExport = {},
+                onBackup = {},
+                onThemeModeChange = {},
+            )
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}
+
+@PreviewTest
+@Preview(name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun CreateEncryptedBackupScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        CreateEncryptedBackupDialog(
+            isPreparing = false,
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
+@Composable
+fun RestoreEncryptedBackupErrorScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        RestoreBackupPasswordDialog(
+            fileIdentity = byteArrayOf(1),
+            isReading = false,
+            isPasswordInvalid = true,
+            onConfirm = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@PreviewTest
+@Preview(
+    name = "隐私说明大字体",
+    widthDp = 412,
+    heightDp = 915,
+    showBackground = true,
+    fontScale = 1.3f,
+)
+@Composable
+fun PrivacyLargeTextScreenshotTest() {
+    LiZhangTheme(darkTheme = false) {
+        PrivacyContent()
     }
 }
 

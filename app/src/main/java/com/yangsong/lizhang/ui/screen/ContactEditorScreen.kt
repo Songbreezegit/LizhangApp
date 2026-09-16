@@ -1,5 +1,6 @@
 package com.yangsong.lizhang.ui.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,8 +21,20 @@ import com.yangsong.lizhang.ui.viewmodel.ContactEditorViewModel
 fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, onDeleted: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val operationFailed = stringResource(R.string.contact_operation_failed)
+    val requestBack = {
+        when {
+            state.isSaving || state.isDeleting -> Unit
+            state.hasUnsavedChanges -> showDiscardConfirmation = true
+            else -> onBack()
+        }
+    }
+
+    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving || state.isDeleting) {
+        requestBack()
+    }
 
     LaunchedEffect(state.isSaved, state.isDeleted) {
         when {
@@ -37,8 +50,8 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
         topBar = {
             AppTopBar(
                 title = stringResource(if (state.isNewContact) R.string.contact_create else R.string.contact_edit),
-                onBack = onBack,
-                action = if (state.isNewContact) null else {
+                onBack = requestBack,
+                action = if (state.isNewContact || state.loadFailed) null else {
                     {
                         IconButton(onClick = { showDeleteConfirm = true }, enabled = !state.isDeleting) {
                             Icon(Icons.Outlined.DeleteOutline, stringResource(R.string.contact_delete), tint = MaterialTheme.colorScheme.error)
@@ -51,6 +64,7 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
+            state.loadFailed -> ErrorState(viewModel::retryLoad)
             else -> Column(
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -98,6 +112,16 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
         cancelText = stringResource(R.string.action_cancel),
         onConfirm = { showDeleteConfirm = false; viewModel.delete() },
         onDismiss = { showDeleteConfirm = false },
+        danger = true,
+    )
+
+    if (showDiscardConfirmation) ConfirmDialog(
+        title = stringResource(R.string.contact_discard_title),
+        message = stringResource(R.string.contact_discard_message),
+        confirmText = stringResource(R.string.contact_discard_confirm),
+        cancelText = stringResource(R.string.action_continue_editing),
+        onConfirm = onBack,
+        onDismiss = { showDiscardConfirmation = false },
         danger = true,
     )
 }

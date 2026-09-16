@@ -1,11 +1,15 @@
 package com.yangsong.lizhang.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -15,10 +19,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.yangsong.lizhang.core.common.NavigationConstants
+import com.yangsong.lizhang.R
 import com.yangsong.lizhang.data.di.AppContainer
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.ui.screen.*
 import com.yangsong.lizhang.ui.component.BottomNavBar
+import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.viewmodel.*
 
 private val mainTabs = listOf(AppDestination.Home, AppDestination.Contacts, AppDestination.AddGift, AppDestination.Settings)
@@ -34,12 +40,43 @@ private fun NavHostController.open(destination: AppDestination) {
 }
 
 @Composable
-fun LiZhangNavGraph(appContainer: AppContainer) {
+fun LiZhangNavGraph(
+    appContainer: AppContainer,
+    reminderLaunchRequest: ReminderLaunchRequest? = null,
+    onReminderRequestConsumed: () -> Unit = {},
+) {
     val nav = rememberNavController()
+    val reminderLaunchViewModel: ReminderLaunchViewModel = viewModel(
+        factory = ReminderLaunchViewModel.factory(appContainer.giftRecordRepository),
+    )
+    val snackbar = remember { SnackbarHostState() }
+    val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
     val go: (AppDestination) -> Unit = { nav.open(it) }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
+
+    LaunchedEffect(reminderLaunchRequest?.requestKey) {
+        reminderLaunchRequest?.let { request ->
+            reminderLaunchViewModel.resolve(request.recordId)
+            onReminderRequestConsumed()
+        }
+    }
+    LaunchedEffect(reminderLaunchViewModel) {
+        reminderLaunchViewModel.results.collect { result ->
+            when (result) {
+                is ReminderLaunchResult.OpenRecord -> nav.navigate(
+                    AppDestination.GiftRecordDetail.createRoute(result.recordId),
+                ) {
+                    launchSingleTop = true
+                }
+                ReminderLaunchResult.RecordUnavailable -> {
+                    nav.open(AppDestination.Home)
+                    snackbar.showSnackbar(unavailableMessage)
+                }
+            }
+        }
+    }
     Box(Modifier.fillMaxSize()) {
     NavHost(nav, AppDestination.Home.route) {
         composable(AppDestination.Home.route) {
@@ -61,7 +98,7 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                 viewModel(key = "contact-$id", factory = ContactDetailViewModel.factory(id, appContainer.contactRepository, appContainer.giftRecordRepository)),
                 nav::popBackStack,
                 { nav.navigate(AppDestination.ContactEditor.createRoute(id)) },
-                { nav.open(AppDestination.ManualGift) },
+                { nav.navigate(AppDestination.AddGiftForContact.createRoute(id)) },
                 openRecord,
             )
         }
@@ -76,14 +113,25 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
             ) { nav.popBackStack(AppDestination.Contacts.route, false) }
         }
         composable(AppDestination.AddGift.route) {
-            GiftEntryScreen(
-                onManual = { nav.navigate(AppDestination.ManualGift.route) },
-                onOcr = { nav.navigate(AppDestination.OcrImport.route) },
-            )
-        }
-        composable(AppDestination.ManualGift.route) {
             AddGiftScreen(
                 viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository)),
+                nav::popBackStack,
+            )
+        }
+        composable(
+            AppDestination.AddGiftForContact.route,
+            arguments = listOf(navArgument(NavigationConstants.CONTACT_ID_ARGUMENT) { type = NavType.LongType }),
+        ) { entry ->
+            val contactId = entry.arguments?.getLong(NavigationConstants.CONTACT_ID_ARGUMENT) ?: return@composable
+            AddGiftScreen(
+                viewModel(
+                    key = "gift-for-contact-$contactId",
+                    factory = GiftEditorViewModel.factory(
+                        appContainer.giftRecordRepository,
+                        appContainer.contactRepository,
+                        initialContactId = contactId,
+                    ),
+                ),
                 nav::popBackStack,
             )
         }
@@ -151,25 +199,29 @@ fun LiZhangNavGraph(appContainer: AppContainer) {
                     factory = SettingsViewModel.factory(
                         appContainer.giftRecordRepository,
                         appContainer.backupRepository,
+                        appContainer.themeRepository,
                     ),
                 ),
+                onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
+                onAbout = { nav.navigate(AppDestination.About.route) },
+                onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
             )
         }
-        composable(AppDestination.OcrImport.route) {
-            OcrImportScreen(
-                viewModel(
-                    factory = OcrImportViewModel.factory(
-                        appContainer.ocrRecognitionRepository,
-                        appContainer.ocrImportRepository,
-                        appContainer.giftRecordRepository,
-                    ),
-                ),
-                nav::popBackStack,
-            )
+        composable(AppDestination.FontGuide.route) {
+            FontGuideScreen(nav::popBackStack)
+        }
+        composable(AppDestination.About.route) {
+            AboutScreen(nav::popBackStack)
+        }
+        composable(AppDestination.Privacy.route) {
+            PrivacyScreen(nav::popBackStack)
         }
     }
-    currentMainTab?.let { tab ->
+    currentMainTab
+        ?.takeUnless { it == AppDestination.AddGift }
+        ?.let { tab ->
         BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
     }
+    CenteredSnackbarHost(snackbar)
     }
 }

@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.ui.screen
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.GiftDirection
+import com.yangsong.lizhang.domain.reminder.supportedReminderAdvanceDays
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.*
 import kotlinx.coroutines.launch
@@ -47,7 +49,7 @@ fun DirectionRecordsScreen(
     Scaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -82,7 +84,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
     Scaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -93,7 +95,12 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
                 if (state.selectedRecords.isEmpty()) {
                     item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
                 } else {
-                    items(state.selectedRecords) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
+                    items(
+                        items = state.selectedRecords,
+                        key = { item -> item.record.id },
+                    ) { item ->
+                        GiftRecordListItem(item) { onRecordClick(item.record.id) }
+                    }
                 }
             }
         }
@@ -143,6 +150,7 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 }
 
 @Composable
+@SuppressLint("InlinedApi")
 fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val context = LocalContext.current
@@ -173,7 +181,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(viewModel::retry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -280,10 +288,7 @@ private fun ReminderScheduleCard(
             )
             ReminderSettingRow(
                 title = stringResource(R.string.reminder_advance_title),
-                value = stringResource(
-                    if (advanceDays == 0) R.string.reminder_advance_same_day
-                    else R.string.reminder_advance_one_day,
-                ),
+                value = reminderAdvanceLabel(advanceDays),
                 onClick = onAdvanceClick,
             )
             HorizontalDivider(Modifier.padding(horizontal = 18.dp), color = MaterialTheme.colorScheme.outline)
@@ -323,10 +328,8 @@ private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSe
         title = { Text(stringResource(R.string.reminder_advance_title)) },
         text = {
             Column {
-                listOf(
-                    0 to stringResource(R.string.reminder_advance_same_day),
-                    1 to stringResource(R.string.reminder_advance_one_day),
-                ).forEach { (days, label) ->
+                supportedReminderAdvanceDays.forEach { days ->
+                    val label = reminderAdvanceLabel(days)
                     Surface(onClick = { onSelect(days) }, color = MaterialTheme.colorScheme.surface) {
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 10.dp),
@@ -343,6 +346,16 @@ private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSe
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
+
+@Composable
+private fun reminderAdvanceLabel(days: Int): String = stringResource(
+    when (days) {
+        1 -> R.string.reminder_advance_one_day
+        3 -> R.string.reminder_advance_three_days
+        7 -> R.string.reminder_advance_seven_days
+        else -> R.string.reminder_advance_same_day
+    },
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

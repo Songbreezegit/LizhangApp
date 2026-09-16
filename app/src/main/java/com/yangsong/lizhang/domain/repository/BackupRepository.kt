@@ -4,6 +4,7 @@ data class BackupSummary(
     val createdTime: Long,
     val contactCount: Int,
     val giftRecordCount: Int,
+    val sourceDatabaseVersion: Int = 1,
 )
 
 data class BackupDocument(
@@ -12,7 +13,8 @@ data class BackupDocument(
 )
 
 interface BackupRepository {
-    suspend fun createBackup(): BackupDocument
-    fun inspectBackup(bytes: ByteArray): BackupSummary
-    suspend fun restoreBackup(bytes: ByteArray): BackupSummary
+    suspend fun createBackup(password: String? = null): BackupDocument
+    fun requiresPassword(bytes: ByteArray): Boolean
+    fun inspectBackup(bytes: ByteArray, password: String? = null): BackupSummary
+    suspend fun restoreBackup(bytes: ByteArray, password: String? = null): BackupSummary
 }

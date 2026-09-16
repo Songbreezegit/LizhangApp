@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.yangsong.lizhang.data.local.entity.GiftRecordEntity
 import com.yangsong.lizhang.data.local.projection.GiftRecordWithContactRow
+import com.yangsong.lizhang.data.local.projection.YearlyGiftSummaryRow
 import com.yangsong.lizhang.domain.model.GiftDirection
 import kotlinx.coroutines.flow.Flow
 
@@ -68,6 +69,33 @@ interface GiftRecordDao {
         """,
     )
     fun observeAll(): Flow<List<GiftRecordWithContactRow>>
+
+    @Query(
+        """
+        SELECT CAST(strftime('%Y', eventDate / 1000, 'unixepoch', 'localtime') AS INTEGER) AS year,
+            COALESCE(SUM(CASE WHEN direction = 'RECEIVED' THEN amountInCents ELSE 0 END), 0) AS receivedInCents,
+            COALESCE(SUM(CASE WHEN direction = 'GIVEN' THEN amountInCents ELSE 0 END), 0) AS givenInCents
+        FROM gift_records
+        GROUP BY strftime('%Y', eventDate / 1000, 'unixepoch', 'localtime')
+        ORDER BY year DESC
+        """,
+    )
+    fun observeYearlySummaries(): Flow<List<YearlyGiftSummaryRow>>
+
+    @Query(
+        """
+        SELECT gift_records.*, contacts.name AS contactName
+        FROM gift_records
+        INNER JOIN contacts ON contacts.id = gift_records.contactId
+        WHERE gift_records.eventDate >= :startInclusive
+          AND gift_records.eventDate < :endExclusive
+        ORDER BY gift_records.eventDate DESC, gift_records.createdTime DESC
+        """,
+    )
+    fun observeBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Flow<List<GiftRecordWithContactRow>>
 
     @Query(
         """

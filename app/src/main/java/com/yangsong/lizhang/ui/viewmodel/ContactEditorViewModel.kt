@@ -21,12 +21,14 @@ data class ContactEditorUiState(
     val notes: String = "",
     val createdTime: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
+    val loadFailed: Boolean = false,
     val isSaving: Boolean = false,
     val isDeleting: Boolean = false,
     val nameError: Boolean = false,
     val operationFailed: Boolean = false,
     val isSaved: Boolean = false,
     val isDeleted: Boolean = false,
+    val hasUnsavedChanges: Boolean = false,
 ) {
     val isNewContact: Boolean get() = contactId == NavigationConstants.NEW_CONTACT_ID
 }
@@ -48,7 +50,7 @@ class ContactEditorViewModel(
         runCatching { repository.observeContact(contactId).first() }
             .onSuccess { contact ->
                 _uiState.update { state ->
-                    if (contact == null) state.copy(isLoading = false, operationFailed = true)
+                    if (contact == null) state.copy(isLoading = false, loadFailed = true)
                     else state.copy(
                         name = contact.name,
                         phone = contact.phone.orEmpty(),
@@ -56,19 +58,36 @@ class ContactEditorViewModel(
                         notes = contact.notes.orEmpty(),
                         createdTime = contact.createdTime,
                         isLoading = false,
+                        loadFailed = false,
+                        hasUnsavedChanges = false,
                     )
                 }
             }
-            .onFailure { _uiState.update { it.copy(isLoading = false, operationFailed = true) } }
+            .onFailure { _uiState.update { it.copy(isLoading = false, loadFailed = true) } }
     }
 
-    fun updateName(value: String) = _uiState.update { it.copy(name = value, nameError = false, operationFailed = false) }
-    fun updatePhone(value: String) = _uiState.update { it.copy(phone = value, operationFailed = false) }
-    fun updateRelationship(value: String) = _uiState.update { it.copy(relationship = value, operationFailed = false) }
-    fun updateNotes(value: String) = _uiState.update { it.copy(notes = value, operationFailed = false) }
+    fun retryLoad() {
+        if (contactId == NavigationConstants.NEW_CONTACT_ID || _uiState.value.isLoading) return
+        _uiState.update { it.copy(isLoading = true, loadFailed = false) }
+        loadContact()
+    }
+
+    fun updateName(value: String) = _uiState.update {
+        it.copy(name = value, nameError = false, operationFailed = false, hasUnsavedChanges = true)
+    }
+    fun updatePhone(value: String) = _uiState.update {
+        it.copy(phone = value, operationFailed = false, hasUnsavedChanges = true)
+    }
+    fun updateRelationship(value: String) = _uiState.update {
+        it.copy(relationship = value, operationFailed = false, hasUnsavedChanges = true)
+    }
+    fun updateNotes(value: String) = _uiState.update {
+        it.copy(notes = value, operationFailed = false, hasUnsavedChanges = true)
+    }
 
     fun save() {
         val state = _uiState.value
+        if (state.isSaving || state.isDeleting) return
         if (state.name.isBlank()) {
             _uiState.update { it.copy(nameError = true) }
             return
@@ -79,7 +98,9 @@ class ContactEditorViewModel(
             runCatching {
                 if (state.isNewContact) repository.create(contact) else repository.update(contact)
             }.onSuccess {
-                _uiState.update { it.copy(isSaving = false, isSaved = true) }
+                _uiState.update {
+                    it.copy(isSaving = false, isSaved = true, hasUnsavedChanges = false)
+                }
             }.onFailure {
                 _uiState.update { it.copy(isSaving = false, operationFailed = true) }
             }

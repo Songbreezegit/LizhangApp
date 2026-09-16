@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -51,6 +52,7 @@ class HomeAndContactsViewModelTest {
             }
             add(record(id = 10, amount = 2_500, direction = GiftDirection.GIVEN, date = currentYearDate))
             add(record(id = 11, amount = 99_900, direction = GiftDirection.RECEIVED, date = previousYearDate))
+            add(record(id = 12, amount = 88_800, direction = GiftDirection.RECEIVED, date = dateInYear(year + 1)))
         }
         val viewModel = HomeViewModel(TestContactRepository(emptyList()), TestGiftRepository(records))
         val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
@@ -62,6 +64,14 @@ class HomeAndContactsViewModelTest {
         assertEquals(2_500L, viewModel.uiState.value.given)
         assertEquals(6_500L, viewModel.uiState.value.net)
         assertEquals(8, viewModel.uiState.value.recentRecords.size)
+        assertEquals(listOf(year, year - 1), viewModel.uiState.value.availableYears)
+        assertFalse(viewModel.uiState.value.availableYears.contains(year + 1))
+
+        viewModel.selectYear(year - 1)
+        advanceUntilIdle()
+        assertEquals(year - 1, viewModel.uiState.value.year)
+        assertEquals(99_900L, viewModel.uiState.value.received)
+        assertEquals(0L, viewModel.uiState.value.given)
         collection.cancel()
     }
 
@@ -78,6 +88,27 @@ class HomeAndContactsViewModelTest {
         viewModel.updateQuery("李")
         advanceUntilIdle()
         assertEquals(listOf("李四"), viewModel.uiState.value.contacts.map { it.contact.name })
+        collection.cancel()
+    }
+
+    @Test
+    fun `联系人最近往来按最后礼金日期倒序而不是姓名顺序`() = runTest(dispatcher) {
+        val summaries = listOf(
+            summary(1, "赵阿姨", lastInteractionTime = 100),
+            summary(2, "陈叔叔", lastInteractionTime = 300),
+            summary(3, "王同学", lastInteractionTime = 200),
+        )
+        val viewModel = ContactsViewModel(TestContactRepository(summaries))
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("陈叔叔", "王同学", "赵阿姨"),
+            viewModel.uiState.value.contacts.map { it.contact.name },
+        )
         collection.cancel()
     }
 
@@ -109,11 +140,30 @@ class HomeAndContactsViewModelTest {
         advanceUntilIdle()
         assertEquals(true, viewModel.uiState.value.remindersEnabled)
 
-        viewModel.updateReminderSchedule(1, 8, 30)
+        viewModel.updateReminderSchedule(3, 8, 30)
         advanceUntilIdle()
-        assertEquals(1, viewModel.uiState.value.reminderAdvanceDays)
+        assertEquals(3, viewModel.uiState.value.reminderAdvanceDays)
         assertEquals(8, viewModel.uiState.value.reminderHour)
         assertEquals(30, viewModel.uiState.value.reminderMinute)
+        collection.cancel()
+    }
+
+    @Test
+    fun `联系人不存在时详情页进入安全空状态`() = runTest(dispatcher) {
+        val viewModel = ContactDetailViewModel(
+            404,
+            TestContactRepository(emptyList()),
+            TestGiftRepository(emptyList()),
+        )
+        val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect { }
+        }
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertTrue(viewModel.uiState.value.notFound)
+        assertFalse(viewModel.uiState.value.error)
         collection.cancel()
     }
 
@@ -127,7 +177,16 @@ class HomeAndContactsViewModelTest {
         "联系人",
     )
 
-    private fun summary(id: Long, name: String) = ContactLedgerSummary(Contact(id = id, name = name), 0, 0)
+    private fun summary(
+        id: Long,
+        name: String,
+        lastInteractionTime: Long = 0,
+    ) = ContactLedgerSummary(
+        contact = Contact(id = id, name = name),
+        receivedInCents = 0,
+        givenInCents = 0,
+        lastInteractionTime = lastInteractionTime,
+    )
 }
 
 private class TestReminderRepository : ReminderRepository {

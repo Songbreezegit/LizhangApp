@@ -2,7 +2,6 @@ package com.yangsong.lizhang.ui.screen
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,9 +30,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,11 +47,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
+import com.yangsong.lizhang.domain.backup.BackupEncryptionCodec
+import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
@@ -67,13 +73,20 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onFontGuide: () -> Unit,
+    onAbout: () -> Unit,
+    onPrivacy: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var documentToSave by remember { mutableStateOf<ExportDocument?>(null) }
     var showBackupActions by remember { mutableStateOf(false) }
+    var showCreateBackupPassword by remember { mutableStateOf(false) }
+    var showThemeOptions by remember { mutableStateOf(false) }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
         val document = documentToSave?.takeIf { it.format == format }
@@ -159,13 +172,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         }
     }
 
-    val unavailable = stringResource(R.string.settings_unavailable)
     SettingsContent(
         state = state,
         onCsvExport = viewModel::prepareCsvExport,
         onExcelExport = viewModel::prepareExcelExport,
         onBackup = { showBackupActions = true },
-        onUnavailable = { scope.launch { snackbar.showSnackbar(unavailable) } },
+        onThemeModeChange = viewModel::setThemeMode,
+        onThemeOptions = { showThemeOptions = true },
+        onFontGuide = onFontGuide,
+        onAbout = onAbout,
+        onPrivacy = onPrivacy,
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
 
@@ -173,26 +189,82 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         AlertDialog(
             onDismissRequest = { showBackupActions = false },
             title = { Text(stringResource(R.string.settings_backup)) },
-            text = { Text(stringResource(R.string.settings_backup_description)) },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.settings_backup_description))
+                    Button(
+                        onClick = {
+                            showBackupActions = false
+                            showCreateBackupPassword = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_create_encrypted))
+                    }
+                    TextButton(
+                        onClick = {
+                            showBackupActions = false
+                            viewModel.prepareBackupExport()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_create_plain))
+                    }
                     TextButton(
                         onClick = {
                             showBackupActions = false
                             openBackup.launch(arrayOf(BackupArchiveCodec.MIME_TYPE))
                         },
-                    ) { Text(stringResource(R.string.settings_backup_restore_action)) }
-                    Button(
-                        onClick = {
-                            showBackupActions = false
-                            viewModel.prepareBackupExport()
-                        },
-                    ) { Text(stringResource(R.string.settings_backup_create_action)) }
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_backup_restore_action))
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showBackupActions = false }) {
                     Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (showCreateBackupPassword) {
+        CreateEncryptedBackupDialog(
+            isPreparing = state.isPreparingBackup,
+            onConfirm = { password ->
+                showCreateBackupPassword = false
+                viewModel.prepareBackupExport(password)
+            },
+            onDismiss = { showCreateBackupPassword = false },
+        )
+    }
+
+    state.encryptedBackupAwaitingPassword?.let { encryptedBytes ->
+        RestoreBackupPasswordDialog(
+            fileIdentity = encryptedBytes,
+            isReading = state.isReadingBackup,
+            isPasswordInvalid = state.isBackupPasswordInvalid,
+            onConfirm = viewModel::unlockEncryptedBackup,
+            onDismiss = viewModel::cancelBackupPassword,
+        )
+    }
+
+    if (showThemeOptions) {
+        AlertDialog(
+            onDismissRequest = { showThemeOptions = false },
+            title = { Text(stringResource(R.string.settings_theme)) },
+            text = {
+                Column {
+                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, viewModel::setThemeMode)
+                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, viewModel::setThemeMode)
+                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, viewModel::setThemeMode)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeOptions = false }) {
+                    Text(stringResource(R.string.action_done))
                 }
             },
         )
@@ -209,6 +281,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         DateFormatter.format(pending.summary.createdTime, "yyyy-MM-dd HH:mm"),
                         pending.summary.contactCount,
                         pending.summary.giftRecordCount,
+                        pending.summary.sourceDatabaseVersion,
                     ),
                 )
             },
@@ -231,12 +304,148 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 }
 
 @Composable
+fun CreateEncryptedBackupDialog(
+    isPreparing: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var attempted by remember { mutableStateOf(false) }
+    val passwordTooShort = attempted && password.length < BackupEncryptionCodec.MIN_PASSWORD_LENGTH
+    val confirmationMismatch = attempted && password != confirmation
+
+    AlertDialog(
+        onDismissRequest = { if (!isPreparing) onDismiss() },
+        title = { Text(stringResource(R.string.settings_backup_password_create_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.settings_backup_password_create_description))
+                PasswordField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.settings_backup_password),
+                    isError = passwordTooShort,
+                    supportingText = if (passwordTooShort) {
+                        stringResource(
+                            R.string.settings_backup_password_too_short,
+                            BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
+                        )
+                    } else null,
+                )
+                PasswordField(
+                    value = confirmation,
+                    onValueChange = { confirmation = it },
+                    label = stringResource(R.string.settings_backup_password_confirm),
+                    isError = confirmationMismatch,
+                    supportingText = if (confirmationMismatch) {
+                        stringResource(R.string.settings_backup_password_mismatch)
+                    } else null,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    attempted = true
+                    if (password.length >= BackupEncryptionCodec.MIN_PASSWORD_LENGTH &&
+                        password == confirmation
+                    ) {
+                        onConfirm(password)
+                    }
+                },
+                enabled = !isPreparing,
+            ) {
+                Text(stringResource(R.string.settings_backup_create_encrypted))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isPreparing) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+fun RestoreBackupPasswordDialog(
+    fileIdentity: ByteArray,
+    isReading: Boolean,
+    isPasswordInvalid: Boolean,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var password by remember(fileIdentity) { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = { if (!isReading) onDismiss() },
+        title = { Text(stringResource(R.string.settings_backup_password_restore_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.settings_backup_password_restore_description))
+                PasswordField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.settings_backup_password),
+                    isError = isPasswordInvalid,
+                    supportingText = if (isPasswordInvalid) {
+                        stringResource(R.string.settings_backup_password_invalid)
+                    } else null,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (password.isNotEmpty()) onConfirm(password) },
+                enabled = password.isNotEmpty() && !isReading,
+            ) {
+                if (isReading) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isReading) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    isError: Boolean,
+    supportingText: String?,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        isError = isError,
+        supportingText = supportingText?.let { message -> { Text(message) } },
+        shape = RoundedCornerShape(18.dp),
+    )
+}
+
+@Composable
 fun SettingsContent(
     state: SettingsUiState,
     onCsvExport: () -> Unit,
     onExcelExport: () -> Unit,
     onBackup: () -> Unit,
-    onUnavailable: () -> Unit,
+    onThemeModeChange: (AppThemeMode) -> Unit,
+    onThemeOptions: () -> Unit = {},
+    onFontGuide: () -> Unit = {},
+    onAbout: () -> Unit = {},
+    onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
     Scaffold(
@@ -281,24 +490,79 @@ fun SettingsContent(
             }
             item {
                 SettingsGroup(stringResource(R.string.settings_display)) {
-                    SettingsRow(Icons.Outlined.Palette, stringResource(R.string.settings_theme), stringResource(R.string.settings_follow_system), onClick = onUnavailable)
+                    val themeDescription = when (state.themeMode) {
+                        AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+                        AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+                        AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+                    }
+                    SettingsRow(
+                        Icons.Outlined.Palette,
+                        stringResource(R.string.settings_theme),
+                        themeDescription,
+                        onClick = onThemeOptions,
+                    )
                     SettingsRow(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
-                        stringResource(R.string.settings_follow_system),
-                        onClick = onUnavailable,
-                        trailing = { Switch(isSystemInDarkTheme(), null) },
+                        themeDescription,
+                        onClick = {
+                            onThemeModeChange(
+                                if (state.themeMode == AppThemeMode.DARK) AppThemeMode.LIGHT else AppThemeMode.DARK,
+                            )
+                        },
+                        trailing = {
+                            Switch(
+                                checked = state.themeMode == AppThemeMode.DARK,
+                                onCheckedChange = {
+                                    onThemeModeChange(if (it) AppThemeMode.DARK else AppThemeMode.LIGHT)
+                                },
+                            )
+                        },
                     )
-                    SettingsRow(Icons.Outlined.TextFields, stringResource(R.string.settings_font), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.TextFields,
+                        stringResource(R.string.settings_font),
+                        stringResource(R.string.settings_font_description),
+                        onClick = onFontGuide,
+                    )
                 }
             }
             item {
                 SettingsGroup(stringResource(R.string.settings_about_group)) {
-                    SettingsRow(Icons.Outlined.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version), onClick = onUnavailable)
-                    SettingsRow(Icons.Outlined.PrivacyTip, stringResource(R.string.settings_privacy), onClick = onUnavailable)
+                    SettingsRow(
+                        Icons.Outlined.Info,
+                        stringResource(R.string.settings_about),
+                        stringResource(R.string.settings_version),
+                        onClick = onAbout,
+                    )
+                    SettingsRow(
+                        Icons.Outlined.PrivacyTip,
+                        stringResource(R.string.settings_privacy),
+                        stringResource(R.string.settings_privacy_description),
+                        onClick = onPrivacy,
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeModeOption(
+    mode: AppThemeMode,
+    selected: AppThemeMode,
+    onSelect: (AppThemeMode) -> Unit,
+) {
+    val label = when (mode) {
+        AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+        AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+        AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    ) {
+        RadioButton(selected = selected == mode, onClick = { onSelect(mode) })
+        Text(label, Modifier.padding(top = 12.dp))
     }
 }
 
@@ -310,7 +574,7 @@ private fun InputStream.readBackupBytes(): ByteArray {
         val read = read(buffer)
         if (read < 0) break
         total += read
-        require(total <= BackupArchiveCodec.MAX_FILE_BYTES) { "备份文件超过大小限制" }
+        require(total <= BackupEncryptionCodec.MAX_DOCUMENT_BYTES) { "备份文件超过大小限制" }
         output.write(buffer, 0, read)
     }
     return output.toByteArray()

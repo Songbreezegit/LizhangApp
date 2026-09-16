@@ -14,20 +14,23 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.yangsong.lizhang.LiZhangApplication
-import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.reminder.PlannedReminder
 import com.yangsong.lizhang.domain.reminder.ReminderPlanner
 import com.yangsong.lizhang.domain.reminder.ReminderSettings
+import com.yangsong.lizhang.domain.reminder.isSupportedReminderAdvanceDays
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -39,19 +42,16 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     private val _settings = MutableStateFlow(
         ReminderSettings(
             enabled = preferences.getBoolean(KEY_ENABLED, false),
-            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0),
+            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0)
+                .takeIf(::isSupportedReminderAdvanceDays) ?: 0,
             hour = preferences.getInt(KEY_HOUR, 9),
             minute = preferences.getInt(KEY_MINUTE, 0),
         ),
     )
     override val settings = _settings
 
-    init {
-        createNotificationChannel()
-    }
-
     override fun setEnabled(enabled: Boolean) {
-        preferences.edit().putBoolean(KEY_ENABLED, enabled).apply()
+        preferences.edit { putBoolean(KEY_ENABLED, enabled) }
         _settings.value = _settings.value.copy(enabled = enabled)
         if (!enabled) cancelScheduled()
     }
@@ -62,11 +62,11 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             hour = hour,
             minute = minute,
         )
-        preferences.edit()
-            .putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
-            .putInt(KEY_HOUR, updated.hour)
-            .putInt(KEY_MINUTE, updated.minute)
-            .apply()
+        preferences.edit {
+            putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
+            putInt(KEY_HOUR, updated.hour)
+            putInt(KEY_MINUTE, updated.minute)
+        }
         _settings.value = updated
     }
 
@@ -74,6 +74,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
         cancelScheduled()
         val currentSettings = settings.value
         if (!currentSettings.enabled) return
+        createNotificationChannel()
         val tokens = ReminderPlanner.plan(
             records = records,
             lookaheadDays = 366,
@@ -88,7 +89,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             )
             reminder.token()
         }.toSet()
-        preferences.edit().putStringSet(KEY_SCHEDULED, tokens).apply()
+        preferences.edit { putStringSet(KEY_SCHEDULED, tokens) }
     }
 
     private fun cancelScheduled() {
@@ -99,7 +100,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             val reminder = PlannedReminder(recordId, "", EventType.OTHER, triggerAt)
             alarmManager.cancel(reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT))
         }
-        preferences.edit().remove(KEY_SCHEDULED).apply()
+        preferences.edit { remove(KEY_SCHEDULED) }
     }
 
     private fun PlannedReminder.pendingIntent(extraFlags: Int): PendingIntent {
@@ -108,6 +109,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             putExtra(EXTRA_RECORD_ID, recordId)
             putExtra(EXTRA_CONTACT_NAME, contactName)
             putExtra(EXTRA_EVENT_TYPE, eventType.name)
+            putExtra(EXTRA_ADVANCE_DAYS, advanceDays)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -132,6 +134,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     private fun PlannedReminder.token() = "$recordId|$triggerAt"
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ReminderCoordinator(
     private val giftRecordRepository: GiftRecordRepository,
     private val reminderRepository: ReminderRepository,
@@ -141,15 +144,16 @@ class ReminderCoordinator(
 
     fun start() {
         if (synchronizationJob != null) return
-        synchronizationJob = combine(
-            giftRecordRepository.observeAll(),
-            reminderRepository.settings,
-        ) { records, _ -> records }
+        synchronizationJob = reminderRepository.settings
+            .flatMapLatest { settings ->
+                if (settings.enabled) giftRecordRepository.observeAll() else emptyFlow()
+            }
             .onEach(reminderRepository::synchronize)
             .launchIn(scope)
     }
 
     fun refresh() {
+        if (!reminderRepository.settings.value.enabled) return
         scope.launch {
             reminderRepository.synchronize(giftRecordRepository.observeAll().first())
         }
@@ -170,18 +174,30 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val eventType = runCatching {
             enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
         }.getOrDefault(EventType.OTHER)
+        val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
         val openApp = PendingIntent.getActivity(
             context,
-            0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            },
+            recordId.notificationId(),
+            ReminderNavigationContract.createOpenRecordIntent(context, recordId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_gift)
             .setContentTitle(context.getString(R.string.reminder_notification_title, contactName))
-            .setContentText(context.getString(R.string.reminder_notification_text, context.eventTypeName(eventType)))
+            .setContentText(
+                if (advanceDays == 0) {
+                    context.getString(
+                        R.string.reminder_notification_text,
+                        context.eventTypeName(eventType),
+                    )
+                } else {
+                    context.getString(
+                        R.string.reminder_notification_text_advance,
+                        context.eventTypeName(eventType),
+                        advanceDays,
+                    )
+                },
+            )
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -194,6 +210,7 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action !in rescheduleActions) return
         val application = context.applicationContext as? LiZhangApplication ?: return
         application.appContainer.startReminderCoordination()
         application.appContainer.refreshReminderSchedules()
@@ -230,3 +247,12 @@ private const val CHANNEL_ID = "gift_date_reminders"
 private const val EXTRA_RECORD_ID = "record_id"
 private const val EXTRA_CONTACT_NAME = "contact_name"
 private const val EXTRA_EVENT_TYPE = "event_type"
+private const val EXTRA_ADVANCE_DAYS = "advance_days"
+
+private val rescheduleActions = setOf(
+    Intent.ACTION_BOOT_COMPLETED,
+    Intent.ACTION_MY_PACKAGE_REPLACED,
+    Intent.ACTION_TIME_CHANGED,
+    Intent.ACTION_TIMEZONE_CHANGED,
+    Intent.ACTION_DATE_CHANGED,
+)

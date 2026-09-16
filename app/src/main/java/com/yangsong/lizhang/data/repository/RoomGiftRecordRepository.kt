@@ -6,6 +6,7 @@ import com.yangsong.lizhang.data.mapper.toEntity
 import com.yangsong.lizhang.domain.model.GiftRecord
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.model.GiftDirection
+import com.yangsong.lizhang.domain.model.YearlyGiftSummary
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,6 +17,15 @@ class RoomGiftRecordRepository(private val giftRecordDao: GiftRecordDao) : GiftR
 
     override fun observeAll(): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeYearlySummaries(): Flow<List<YearlyGiftSummary>> =
+        giftRecordDao.observeYearlySummaries().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeBetween(
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Flow<List<GiftRecordWithContact>> =
+        giftRecordDao.observeBetween(startInclusive, endExclusive).map { rows -> rows.map { it.toDomain() } }
 
     override fun observeByDirection(direction: GiftDirection): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeByDirection(direction).map { rows -> rows.map { it.toDomain() } }

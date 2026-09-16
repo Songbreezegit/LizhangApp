@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 enum class GiftRecordValidationError {
     CONTACT_REQUIRED,
     AMOUNT_INVALID,
+    DATE_IN_FUTURE,
 }
 
 data class GiftEditorUiState(
@@ -33,6 +34,7 @@ data class GiftEditorUiState(
     val operationFailed: Boolean = false,
     val isSaved: Boolean = false,
     val isSaving: Boolean = false,
+    val hasUnsavedChanges: Boolean = false,
     val contacts: List<Contact> = emptyList(),
     val isCreatingContact: Boolean = false,
 ) {
@@ -43,9 +45,15 @@ class GiftEditorViewModel(
     private val repository: GiftRecordRepository,
     private val contactRepository: ContactRepository,
     private val recordId: Long = NavigationConstants.NEW_RECORD_ID,
+    initialContactId: Long? = null,
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(
-        GiftEditorUiState(recordId = recordId, isLoading = recordId != NavigationConstants.NEW_RECORD_ID),
+        GiftEditorUiState(
+            recordId = recordId,
+            contactId = initialContactId.takeIf { recordId == NavigationConstants.NEW_RECORD_ID },
+            isLoading = recordId != NavigationConstants.NEW_RECORD_ID,
+        ),
     )
     val uiState: StateFlow<GiftEditorUiState> = mutableUiState.asStateFlow()
 
@@ -69,9 +77,20 @@ class GiftEditorViewModel(
             .onFailure { mutableUiState.update { it.copy(isLoading = false, loadFailed = true) } }
     }
 
+    fun retryLoad() {
+        if (recordId == NavigationConstants.NEW_RECORD_ID || mutableUiState.value.isLoading) return
+        mutableUiState.update { it.copy(isLoading = true, loadFailed = false) }
+        loadRecord()
+    }
+
     fun update(transform: (GiftEditorUiState) -> GiftEditorUiState) {
         mutableUiState.update {
-            transform(it).copy(validationError = null, isSaved = false, operationFailed = false)
+            transform(it).copy(
+                validationError = null,
+                isSaved = false,
+                operationFailed = false,
+                hasUnsavedChanges = true,
+            )
         }
     }
 
@@ -89,7 +108,12 @@ class GiftEditorViewModel(
                 )
             }.onSuccess { contactId ->
                 mutableUiState.update {
-                    it.copy(contactId = contactId, isCreatingContact = false, validationError = null)
+                    it.copy(
+                        contactId = contactId,
+                        isCreatingContact = false,
+                        validationError = null,
+                        hasUnsavedChanges = true,
+                    )
                 }
             }.onFailure {
                 mutableUiState.update { it.copy(isCreatingContact = false, operationFailed = true) }
@@ -104,6 +128,8 @@ class GiftEditorViewModel(
         when {
             contactId == null -> mutableUiState.update { it.copy(validationError = GiftRecordValidationError.CONTACT_REQUIRED) }
             amountInCents == null || amountInCents <= 0 -> mutableUiState.update { it.copy(validationError = GiftRecordValidationError.AMOUNT_INVALID) }
+            state.eventDate > now().startOfDay() ->
+                mutableUiState.update { it.copy(validationError = GiftRecordValidationError.DATE_IN_FUTURE) }
             state.isSaving -> Unit
             else -> viewModelScope.launch {
                 mutableUiState.update { it.copy(isSaving = true, operationFailed = false) }
@@ -121,7 +147,13 @@ class GiftEditorViewModel(
                     if (record.id == NavigationConstants.NEW_RECORD_ID) repository.create(record)
                     else repository.update(record)
                 }.onSuccess {
-                    mutableUiState.update { it.copy(isSaved = true, isSaving = false) }
+                    mutableUiState.update {
+                        it.copy(
+                            isSaved = true,
+                            isSaving = false,
+                            hasUnsavedChanges = false,
+                        )
+                    }
                 }.onFailure {
                     mutableUiState.update { it.copy(isSaving = false, operationFailed = true) }
                 }
@@ -140,6 +172,7 @@ class GiftEditorViewModel(
         createdTime = record.createdTime,
         isLoading = false,
         loadFailed = false,
+        hasUnsavedChanges = false,
     )
 
     companion object {
@@ -147,17 +180,21 @@ class GiftEditorViewModel(
             repository: GiftRecordRepository,
             contactRepository: ContactRepository,
             recordId: Long = NavigationConstants.NEW_RECORD_ID,
+            initialContactId: Long? = null,
         ) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                GiftEditorViewModel(repository, contactRepository, recordId) as T
+                GiftEditorViewModel(repository, contactRepository, recordId, initialContactId) as T
         }
     }
 }
 
-private fun Calendar.startOfDay(): Long = apply {
+private fun Long.startOfDay(): Long = Calendar.getInstance().apply {
+    timeInMillis = this@startOfDay
     set(Calendar.HOUR_OF_DAY, 0)
     set(Calendar.MINUTE, 0)
     set(Calendar.SECOND, 0)
     set(Calendar.MILLISECOND, 0)
 }.timeInMillis
+
+private fun Calendar.startOfDay(): Long = timeInMillis.startOfDay()

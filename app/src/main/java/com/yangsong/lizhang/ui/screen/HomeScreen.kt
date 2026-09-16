@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,18 +30,22 @@ import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(state, onNavigate, onRecordClick)
+    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit = {}) {
-    var showEntryOptions by remember { mutableStateOf(false) }
+fun HomeContent(
+    state: HomeUiState,
+    onNavigate: (AppDestination) -> Unit,
+    onRecordClick: (Long) -> Unit = {},
+    onYearSelected: (Int) -> Unit = {},
+    onRetry: () -> Unit = {},
+) {
     Scaffold(
         floatingActionButton = {
             Box(Modifier.padding(bottom=96.dp)) {
                 FloatingActionButton(
-                    onClick = { showEntryOptions = true },
+                    onClick = { onNavigate(AppDestination.AddGift) },
                     containerColor = CoralPrimary,
                     contentColor = Color.White,
                     shape = CircleShape,
@@ -50,14 +55,14 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.error -> ErrorState { }
+            state.error -> ErrorState(onRetry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
-                item { HeroSummaryCard(state) }
+                item { HeroSummaryCard(state, onYearSelected) }
                 item {
                     QuickActions(
                         onReceived = { onNavigate(AppDestination.ReceivedRecords) },
@@ -75,7 +80,7 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
                                     stringResource(R.string.home_empty_title),
                                     stringResource(R.string.home_empty_desc),
                                     stringResource(R.string.action_add_gift),
-                                    { showEntryOptions = true },
+                                    { onNavigate(AppDestination.AddGift) },
                                     R.drawable.page_add_cat,
                                 )
                             } else {
@@ -87,30 +92,6 @@ fun HomeContent(state: HomeUiState, onNavigate: (AppDestination) -> Unit, onReco
                         }
                     }
                 }
-            }
-        }
-    }
-    if (showEntryOptions) {
-        ModalBottomSheet(onDismissRequest = { showEntryOptions = false }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.entry_choose_title), style = MaterialTheme.typography.titleLarge)
-                Text(stringResource(R.string.entry_choose_desc), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                GiftEntryOption(
-                    stringResource(R.string.entry_manual_title),
-                    stringResource(R.string.entry_manual_desc),
-                    Icons.Outlined.EditNote,
-                    CoralContainer,
-                    CoralStrong,
-                    { showEntryOptions = false; onNavigate(AppDestination.ManualGift) },
-                )
-                GiftEntryOption(
-                    stringResource(R.string.entry_ocr_title),
-                    stringResource(R.string.entry_ocr_desc),
-                    Icons.Outlined.PhotoCamera,
-                    MintContainer,
-                    MintPrimary,
-                    { showEntryOptions = false; onNavigate(AppDestination.OcrImport) },
-                )
             }
         }
     }
@@ -131,23 +112,51 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 }
 
 @Composable
-private fun HeroSummaryCard(state: HomeUiState) {
-    Card(Modifier.fillMaxWidth().height(220.dp), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = BlushSurface), elevation = CardDefaults.cardElevation(2.dp)) {
+private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
+    val largeText = LocalDensity.current.fontScale >= 1.2f
+    var yearMenuExpanded by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth().height(if (largeText) 254.dp else 220.dp), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = BlushSurface), elevation = CardDefaults.cardElevation(2.dp)) {
         Box(Modifier.fillMaxSize()) {
             Image(painterResource(R.drawable.home_hero_cat), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Column(Modifier.fillMaxHeight().width(225.dp).padding(18.dp)) {
-                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .9f)) {
-                    Row(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
-                        Icon(Icons.Outlined.KeyboardArrowDown, null)
+                Box {
+                    Surface(
+                        onClick = { yearMenuExpanded = true },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = .9f),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
+                            Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year))
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = yearMenuExpanded,
+                        onDismissRequest = { yearMenuExpanded = false },
+                    ) {
+                        state.availableYears.forEach { year ->
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.year_format, year)) },
+                                onClick = {
+                                    yearMenuExpanded = false
+                                    onYearSelected(year)
+                                },
+                                leadingIcon = if (year == state.year) {
+                                    { Icon(Icons.Outlined.Check, null) }
+                                } else null,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(CurrencyFormatter.formatCents(state.received), color = CoralStrong, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.home_year_received), color = InkOnIllustration)
+                Text(CurrencyFormatter.formatCents(state.received), color = CoralOnContainer, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                Text("${stringResource(R.string.home_year_given)}  ${CurrencyFormatter.formatCents(state.given)}", color = MintPrimary, fontWeight = FontWeight.SemiBold)
-                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text("${stringResource(R.string.home_year_given)}  ${CurrencyFormatter.formatCents(state.given)}", color = MintOnContainer, fontWeight = FontWeight.SemiBold)
+                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = InkOnIllustration, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -157,10 +166,10 @@ private fun HeroSummaryCard(state: HomeUiState) {
 private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar: () -> Unit, onStats: () -> Unit) {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralStrong, onReceived)
-            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintPrimary, onGiven)
-            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotPrimary, onCalendar)
-            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, LavenderContainer, LavenderPrimary, onStats)
+            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralOnContainer, onReceived)
+            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintOnContainer, onGiven)
+            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotOnContainer, onCalendar)
+            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, LavenderContainer, LavenderOnContainer, onStats)
         }
     }
 }

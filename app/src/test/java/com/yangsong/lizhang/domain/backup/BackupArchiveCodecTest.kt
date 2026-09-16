@@ -4,18 +4,44 @@ import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.security.MessageDigest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BackupArchiveCodecTest {
     @Test
     fun `备份往返保留联系人与礼金记录全部字段`() {
-        val archive = sampleArchive()
+        val archive = sampleArchive().copy(sourceDatabaseVersion = 3)
 
         val restored = BackupArchiveCodec.decode(BackupArchiveCodec.encode(archive))
 
         assertEquals(archive, restored)
+        assertEquals(2, BackupArchiveCodec.FORMAT_VERSION)
+    }
+
+    @Test
+    fun `旧版格式一备份仍可读取并标记来源数据库版本一`() {
+        val archive = sampleArchive()
+
+        val restored = BackupArchiveCodec.decode(encodeVersionOneLayout(archive, version = 1))
+
+        assertEquals(archive, restored)
+        assertEquals(1, restored.sourceDatabaseVersion)
+    }
+
+    @Test
+    fun `高于当前格式的备份会明确拒绝`() {
+        val futureBytes = encodeVersionOneLayout(sampleArchive(), version = 3)
+
+        val error = assertThrows(InvalidBackupException::class.java) {
+            BackupArchiveCodec.decode(futureBytes)
+        }
+
+        assertTrue(error.message.orEmpty().contains("暂不支持此备份版本：3"))
     }
 
     @Test
@@ -36,6 +62,44 @@ class BackupArchiveCodecTest {
 
         assertThrows(IllegalArgumentException::class.java) {
             BackupArchiveCodec.encode(invalid)
+        }
+    }
+
+    @Test
+    fun `密码加密备份可使用相同密码完整恢复`() {
+        val plainBytes = BackupArchiveCodec.encode(sampleArchive())
+
+        val encrypted = BackupEncryptionCodec.encrypt(plainBytes, "家庭账本密码123")
+        val restored = BackupArchiveCodec.decode(
+            BackupEncryptionCodec.decrypt(encrypted, "家庭账本密码123"),
+        )
+
+        assertTrue(BackupEncryptionCodec.isEncrypted(encrypted))
+        assertEquals(sampleArchive(), restored)
+    }
+
+    @Test
+    fun `加密备份使用错误密码时拒绝解密`() {
+        val encrypted = BackupEncryptionCodec.encrypt(
+            BackupArchiveCodec.encode(sampleArchive()),
+            "正确密码1234",
+        )
+
+        assertThrows(InvalidBackupPasswordException::class.java) {
+            BackupEncryptionCodec.decrypt(encrypted, "错误密码4567")
+        }
+    }
+
+    @Test
+    fun `加密备份内容被篡改时拒绝解密`() {
+        val encrypted = BackupEncryptionCodec.encrypt(
+            BackupArchiveCodec.encode(sampleArchive()),
+            "正确密码1234",
+        )
+        encrypted[encrypted.lastIndex] = (encrypted.last().toInt() xor 1).toByte()
+
+        assertThrows(InvalidBackupPasswordException::class.java) {
+            BackupEncryptionCodec.decrypt(encrypted, "正确密码1234")
         }
     }
 
@@ -64,4 +128,54 @@ class BackupArchiveCodecTest {
             ),
         ),
     )
+
+    /** 独立复刻 v1 二进制布局，避免兼容测试依赖当前编码器。 */
+    private fun encodeVersionOneLayout(archive: BackupArchive, version: Int): ByteArray {
+        val body = ByteArrayOutputStream().use { buffer ->
+            DataOutputStream(buffer).use { output ->
+                output.writeInt(version)
+                output.writeLong(archive.createdTime)
+                output.writeInt(archive.contacts.size)
+                archive.contacts.forEach { contact ->
+                    output.writeLong(contact.id)
+                    output.writeUtf8(contact.name)
+                    output.writeNullableUtf8(contact.phone)
+                    output.writeNullableUtf8(contact.relationship)
+                    output.writeNullableUtf8(contact.notes)
+                    output.writeLong(contact.createdTime)
+                }
+                output.writeInt(archive.giftRecords.size)
+                archive.giftRecords.forEach { record ->
+                    output.writeLong(record.id)
+                    output.writeLong(record.contactId)
+                    output.writeLong(record.amountInCents)
+                    output.writeUtf8(record.eventType.name)
+                    output.writeLong(record.eventDate)
+                    output.writeUtf8(record.direction.name)
+                    output.writeNullableUtf8(record.notes)
+                    output.writeLong(record.createdTime)
+                }
+            }
+            buffer.toByteArray()
+        }
+        return ByteArrayOutputStream().use { buffer ->
+            DataOutputStream(buffer).use { output ->
+                output.write("LIZHANG-BACKUP\n".toByteArray(Charsets.US_ASCII))
+                output.writeInt(body.size)
+                output.write(body)
+                output.write(MessageDigest.getInstance("SHA-256").digest(body))
+            }
+            buffer.toByteArray()
+        }
+    }
+
+    private fun DataOutputStream.writeUtf8(value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        writeInt(bytes.size)
+        write(bytes)
+    }
+
+    private fun DataOutputStream.writeNullableUtf8(value: String?) {
+        if (value == null) writeInt(-1) else writeUtf8(value)
+    }
 }

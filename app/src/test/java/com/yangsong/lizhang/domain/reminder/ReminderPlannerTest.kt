@@ -69,6 +69,7 @@ class ReminderPlannerTest {
         )
 
         assertEquals(time(2026, 7, 24, 8, 30), planned.single().triggerAt)
+        assertEquals(1, planned.single().advanceDays)
     }
 
     @Test
@@ -84,6 +85,48 @@ class ReminderPlannerTest {
         )
 
         assertEquals(time(2026, 12, 31, 9), planned.single().triggerAt)
+    }
+
+    @Test
+    fun `提前三天提醒可以跨月计算`() {
+        val now = time(2026, 7, 20, 10)
+        val record = item(7, time(2024, 8, 2, 0))
+
+        val planned = ReminderPlanner.plan(
+            listOf(record),
+            now,
+            timeZone = utc,
+            advanceDays = 3,
+            reminderHour = 8,
+        )
+
+        assertEquals(time(2026, 7, 30, 8), planned.single().triggerAt)
+        assertEquals(3, planned.single().advanceDays)
+    }
+
+    @Test
+    fun `提前七天提醒可以跨年计算`() {
+        val now = time(2026, 12, 1, 10)
+        val record = item(8, time(2024, 1, 3, 0))
+
+        val planned = ReminderPlanner.plan(
+            listOf(record),
+            now,
+            timeZone = utc,
+            advanceDays = 7,
+        )
+
+        assertEquals(time(2026, 12, 27, 9), planned.single().triggerAt)
+        assertEquals(7, planned.single().advanceDays)
+    }
+
+    @Test
+    fun `不支持的提前天数会被拒绝`() {
+        val result = runCatching {
+            ReminderSettings(advanceDays = 2)
+        }
+
+        assertTrue(result.isFailure)
     }
 
     private fun item(id: Long, eventDate: Long) = GiftRecordWithContact(

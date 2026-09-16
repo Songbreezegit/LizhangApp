@@ -43,7 +43,7 @@ fun GiftRecordDetailScreen(
     ) { padding ->
         when {
             state.isLoading -> LoadingState()
-            state.loadFailed -> ErrorState { }
+            state.loadFailed -> ErrorState(viewModel::retry)
             else -> state.item?.let { item ->
                 val record = item.record
                 Column(

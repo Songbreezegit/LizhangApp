@@ -10,7 +10,15 @@ import com.yangsong.lizhang.domain.reminder.ReminderPlanner
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import java.util.Calendar
 import java.util.TimeZone
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 
 data class DirectionRecordsUiState(
     val records: List<GiftRecordWithContact> = emptyList(),
@@ -22,10 +30,18 @@ class DirectionRecordsViewModel(
     direction: GiftDirection,
     repository: GiftRecordRepository,
 ) : ViewModel() {
-    val uiState: StateFlow<DirectionRecordsUiState> = repository.observeByDirection(direction)
-        .map { DirectionRecordsUiState(records = it, isLoading = false) }
-        .catch { emit(DirectionRecordsUiState(isLoading = false, error = true)) }
+    private val retrySignal = RetrySignal()
+
+    val uiState: StateFlow<DirectionRecordsUiState> = retrySignal.flow(
+        source = {
+            repository.observeByDirection(direction)
+                .map { DirectionRecordsUiState(records = it, isLoading = false) }
+        },
+        onError = { DirectionRecordsUiState(isLoading = false, error = true) },
+    )
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DirectionRecordsUiState())
+
+    fun retry() = retrySignal.retry()
 
     companion object {
         fun factory(direction: GiftDirection, repository: GiftRecordRepository) = object : ViewModelProvider.Factory {
@@ -50,17 +66,26 @@ data class CalendarUiState(
 
 private data class CalendarSelection(val monthStart: Long, val selectedDay: Int)
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
     private val selection = MutableStateFlow(initialSelection())
+    private val retrySignal = RetrySignal()
 
-    val uiState: StateFlow<CalendarUiState> = combine(repository.observeAll(), selection) { records, selected ->
-        buildCalendarState(records, selected)
-    }.catch {
-        emit(CalendarUiState(isLoading = false, error = true))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalendarUiState())
+    val uiState: StateFlow<CalendarUiState> = retrySignal.flow(
+        source = {
+            selection.flatMapLatest { selected ->
+                repository.observeBetween(selected.monthStart, nextMonthStart(selected.monthStart))
+                    .map { records -> records to selected }
+            }.map { (records, selected) ->
+                buildCalendarState(records, selected)
+            }
+        },
+        onError = { CalendarUiState(isLoading = false, error = true) },
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalendarUiState())
 
     fun previousMonth() = shiftMonth(-1)
     fun nextMonth() = shiftMonth(1)
+    fun retry() = retrySignal.retry()
 
     fun selectDay(day: Int) {
         val days = monthCalendar(selection.value.monthStart).getActualMaximum(Calendar.DAY_OF_MONTH)
@@ -88,14 +113,14 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
             val month = monthCalendar(selection.monthStart)
             val year = month.get(Calendar.YEAR)
             val monthIndex = month.get(Calendar.MONTH)
-            val recordsThisMonth = records.filter { item ->
-                Calendar.getInstance().apply { timeInMillis = item.record.eventDate }.let {
-                    it.get(Calendar.YEAR) == year && it.get(Calendar.MONTH) == monthIndex
-                }
-            }
-            val selectedRecords = recordsThisMonth.filter { item ->
-                Calendar.getInstance().apply { timeInMillis = item.record.eventDate }
-                    .get(Calendar.DAY_OF_MONTH) == selection.selectedDay
+            val recordDays = mutableSetOf<Int>()
+            val selectedRecords = ArrayList<GiftRecordWithContact>()
+            val recordCalendar = Calendar.getInstance()
+            records.forEach { item ->
+                recordCalendar.timeInMillis = item.record.eventDate
+                val day = recordCalendar.get(Calendar.DAY_OF_MONTH)
+                recordDays += day
+                if (day == selection.selectedDay) selectedRecords += item
             }
             return CalendarUiState(
                 year = year,
@@ -103,9 +128,7 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
                 daysInMonth = month.getActualMaximum(Calendar.DAY_OF_MONTH),
                 firstDayOffset = (month.get(Calendar.DAY_OF_WEEK) + 5) % 7,
                 selectedDay = selection.selectedDay,
-                recordDays = recordsThisMonth.mapTo(mutableSetOf()) { item ->
-                    Calendar.getInstance().apply { timeInMillis = item.record.eventDate }.get(Calendar.DAY_OF_MONTH)
-                },
+                recordDays = recordDays,
                 selectedRecords = selectedRecords,
                 isLoading = false,
             )
@@ -116,6 +139,10 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
             set(Calendar.DAY_OF_MONTH, 1)
             resetTime(this)
         }
+
+        private fun nextMonthStart(time: Long) = monthCalendar(time).apply {
+            add(Calendar.MONTH, 1)
+        }.timeInMillis
 
         private fun resetTime(calendar: Calendar) {
             calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -147,33 +174,39 @@ class NotificationsViewModel(
     private val now: () -> Long = System::currentTimeMillis,
     private val timeZone: TimeZone = TimeZone.getDefault(),
 ) : ViewModel() {
-    val uiState: StateFlow<NotificationsUiState> = combine(
-        repository.observeAll(),
-        reminderRepository.settings,
-    ) { records, settings ->
-        val recordsById = records.associateBy { it.record.id }
-        val upcoming = ReminderPlanner.plan(
-            records = records,
-            now = now(),
-            timeZone = timeZone,
-            advanceDays = settings.advanceDays,
-            reminderHour = settings.hour,
-            reminderMinute = settings.minute,
-        )
-            .mapNotNull { recordsById[it.recordId] }
-        NotificationsUiState(
-            upcoming = upcoming,
-            remindersEnabled = settings.enabled,
-            reminderAdvanceDays = settings.advanceDays,
-            reminderHour = settings.hour,
-            reminderMinute = settings.minute,
-            isLoading = false,
-        )
-    }.catch {
-        emit(NotificationsUiState(isLoading = false, error = true))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
+    private val retrySignal = RetrySignal()
+
+    val uiState: StateFlow<NotificationsUiState> = retrySignal.flow(
+        source = {
+            combine(
+                repository.observeAll(),
+                reminderRepository.settings,
+            ) { records, settings ->
+                val recordsById = records.associateBy { it.record.id }
+                val upcoming = ReminderPlanner.plan(
+                    records = records,
+                    now = now(),
+                    timeZone = timeZone,
+                    advanceDays = settings.advanceDays,
+                    reminderHour = settings.hour,
+                    reminderMinute = settings.minute,
+                )
+                    .mapNotNull { recordsById[it.recordId] }
+                NotificationsUiState(
+                    upcoming = upcoming,
+                    remindersEnabled = settings.enabled,
+                    reminderAdvanceDays = settings.advanceDays,
+                    reminderHour = settings.hour,
+                    reminderMinute = settings.minute,
+                    isLoading = false,
+                )
+            }
+        },
+        onError = { NotificationsUiState(isLoading = false, error = true) },
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
 
     fun setRemindersEnabled(enabled: Boolean) = reminderRepository.setEnabled(enabled)
+    fun retry() = retrySignal.retry()
 
     fun updateReminderSchedule(advanceDays: Int, hour: Int, minute: Int) =
         reminderRepository.updateSchedule(advanceDays, hour, minute)

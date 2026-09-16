@@ -22,15 +22,25 @@ class GiftRecordDetailViewModel(
     private val repository: GiftRecordRepository,
 ) : ViewModel() {
     private val operationState = MutableStateFlow(GiftRecordDetailUiState())
+    private val retrySignal = RetrySignal()
 
-    val uiState: StateFlow<GiftRecordDetailUiState> = combine(
-        repository.observeRecordWithContact(recordId),
-        operationState,
-    ) { item, operation ->
-        operation.copy(item = item, isLoading = false, loadFailed = item == null && !operation.isDeleted)
-    }.catch {
-        emit(GiftRecordDetailUiState(isLoading = false, loadFailed = true))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GiftRecordDetailUiState())
+    val uiState: StateFlow<GiftRecordDetailUiState> = retrySignal.flow(
+        source = {
+            combine(
+                repository.observeRecordWithContact(recordId),
+                operationState,
+            ) { item, operation ->
+                operation.copy(
+                    item = item,
+                    isLoading = false,
+                    loadFailed = item == null && !operation.isDeleted,
+                )
+            }
+        },
+        onError = { GiftRecordDetailUiState(isLoading = false, loadFailed = true) },
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GiftRecordDetailUiState())
+
+    fun retry() = retrySignal.retry()
 
     fun delete() {
         val item = uiState.value.item ?: return

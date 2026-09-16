@@ -7,4 +7,5 @@ data class ContactSummaryRow(
     @Embedded val contact: ContactEntity,
     val receivedInCents: Long,
     val givenInCents: Long,
+    val lastInteractionTime: Long,
 )
