@@ -57,6 +57,7 @@ class BasicLedgerFlowInstrumentedTest {
 
         waitForText("礼金记账")
         clickText("联系人")
+        scrollToText("流程测试联系人")
         waitForText("流程测试联系人")
         clickText("流程测试联系人")
         waitForText("新增往来")
@@ -135,6 +136,18 @@ class BasicLedgerFlowInstrumentedTest {
                     "当前可见文本：$visibleTexts",
             )
         }
+    }
+
+    /** 小屏幕上新增导入入口后，联系人行可能位于首屏以下。 */
+    private fun scrollToText(text: String) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        repeat(5) {
+            if (device.wait(Until.hasObject(By.text(text)), 500)) return
+            findScrollableNode(instrumentation.uiAutomation.rootInActiveWindow)
+                ?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            instrumentation.waitForIdleSync()
+        }
+        waitForText(text)
     }
 
     private fun clickText(text: String) {
