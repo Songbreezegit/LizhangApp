@@ -7,6 +7,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.yangsong.lizhang.data.local.LiZhangDatabase
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.ContactImportResult
+import com.yangsong.lizhang.domain.model.ContactImportSelection
+import com.yangsong.lizhang.domain.model.DeviceContact
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
@@ -27,6 +29,45 @@ class ContactImportRepositoryInstrumentedTest {
         repository = RoomContactRepository(database.contactDao())
     }
     @After fun teardown() = database.close()
+
+    @Test fun 三类结果统计且同名手选只新增不覆盖原联系人() = runBlocking {
+        repository.create(Contact(name = "原有同号", phone = "+86 13800000000"))
+        repository.create(Contact(name = "同名有号码", phone = "13900000000"))
+        repository.create(Contact(name = "同名无号码", phone = null))
+        val originals = repository.observeContacts().first()
+        val selections = listOf(
+            ContactImportSelection(DeviceContact(1, "另一姓名", "138-0000-0000"), true, true),
+            ContactImportSelection(DeviceContact(2, "同名有号码", "13700000000"), false),
+            ContactImportSelection(DeviceContact(3, "同名无号码", "13600000000"), true, true),
+            ContactImportSelection(DeviceContact(4, "全新测试", "+12025550123"), true),
+        )
+        assertEquals(ContactImportResult(2, 1, 1), repository.importDeviceContacts(selections))
+        originals.forEach { assertEquals(it, repository.observeContact(it.id).first()) }
+        assertEquals(5, repository.observeContacts().first().size)
+        assertEquals(ContactImportResult(0, 3, 1), repository.importDeviceContacts(selections))
+    }
+
+    @Test fun 正式提交按最新数据库复查同号及新增同名冲突() = runBlocking {
+        val selections = listOf(
+            ContactImportSelection(DeviceContact(1, "原本新增甲", "13800000000"), true),
+            ContactImportSelection(DeviceContact(2, "原本新增乙", "13900000000"), true),
+        )
+        repository.create(Contact(name = "其他名字", phone = "+86 13800000000"))
+        repository.create(Contact(name = "原本新增乙", phone = null))
+        assertEquals(ContactImportResult(0, 1, 1), repository.importDeviceContacts(selections))
+        assertEquals(2, repository.observeContacts().first().size)
+    }
+
+    @Test fun 完整候选按标准化号码去重且并发导入保持幂等() = runBlocking {
+        val selections = listOf(
+            ContactImportSelection(DeviceContact(1, "测试甲", "+86 13800000000"), true),
+            ContactImportSelection(DeviceContact(2, "测试重复", "138-0000-0000"), true),
+        )
+        val results = awaitAll(async { repository.importDeviceContacts(selections) }, async { repository.importDeviceContacts(selections) })
+        assertEquals(1, results.sumOf { it.imported })
+        assertEquals(1, results.sumOf { it.skipped })
+        assertEquals(1, repository.observeContacts().first().size)
+    }
 
     @Test fun 批量持久化并通知正在观察的列表且重复执行幂等() = runBlocking {
         val firstValue = CompletableDeferred<Unit>()
@@ -56,7 +97,10 @@ class ContactImportRepositoryInstrumentedTest {
         val id = repository.create(Contact(name = "原有测试"))
         database.openHelper.writableDatabase.execSQL("CREATE TRIGGER test_import_abort BEFORE INSERT ON contacts WHEN NEW.name = '中止测试' BEGIN SELECT RAISE(ABORT, '测试回滚'); END")
         try {
-            repository.createAll(listOf(Contact(name = "第一条测试", phone = "13800000000"), Contact(name = "中止测试", phone = "13900000000")))
+            repository.importDeviceContacts(listOf(
+                ContactImportSelection(DeviceContact(1, "第一条测试", "13800000000"), true),
+                ContactImportSelection(DeviceContact(2, "中止测试", "13900000000"), true),
+            ))
             fail("应回滚批量事务")
         } catch (_: android.database.sqlite.SQLiteException) {
             assertEquals(1, repository.observeContacts().first().size)
@@ -69,7 +113,7 @@ class ContactImportRepositoryInstrumentedTest {
     }
 
     @Test fun 导入联系人可关联礼金并兼容备份恢复与导出() = runBlocking {
-        repository.createAll(listOf(Contact(name = "备份导入测试", phone = "+12025550123")))
+        repository.importDeviceContacts(listOf(ContactImportSelection(DeviceContact(1, "备份导入测试", "+12025550123"), true)))
         val contact = repository.observeContacts().first().single()
         val gifts = RoomGiftRecordRepository(database.giftRecordDao())
         val giftId = gifts.create(GiftRecord(contactId = contact.id, amountInCents = 100, eventType = EventType.WEDDING,

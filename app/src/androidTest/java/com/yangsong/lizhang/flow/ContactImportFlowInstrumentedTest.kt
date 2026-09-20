@@ -8,6 +8,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.yangsong.lizhang.data.di.AppContainer
 import com.yangsong.lizhang.domain.model.DeviceContact
+import com.yangsong.lizhang.domain.model.ContactImportStatus
 import com.yangsong.lizhang.domain.repository.DeviceContactRepository
 import com.yangsong.lizhang.ui.navigation.LiZhangNavGraph
 import com.yangsong.lizhang.ui.screen.ContactImportContent
@@ -47,9 +48,25 @@ class ContactImportFlowInstrumentedTest {
         compose.onNodeWithText("导入 0 位联系人").assertIsNotEnabled()
     }
 
+    @Test fun 同名联系人显示提示默认不选且允许手动选择() {
+        val row = ContactImportCandidate(DeviceContact(1, "同名测试", "13800000000"), ContactImportStatus.POSSIBLE_DUPLICATE)
+        val selected = androidx.compose.runtime.mutableStateOf(false)
+        compose.setContent { LiZhangTheme {
+            ContactImportContent(ContactImportUiState(
+                permissionState = ContactPermissionState.GRANTED, loaded = true,
+                contacts = listOf(row), visibleContacts = listOf(row),
+                selectedKeys = if (selected.value) setOf(row.contact.phone) else emptySet(),
+            ), {}, {}, { selected.value = !selected.value }, {}, {}, {}, {})
+        } }
+        compose.onNodeWithText("同名联系人").assertIsDisplayed()
+        compose.onNodeWithText("导入 0 位联系人").assertIsNotEnabled()
+        compose.onNodeWithText("同名测试").assertIsEnabled().performClick()
+        compose.onNodeWithText("导入 1 位联系人").assertIsEnabled()
+    }
+
     @Test fun 已存在联系人不可选且长姓名和号码脱敏() {
-        val existing = ContactImportCandidate(DeviceContact(1, "已存在测试", "13800000000"), true)
-        val fresh = ContactImportCandidate(DeviceContact(2, "长姓名测试".repeat(30), "+12025550123"), false)
+        val existing = ContactImportCandidate(DeviceContact(1, "已存在测试", "13800000000"), ContactImportStatus.EXISTING)
+        val fresh = ContactImportCandidate(DeviceContact(2, "长姓名测试".repeat(30), "+12025550123"), ContactImportStatus.NEW)
         compose.setContent { LiZhangTheme {
             ContactImportContent(ContactImportUiState(
                 permissionState = ContactPermissionState.GRANTED, loaded = true,
@@ -73,7 +90,7 @@ class ContactImportFlowInstrumentedTest {
             compose.onNodeWithText("从通讯录导入").performScrollTo().performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("导入 1 位联系人").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("导入 1 位联系人").performClick()
-            compose.waitUntil(10_000) { compose.onAllNodesWithText("已导入 1 位联系人").fetchSemanticsNodes().isNotEmpty() }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("已导入 1 位联系人，跳过 0 位已存在联系人，0 位可能重复联系人未选择").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("流程导入虚构测试").performScrollTo().assertIsDisplayed()
         } finally {
             runBlocking { container.contactRepository.observeContacts().first().filter { it.phone == "+12025550123" }.forEach { container.contactRepository.delete(it) } }

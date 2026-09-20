@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ContactImportRulesTest {
+    @Test fun `号码匹配优先于姓名匹配且空号码同名也为可能重复`() {
+        val index = ContactImportRules.DuplicateIndex(listOf(
+            com.yangsong.lizhang.domain.model.Contact(name = "测试同名", phone = "+86 138 0000 0000"),
+            com.yangsong.lizhang.domain.model.Contact(name = "  测试无号码  ", phone = null),
+        ))
+        assertEquals(com.yangsong.lizhang.domain.model.ContactImportStatus.EXISTING, index.status(DeviceContact(1, "另一姓名", "138-0000-0000")))
+        assertEquals(com.yangsong.lizhang.domain.model.ContactImportStatus.POSSIBLE_DUPLICATE, index.status(DeviceContact(2, "测试同名", "13900000000")))
+        assertEquals(com.yangsong.lizhang.domain.model.ContactImportStatus.POSSIBLE_DUPLICATE, index.status(DeviceContact(3, "测试无号码", "13700000000")))
+        assertEquals(com.yangsong.lizhang.domain.model.ContactImportStatus.NEW, index.status(DeviceContact(4, "测试新增", "+12025550123")))
+    }
     @Test fun `大陆手机归一化但不剥离其他中国号码国家码`() {
         listOf("138 0000 0000", "138-0000-0000", "13800000000", "+86 (138) 0000-0000")
             .forEach { assertEquals("13800000000", ContactImportRules.normalizePhone(it)) }
