@@ -57,6 +57,7 @@ class ContactEditorViewModelTest {
 }
 
 private class ContactEditorFakeRepository : ContactRepository {
+    override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     var created = false
 
     override fun observeContacts(query: String): Flow<List<Contact>> = flowOf(emptyList())

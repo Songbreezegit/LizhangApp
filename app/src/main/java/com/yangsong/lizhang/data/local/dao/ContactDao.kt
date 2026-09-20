@@ -6,6 +6,9 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
+import com.yangsong.lizhang.domain.contact.ContactImportRules
+import com.yangsong.lizhang.domain.model.ContactImportResult
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.projection.ContactSummaryRow
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +20,18 @@ interface ContactDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(contacts: List<ContactEntity>)
+
+    @Transaction
+    suspend fun importContacts(contacts: List<ContactEntity>): ContactImportResult {
+        val phones = getAllForBackup().mapNotNull { ContactImportRules.normalizePhone(it.phone) }.toMutableSet()
+        val additions = contacts.mapNotNull { contact ->
+            val phone = ContactImportRules.normalizePhone(contact.phone)
+            if (contact.name.isBlank() || phone == null || !phones.add(phone)) null
+            else contact.copy(id = 0, name = contact.name.trim(), phone = phone)
+        }
+        insertAll(additions)
+        return ContactImportResult(additions.size, contacts.size - additions.size)
+    }
 
     @Update
     suspend fun update(contact: ContactEntity)
