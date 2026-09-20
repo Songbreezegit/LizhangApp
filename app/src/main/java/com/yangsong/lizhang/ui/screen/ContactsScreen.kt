@@ -50,6 +50,7 @@ fun ContactsScreen(
     viewModel: ContactsViewModel,
     onContactClick: (Long) -> Unit,
     onAddContact: () -> Unit,
+    onImportContacts: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ContactsContent(
@@ -59,6 +60,7 @@ fun ContactsScreen(
         onContactClick = onContactClick,
         onAddContact = onAddContact,
         onRetry = viewModel::retry,
+        onImportContacts = onImportContacts,
     )
 }
 
@@ -70,6 +72,7 @@ fun ContactsContent(
     onContactClick: (Long) -> Unit,
     onAddContact: () -> Unit,
     onRetry: () -> Unit = {},
+    onImportContacts: () -> Unit = {},
 ) {
     Scaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_contacts)) },
@@ -96,6 +99,14 @@ fun ContactsContent(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item { PageIllustration(R.drawable.page_contacts_cat, Modifier.fillMaxWidth().height(190.dp)) }
+            item {
+                Card(onClick = onImportContacts, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(stringResource(R.string.contact_import_entry), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.contact_import_entry_hint), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
             item {
                 AppTextField(
                     state.query,

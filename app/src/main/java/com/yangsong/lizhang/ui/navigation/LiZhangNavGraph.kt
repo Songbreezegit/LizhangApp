@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
@@ -50,6 +53,8 @@ fun LiZhangNavGraph(
         factory = ReminderLaunchViewModel.factory(appContainer.giftRecordRepository),
     )
     val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
@@ -87,6 +92,23 @@ fun LiZhangNavGraph(
                 viewModel(factory = ContactsViewModel.factory(appContainer.contactRepository)),
                 { nav.navigate(AppDestination.ContactDetail.createRoute(it)) },
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
+                { nav.navigate(AppDestination.ContactImport.route) { launchSingleTop = true } },
+            )
+        }
+        composable(AppDestination.ContactImport.route) {
+            ContactImportScreen(
+                viewModel(factory = ContactImportViewModel.factory(appContainer.deviceContactRepository, appContainer.contactRepository)),
+                onBack = { nav.popBackStack() },
+                onImported = { result ->
+                    nav.popBackStack()
+                    scope.launch {
+                        snackbar.showSnackbar(when {
+                            result.imported == 0 -> context.getString(R.string.contact_import_none_needed)
+                            result.skipped > 0 -> context.getString(R.string.contact_import_success_skipped, result.imported, result.skipped)
+                            else -> context.getString(R.string.contact_import_success, result.imported)
+                        })
+                    }
+                },
             )
         }
         composable(

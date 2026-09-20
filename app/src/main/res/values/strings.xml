@@ -46,8 +46,8 @@
     <string name="privacy_storage_body">联系人、手机号、礼金金额、日期和备注保存在设备本地数据库中。应用不会把这些业务数据上传到服务器，也不会交给系统自动备份或换机迁移；如需迁移，请主动创建本地备份文件。</string>
     <string name="privacy_network_title">不申请联网权限</string>
     <string name="privacy_network_body">当前版本不申请互联网访问权限，也不包含云端识别功能。应用的核心记账、搜索、统计和备份能力均可离线使用。</string>
-    <string name="privacy_permission_title">通知与系统权限</string>
-    <string name="privacy_permission_body">只有在主动开启日期提醒时，应用才会请求通知权限。设备重启、日期或时区变化后，应用会重新安排已开启的本地提醒。</string>
+    <string name="privacy_permission_title">通讯录、通知与系统权限</string>
+    <string name="privacy_permission_body">当用户主动使用通讯录导入功能时，礼账会读取设备通讯录信息，仅将用户选中的信息用于在本机创建联系人记录。相关信息不会上传服务器。预览数据只在内存中处理，不生成通讯录缓存文件。只有在主动开启日期提醒时，应用才会请求通知权限。设备重启、日期或时区变化后，应用会重新安排已开启的本地提醒。</string>
     <string name="privacy_file_title">导出和备份文件</string>
     <string name="privacy_file_body">只有在主动导出或备份时，应用才会把文件写入你选择的位置；只有在主动选择恢复文件时，应用才会读取该文件。可以选择密码加密备份，密码不会保存在应用中，遗忘后无法恢复。</string>
     <string name="privacy_delete_title">删除与卸载</string>
@@ -64,4 +64,26 @@
     <string name="reminder_time_value">%1$02d:%2$02d</string>
     <string name="reminder_schedule_description">系统会按此设置重新安排全部年度日期提醒</string>
     <string name="reminder_time_dialog_title">选择提醒时间</string>
+    <string name="contact_import_entry">从通讯录导入</string>
+    <string name="contact_import_entry_hint">快速添加手机中的联系人</string>
+    <string name="contact_import_title">导入联系人</string>
+    <string name="contact_import_description">选择需要添加到礼账的联系人</string>
+    <string name="contact_import_privacy">用于将手机通讯录中的联系人快速添加到礼账。通讯录信息仅在本机处理，不会上传。</string>
+    <string name="contact_import_search">搜索姓名或手机号</string>
+    <string name="contact_import_select_all">全选</string>
+    <string name="contact_import_deselect_all">取消全选</string>
+    <string name="contact_import_action">导入 %1$d 位联系人</string>
+    <string name="contact_import_exists">已存在</string>
+    <string name="contact_import_empty">手机通讯录中暂无可导入联系人</string>
+    <string name="contact_import_all_exist">通讯录中的联系人已经全部添加</string>
+    <string name="contact_import_permission_denied">需要通讯录权限才能读取手机联系人。礼账只在本机处理这些信息。</string>
+    <string name="contact_import_permission_blocked">通讯录权限已关闭，可前往系统设置开启。</string>
+    <string name="contact_import_authorize">重新授权</string>
+    <string name="contact_import_settings">去设置</string>
+    <string name="contact_import_back">返回联系人</string>
+    <string name="contact_import_read_failed">通讯录读取失败，请稍后重试</string>
+    <string name="contact_import_failed">联系人导入失败，请稍后重试</string>
+    <string name="contact_import_none_needed">不需要导入，所选联系人已经存在</string>
+    <string name="contact_import_success">已导入 %1$d 位联系人</string>
+    <string name="contact_import_success_skipped">已导入 %1$d 位联系人，跳过 %2$d 位重复联系人</string>
 </resources>
