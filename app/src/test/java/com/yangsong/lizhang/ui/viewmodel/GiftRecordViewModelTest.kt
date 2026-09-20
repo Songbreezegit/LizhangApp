@@ -160,6 +160,7 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
 }
 
 private class FakeContactRepository(contact: Contact) : ContactRepository {
+    override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     private val contacts = MutableStateFlow(listOf(contact))
     override fun observeContacts(query: String): Flow<List<Contact>> = contacts

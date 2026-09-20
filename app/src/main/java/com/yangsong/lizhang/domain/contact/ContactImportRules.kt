@@ -1,9 +1,22 @@
 package com.yangsong.lizhang.domain.contact
 
 import com.yangsong.lizhang.domain.model.DeviceContact
+import com.yangsong.lizhang.domain.model.Contact
+import com.yangsong.lizhang.domain.model.ContactImportStatus
 
 /** 导入预览与事务内去重共用同一套号码规则。 */
 object ContactImportRules {
+    class DuplicateIndex(contacts: List<Contact>) {
+        private val phones = contacts.mapNotNull { normalizePhone(it.phone) }.toSet()
+        private val names = contacts.map { it.name.trim() }.filter { it.isNotEmpty() }.toSet()
+
+        fun status(contact: DeviceContact): ContactImportStatus = when {
+            normalizePhone(contact.phone) in phones -> ContactImportStatus.EXISTING
+            contact.name.trim() in names -> ContactImportStatus.POSSIBLE_DUPLICATE
+            else -> ContactImportStatus.NEW
+        }
+    }
+
     private val number = Regex("\\+?[0-9]{3,15}")
     private val mainlandMobile = Regex("\\+861[3-9][0-9]{9}")
 

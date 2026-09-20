@@ -102,11 +102,9 @@ fun LiZhangNavGraph(
                 onImported = { result ->
                     nav.popBackStack()
                     scope.launch {
-                        snackbar.showSnackbar(when {
-                            result.imported == 0 -> context.getString(R.string.contact_import_none_needed)
-                            result.skipped > 0 -> context.getString(R.string.contact_import_success_skipped, result.imported, result.skipped)
-                            else -> context.getString(R.string.contact_import_success, result.imported)
-                        })
+                        snackbar.showSnackbar(context.getString(
+                            R.string.contact_import_summary, result.imported, result.skipped, result.possibleDuplicatesUnselected,
+                        ))
                     }
                 },
             )

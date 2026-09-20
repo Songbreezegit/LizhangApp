@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.contact.ContactImportRules
 import com.yangsong.lizhang.domain.model.ContactImportResult
+import com.yangsong.lizhang.domain.model.ContactImportStatus
 import com.yangsong.lizhang.ui.component.AppTextField
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.viewmodel.*
@@ -195,6 +196,7 @@ private fun ContactImportRow(row: ContactImportCandidate, selected: Boolean, ena
                     color = if (row.exists) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                 Text(ContactImportRules.maskPhone(row.contact.phone), style = MaterialTheme.typography.bodySmall)
                 if (row.exists) Text(stringResource(R.string.contact_import_exists), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (row.status == ContactImportStatus.POSSIBLE_DUPLICATE) Text(stringResource(R.string.contact_import_same_name), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

@@ -31,6 +31,33 @@ class ContactImportViewModelTest {
         assertEquals(0, reads)
         assertEquals(ContactPermissionState.BLOCKED, vm.uiState.value.permissionState)
     }
+
+    @Test fun `同名候选默认未选但可手选并传递全部候选统计`() = runTest(dispatcher) {
+        val repository = ImportFakeRepository(listOf(Contact(name = "测试甲", phone = null), Contact(name = "测试乙", phone = "13600000000")))
+        val vm = ContactImportViewModel(DeviceContactRepository { records }, repository, dispatcher)
+        vm.permissionChanged(ContactPermissionState.GRANTED)
+        advanceUntilIdle()
+        assertEquals(setOf("13900000000"), vm.uiState.value.selectedKeys)
+        assertEquals(2, vm.uiState.value.contacts.count { it.status == ContactImportStatus.POSSIBLE_DUPLICATE })
+        vm.toggle("13800000000")
+        vm.importSelected()
+        advanceUntilIdle()
+        assertEquals(3, repository.selections.size)
+        assertTrue(repository.selections.first { it.contact.phone == "13800000000" }.allowPossibleDuplicate)
+        assertFalse(repository.selections.first { it.contact.phone == "+12025550123" }.selected)
+        assertFalse(repository.selections.first { it.contact.phone == "13900000000" }.allowPossibleDuplicate)
+    }
+
+    @Test fun `全选作为主动选择包括同名候选且取消全选全部清空`() = runTest(dispatcher) {
+        val vm = ContactImportViewModel(DeviceContactRepository { records }, ImportFakeRepository(listOf(Contact(name = "测试甲"))), dispatcher)
+        vm.permissionChanged(ContactPermissionState.GRANTED)
+        advanceUntilIdle()
+        assertEquals(2, vm.uiState.value.selectedKeys.size)
+        vm.selectAll(true)
+        assertEquals(3, vm.uiState.value.selectedKeys.size)
+        vm.selectAll(false)
+        assertTrue(vm.uiState.value.selectedKeys.isEmpty())
+    }
     @Test fun `同号异名禁选其余默认选中支持全选取消`() = runTest(dispatcher) {
         val repository = ImportFakeRepository(listOf(Contact(name = "不同姓名", phone = "+86 13800000000")))
         val vm = ContactImportViewModel(DeviceContactRepository { records }, repository, dispatcher)
@@ -140,6 +167,11 @@ class ContactImportViewModelTest {
 }
 
 private class ImportFakeRepository(private val contacts: List<Contact> = emptyList()) : ContactRepository {
+    var selections = emptyList<ContactImportSelection>()
+    override suspend fun importDeviceContacts(selections: List<ContactImportSelection>): ContactImportResult {
+        this.selections = selections
+        return createAll(selections.filter { it.selected }.map { Contact(name = it.contact.name, phone = it.contact.phone) })
+    }
     var calls = 0
     var fail = false
     var result = ContactImportResult(3, 0)

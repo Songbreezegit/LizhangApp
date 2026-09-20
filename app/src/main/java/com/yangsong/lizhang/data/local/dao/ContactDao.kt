@@ -9,6 +9,9 @@ import androidx.room.Update
 import androidx.room.Transaction
 import com.yangsong.lizhang.domain.contact.ContactImportRules
 import com.yangsong.lizhang.domain.model.ContactImportResult
+import com.yangsong.lizhang.domain.model.ContactImportSelection
+import com.yangsong.lizhang.domain.model.ContactImportStatus
+import com.yangsong.lizhang.data.mapper.toDomain
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.projection.ContactSummaryRow
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +38,31 @@ interface ContactDao {
 
     @Update
     suspend fun update(contact: ContactEntity)
+
+    @Transaction
+    suspend fun importDeviceContacts(selections: List<ContactImportSelection>): ContactImportResult {
+        val existing = getAllForBackup().map { it.toDomain() }
+        val index = ContactImportRules.DuplicateIndex(existing)
+        val seen = mutableSetOf<String>()
+        var skipped = 0
+        var possibleUnselected = 0
+        val additions = selections.mapNotNull { selection ->
+            val contact = selection.contact
+            val phone = ContactImportRules.normalizePhone(contact.phone)
+            if (contact.name.isBlank() || phone == null || !seen.add(phone)) return@mapNotNull null
+            when (index.status(contact)) {
+                ContactImportStatus.EXISTING -> { skipped++; null }
+                ContactImportStatus.POSSIBLE_DUPLICATE -> {
+                    if (selection.selected && selection.allowPossibleDuplicate) {
+                        ContactEntity(name = contact.name.trim(), phone = phone)
+                    } else { possibleUnselected++; null }
+                }
+                ContactImportStatus.NEW -> if (selection.selected) ContactEntity(name = contact.name.trim(), phone = phone) else null
+            }
+        }
+        insertAll(additions)
+        return ContactImportResult(additions.size, skipped, possibleUnselected)
+    }
 
     @Delete
     suspend fun delete(contact: ContactEntity)

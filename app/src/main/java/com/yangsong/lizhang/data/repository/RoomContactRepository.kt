@@ -25,6 +25,9 @@ class RoomContactRepository(private val contactDao: ContactDao) : ContactReposit
     override suspend fun createAll(contacts: List<Contact>) = withContext(Dispatchers.IO) {
         contactDao.importContacts(contacts.map { it.toEntity() })
     }
+    override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>) = withContext(Dispatchers.IO) {
+        contactDao.importDeviceContacts(selections)
+    }
     override suspend fun update(contact: Contact) = contactDao.update(contact.toEntity())
     override suspend fun delete(contact: Contact) = contactDao.delete(contact.toEntity())
 }

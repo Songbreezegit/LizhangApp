@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.domain.contact.ContactImportRules
-import com.yangsong.lizhang.domain.model.Contact
+import com.yangsong.lizhang.domain.model.ContactImportSelection
+import com.yangsong.lizhang.domain.model.ContactImportStatus
 import com.yangsong.lizhang.domain.model.ContactImportResult
 import com.yangsong.lizhang.domain.model.DeviceContact
 import com.yangsong.lizhang.domain.repository.ContactRepository
@@ -23,7 +24,9 @@ import kotlinx.coroutines.withContext
 enum class ContactPermissionState { UNKNOWN, GRANTED, DENIED, BLOCKED }
 enum class ContactImportError { READ, WRITE }
 
-data class ContactImportCandidate(val contact: DeviceContact, val exists: Boolean)
+data class ContactImportCandidate(val contact: DeviceContact, val status: ContactImportStatus) {
+    val exists: Boolean get() = status == ContactImportStatus.EXISTING
+}
 
 data class ContactImportUiState(
     val isLoading: Boolean = false,
@@ -67,12 +70,12 @@ class ContactImportViewModel(
                 val raw = deviceRepository.readContacts()
                 val existing = contactRepository.observeContacts().first()
                 val candidates = withContext(computationDispatcher) {
-                    val phones = existing.mapNotNull { ContactImportRules.normalizePhone(it.phone) }.toSet()
-                    ContactImportRules.candidates(raw).map { ContactImportCandidate(it, it.phone in phones) }
+                    val index = ContactImportRules.DuplicateIndex(existing)
+                    ContactImportRules.candidates(raw).map { ContactImportCandidate(it, index.status(it)) }
                 }
                 state.update { it.copy(
                     isLoading = false, loaded = true, contacts = candidates,
-                    selectedKeys = candidates.filterNot { it.exists }.map { it.contact.phone }.toSet(),
+                    selectedKeys = candidates.filter { it.status == ContactImportStatus.NEW }.map { it.contact.phone }.toSet(),
                 ) }
                 updateQuery(state.value.query)
             } catch (cancelled: CancellationException) {
@@ -121,11 +124,15 @@ class ContactImportViewModel(
         state.update { it.copy(isImporting = true, error = null) }
         viewModelScope.launch {
             try {
-                val selected = withContext(computationDispatcher) {
-                    current.contacts.filter { it.contact.phone in current.selectedKeys && !it.exists }
-                        .map { Contact(name = it.contact.name, phone = it.contact.phone) }
+                val selections = withContext(computationDispatcher) {
+                    current.contacts.map { row ->
+                        ContactImportSelection(row.contact,
+                            selected = row.contact.phone in current.selectedKeys && !row.exists,
+                            allowPossibleDuplicate = row.status == ContactImportStatus.POSSIBLE_DUPLICATE,
+                        )
+                    }
                 }
-                val result = contactRepository.createAll(selected)
+                val result = contactRepository.importDeviceContacts(selections)
                 state.update { it.copy(isImporting = false, importResult = result) }
             } catch (cancelled: CancellationException) {
                 throw cancelled

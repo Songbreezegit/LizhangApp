@@ -199,6 +199,7 @@ private class TestReminderRepository : ReminderRepository {
 }
 
 private class TestContactRepository(private val summaries: List<ContactLedgerSummary>) : ContactRepository {
+    override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override fun observeContacts(query: String): Flow<List<Contact>> =
         flowOf(summaries.map { it.contact }.filter { it.name.contains(query, ignoreCase = true) })
