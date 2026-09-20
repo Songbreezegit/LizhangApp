@@ -1,5 +1,14 @@
 package com.yangsong.lizhang.ui.component
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
@@ -50,19 +59,43 @@ private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.
                 .border(1.dp,if(dark)Color.White.copy(alpha=.12f)else Color.White.copy(alpha=.9f),glassShape),
         )
         Row(
-            Modifier.matchParentSize().padding(horizontal=6.dp),
+            Modifier.matchParentSize().padding(horizontal=6.dp).selectableGroup(),
             verticalAlignment=Alignment.CenterVertically,
         ){
             navItems.forEach{item->
                 val selected=current==item.destination
-                val tint=if(selected)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val interactionSource = remember(item.destination) { MutableInteractionSource() }
+                val pressed by interactionSource.collectIsPressedAsState()
+                val scale by animateFloatAsState(
+                    targetValue = if (pressed) .92f else 1f,
+                    animationSpec = tween(if (pressed) 90 else 180),
+                    label = "导航按压缩放",
+                )
+                val tint by animateColorAsState(
+                    targetValue = if(selected)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    animationSpec = tween(180),
+                    label = "导航选中颜色",
+                )
+                val highlight by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0f,
+                    animationSpec = tween(200),
+                    label = "导航选中底色",
+                )
                 Column(
-                    Modifier.weight(1f).fillMaxHeight().clickable(role=Role.Tab){onNavigate(item.destination)}.semantics{this.selected=selected;role=Role.Tab},
+                    Modifier.weight(1f).fillMaxHeight().selectable(
+                        selected = selected,
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Tab,
+                        onClick = { if (!selected) onNavigate(item.destination) },
+                    ),
                     horizontalAlignment=Alignment.CenterHorizontally,
                     verticalArrangement=Arrangement.Center,
                 ){
                     Box(
-                        Modifier.width(62.dp).height(31.dp).background(if(selected)MaterialTheme.colorScheme.primaryContainer.copy(alpha=.78f)else Color.Transparent,RoundedCornerShape(18.dp)),
+                        Modifier.width(62.dp).height(31.dp)
+                            .graphicsLayer { scaleX = scale; scaleY = scale }
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha=.78f * highlight),RoundedCornerShape(18.dp)),
                         contentAlignment=Alignment.Center,
                     ){Icon(item.icon,null,Modifier.size(23.dp),tint=tint)}
                     Spacer(Modifier.height(3.dp))
