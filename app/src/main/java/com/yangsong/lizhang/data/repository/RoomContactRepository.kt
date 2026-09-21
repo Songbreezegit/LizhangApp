@@ -5,6 +5,7 @@ import com.yangsong.lizhang.data.mapper.toDomain
 import com.yangsong.lizhang.data.mapper.toEntity
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.ContactLedgerSummary
+import com.yangsong.lizhang.domain.model.ContactDeletePreview
 import com.yangsong.lizhang.domain.repository.ContactRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -30,4 +31,10 @@ class RoomContactRepository(private val contactDao: ContactDao) : ContactReposit
     }
     override suspend fun update(contact: Contact) = contactDao.update(contact.toEntity())
     override suspend fun delete(contact: Contact) = contactDao.delete(contact.toEntity())
+    override suspend fun previewDelete(ids: Set<Long>) = withContext(Dispatchers.IO) {
+        contactDao.previewDelete(ids)
+    }
+    override suspend fun deleteContacts(ids: Set<Long>, confirmed: ContactDeletePreview) = withContext(Dispatchers.IO) {
+        contactDao.deleteContacts(ids, confirmed)
+    }
 }

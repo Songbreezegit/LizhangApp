@@ -14,6 +14,10 @@ import com.yangsong.lizhang.domain.model.ContactImportStatus
 import com.yangsong.lizhang.data.mapper.toDomain
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.projection.ContactSummaryRow
+import com.yangsong.lizhang.data.local.projection.ContactDeleteImpactRow
+import com.yangsong.lizhang.domain.model.ContactDeletePreview
+import com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome
+import com.yangsong.lizhang.domain.model.BulkDeleteResult
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -66,6 +70,35 @@ interface ContactDao {
 
     @Delete
     suspend fun delete(contact: ContactEntity)
+
+    @Query("""
+        SELECT contacts.id, COUNT(gift_records.id) AS giftRecordCount
+        FROM contacts LEFT JOIN gift_records ON gift_records.contactId = contacts.id
+        WHERE contacts.id IN (:ids) GROUP BY contacts.id
+    """)
+    suspend fun getDeleteImpact(ids: List<Long>): List<ContactDeleteImpactRow>
+
+    @Query("DELETE FROM contacts WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>): Int
+
+    @Transaction
+    suspend fun previewDelete(ids: Set<Long>): ContactDeletePreview {
+        // 分片避免大型通讯录超过 SQLite 绑定参数上限；各分片仍处于同一事务。
+        val counts = linkedMapOf<Long, Int>()
+        ids.filter { it > 0 }.chunked(900).forEach { batch ->
+            getDeleteImpact(batch).forEach { counts[it.id] = it.giftRecordCount }
+        }
+        return ContactDeletePreview(counts)
+    }
+
+    @Transaction
+    suspend fun deleteContacts(ids: Set<Long>, confirmed: ContactDeletePreview): ContactBulkDeleteOutcome {
+        val latest = previewDelete(ids)
+        if (latest != confirmed) return ContactBulkDeleteOutcome.Changed(latest)
+        val deleted = latest.recordsPerContact.keys.toList().chunked(900).sumOf { deleteByIds(it) }
+        // 礼金由既有外键 CASCADE 清理，不主动操作 gift_records。
+        return ContactBulkDeleteOutcome.Deleted(BulkDeleteResult(deleted, latest.giftRecordCount))
+    }
 
     @Query("SELECT * FROM contacts ORDER BY id")
     suspend fun getAllForBackup(): List<ContactEntity>

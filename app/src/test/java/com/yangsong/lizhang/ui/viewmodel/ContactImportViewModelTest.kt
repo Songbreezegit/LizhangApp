@@ -167,6 +167,8 @@ class ContactImportViewModelTest {
 }
 
 private class ImportFakeRepository(private val contacts: List<Contact> = emptyList()) : ContactRepository {
+    override suspend fun previewDelete(ids: Set<Long>): com.yangsong.lizhang.domain.model.ContactDeletePreview = error("此测试不执行批量删除")
+    override suspend fun deleteContacts(ids: Set<Long>, confirmed: com.yangsong.lizhang.domain.model.ContactDeletePreview): com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome = error("此测试不执行批量删除")
     var selections = emptyList<ContactImportSelection>()
     override suspend fun importDeviceContacts(selections: List<ContactImportSelection>): ContactImportResult {
         this.selections = selections

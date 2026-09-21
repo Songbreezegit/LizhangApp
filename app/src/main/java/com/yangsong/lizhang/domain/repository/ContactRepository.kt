@@ -3,6 +3,8 @@ package com.yangsong.lizhang.domain.repository
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.ContactImportResult
 import com.yangsong.lizhang.domain.model.ContactLedgerSummary
+import com.yangsong.lizhang.domain.model.ContactDeletePreview
+import com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome
 import kotlinx.coroutines.flow.Flow
 
 interface ContactRepository {
@@ -16,4 +18,7 @@ interface ContactRepository {
     suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): ContactImportResult
     suspend fun update(contact: Contact)
     suspend fun delete(contact: Contact)
+    suspend fun previewDelete(ids: Set<Long>): ContactDeletePreview
+    /** 事务内复查确认快照；影响变化时不删除，返回新的确认数据。 */
+    suspend fun deleteContacts(ids: Set<Long>, confirmed: ContactDeletePreview): ContactBulkDeleteOutcome
 }
