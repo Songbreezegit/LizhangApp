@@ -5,6 +5,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
@@ -55,6 +57,7 @@ fun LiZhangNavGraph(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    var contactsSelectionMode by remember { mutableStateOf(false) }
     val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
@@ -93,6 +96,7 @@ fun LiZhangNavGraph(
                 { nav.navigate(AppDestination.ContactDetail.createRoute(it)) },
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
                 { nav.navigate(AppDestination.ContactImport.route) { launchSingleTop = true } },
+                onSelectionModeChange = { contactsSelectionMode = it },
             )
         }
         composable(AppDestination.ContactImport.route) {
@@ -238,7 +242,7 @@ fun LiZhangNavGraph(
         }
     }
     currentMainTab
-        ?.takeUnless { it == AppDestination.AddGift }
+        ?.takeUnless { it == AppDestination.AddGift || (it == AppDestination.Contacts && contactsSelectionMode) }
         ?.let { tab ->
         BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
     }

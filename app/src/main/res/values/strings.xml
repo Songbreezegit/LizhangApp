@@ -85,4 +85,18 @@
     <string name="contact_import_failed">联系人导入失败，请稍后重试</string>
     <string name="contact_import_same_name">同名联系人</string>
     <string name="contact_import_summary">已导入 %1$d 位联系人，跳过 %2$d 位已存在联系人，%3$d 位可能重复联系人未选择</string>
+    <string name="contact_bulk_manage">管理</string>
+    <string name="contact_bulk_selected">已选择 %1$d 人</string>
+    <string name="contact_bulk_select_all">全选</string>
+    <string name="contact_bulk_clear">取消全选</string>
+    <string name="contact_bulk_delete_action">删除 %1$d 位联系人</string>
+    <string name="contact_bulk_confirm_title">删除 %1$d 位联系人？</string>
+    <string name="contact_bulk_confirm_empty">删除后无法恢复。</string>
+    <string name="contact_bulk_confirm_records">其中 %1$d 位联系人存在礼金往来记录。\n继续删除将同时永久删除 %2$d 条礼金记录。\n\n此操作无法恢复。</string>
+    <string name="contact_bulk_acknowledge">我确认同时永久删除 %1$d 条礼金记录</string>
+    <string name="contact_bulk_confirm_danger">删除联系人及记录</string>
+    <string name="contact_bulk_preview_changed">数据已发生变化，请核对最新数量并重新确认。</string>
+    <string name="contact_bulk_deleted">已删除 %1$d 位联系人</string>
+    <string name="contact_bulk_deleted_records">已删除 %1$d 位联系人及 %2$d 条礼金记录</string>
+    <string name="contact_bulk_delete_failed">删除失败，请稍后重试</string>
 </resources>
