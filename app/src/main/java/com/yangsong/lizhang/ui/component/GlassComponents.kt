@@ -21,11 +21,12 @@ import androidx.compose.ui.window.DialogProperties
 
 /** 统一的轻玻璃参数；不采样背景、不创建模糊图层，适用于长列表和旧设备。 */
 object GlassTokens {
-    const val LightAlpha = .76f
-    const val DarkAlpha = .94f
-    const val BorderAlpha = .12f
-    const val HighlightAlpha = .04f
+    const val LightAlpha = .42f
+    const val DarkAlpha = .62f
+    const val BorderAlpha = .08f
+    const val HighlightAlpha = .06f
     const val FloatingAlpha = .97f
+    const val DialogAlpha = .94f
     const val ScrimAlpha = .62f
     const val SelectedAlpha = .55f
     const val DisabledAlpha = .38f
@@ -43,13 +44,22 @@ object GlassTokens {
     alpha = if (MaterialTheme.colorScheme.background.luminance() < .5f) GlassTokens.DarkAlpha else GlassTokens.LightAlpha,
 )
 
-@Composable fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), floating: Boolean = false): Modifier =
-    shadow(GlassTokens.Elevation, shape).clip(shape)
-        .background(Brush.verticalGradient(listOf(glassColor().copy(alpha = if (floating) GlassTokens.FloatingAlpha else glassColor().alpha), glassColor().copy(alpha = if (floating) GlassTokens.FloatingAlpha - GlassTokens.HighlightAlpha else glassColor().alpha - GlassTokens.HighlightAlpha))))
-        .border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha)), shape)
-
+@Composable
+fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), floating: Boolean = false): Modifier {
+    val base = glassColor()
+    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+    // 半透明内容不能覆盖普通 elevation 阴影的内部填充，否则整张卡片会透出灰底。
+    // 已验收的浮动导航保留其阴影；普通内容用高光描边与留白建立层级。
+    val frame = if (floating) shadow(GlassTokens.Elevation, shape) else this
+    val alpha = if (floating) GlassTokens.FloatingAlpha else base.alpha
+    val border = if (floating) MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha)
+        else Color.White.copy(alpha = if (dark) .12f else .65f)
+    return frame.clip(shape)
+        .background(Brush.verticalGradient(listOf(base.copy(alpha = alpha), base.copy(alpha = alpha - GlassTokens.HighlightAlpha))))
+        .border(BorderStroke(1.dp, border), shape)
+}
 @Composable fun GlassSurface(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Surface(modifier.glassFrame(), color = Color.Transparent, content = content)
+    Box(modifier.glassFrame()) { content() }
 }
 
 @Composable fun GlassCard(
@@ -59,8 +69,7 @@ object GlassTokens {
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val clickable = if (onClick == null) modifier else modifier.clip(shape).clickable(onClick = onClick)
-    Card(clickable.glassFrame(shape), shape = shape,
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent), content = content)
+    Column(clickable.glassFrame(shape), content = content)
 }
 
 @Composable fun GlassButton(
@@ -98,12 +107,14 @@ object GlassTokens {
 @Composable fun GlassChip(
     selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit,
     modifier: Modifier = Modifier, leadingIcon: (@Composable () -> Unit)? = null,
+    accent: Color = MaterialTheme.colorScheme.primary,
 ) {
     FilterChip(selected, onClick, label, modifier.heightIn(min = 48.dp), leadingIcon = leadingIcon,
         shape = RoundedCornerShape(GlassTokens.ControlRadius),
         colors = FilterChipDefaults.filterChipColors(containerColor = glassColor(),
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = GlassTokens.SelectedAlpha),
-            selectedLabelColor = MaterialTheme.colorScheme.primary, selectedLeadingIconColor = MaterialTheme.colorScheme.primary),
+            iconColor = accent,
+            selectedContainerColor = accent.copy(alpha = .12f),
+            selectedLabelColor = accent, selectedLeadingIconColor = accent),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = GlassTokens.BorderAlpha)))
 }
 
@@ -126,7 +137,7 @@ object GlassTokens {
     AlertDialog(onDismissRequest, confirmButton,
         modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha), RoundedCornerShape(GlassTokens.FloatingRadius)),
         dismissButton = dismissButton, icon = icon, title = title, text = text,
-        shape = RoundedCornerShape(GlassTokens.FloatingRadius), containerColor = glassColor(),
+        shape = RoundedCornerShape(GlassTokens.FloatingRadius), containerColor = glassColor().copy(alpha = GlassTokens.DialogAlpha),
         tonalElevation = 0.dp, properties = properties)
 }
 
@@ -140,3 +151,14 @@ object GlassTokens {
         shape = RoundedCornerShape(GlassTokens.ControlRadius),
         colors = colors.copy(containerColor = glassColor()), content = content)
 }
+
+/** 开关关闭态使用中性色，避免 Material 默认紫灰混入蓝橘主题。 */
+@Composable
+fun glassSwitchColors() = SwitchDefaults.colors(
+    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = .20f),
+    checkedThumbColor = MaterialTheme.colorScheme.primary,
+    checkedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = .25f),
+    uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .06f),
+    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .16f),
+)
