@@ -13,18 +13,18 @@ fun ConfirmDialog(
     onDismiss: () -> Unit,
     danger: Boolean = false,
 ) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
-            TextButton(
+            GlassTextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                 ),
             ) { Text(confirmText) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelText) } },
+        dismissButton = { GlassTextButton(onClick = onDismiss) { Text(cancelText) } },
     )
 }

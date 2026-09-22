@@ -22,12 +22,10 @@ fun GiftEntryOption(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    GlassCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(GlassTokens.Radius),
     ) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = RoundedCornerShape(16.dp), color = iconBackground) {
