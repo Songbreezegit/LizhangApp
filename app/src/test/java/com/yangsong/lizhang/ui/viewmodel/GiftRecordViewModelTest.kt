@@ -114,6 +114,66 @@ class GiftRecordViewModelTest {
         assertNull(repository.createdRecord)
     }
 
+    @Test
+    fun `连续点击在调度前和成功后都只创建一次`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        viewModel.update { it.copy(amount = "100", eventDate = 1_753_200_000_000) }
+        viewModel.save()
+        assertTrue(viewModel.uiState.value.isSaving)
+        repeat(5) { viewModel.save() }
+        advanceUntilIdle()
+        assertEquals(1, repository.createCount)
+        assertTrue(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.isSaving)
+        viewModel.save()
+        advanceUntilIdle()
+        assertEquals(1, repository.createCount)
+    }
+
+    @Test
+    fun `失败保留全部字段消费反馈后可再次保存`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord()).apply { failCreate = true }
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        advanceUntilIdle()
+        viewModel.update { it.copy(amount = "288.88", eventDate = 1_753_200_000_000,
+            direction = GiftDirection.GIVEN, eventType = EventType.BIRTHDAY, notes = "测试备注") }
+        val before = viewModel.uiState.value
+        viewModel.save()
+        advanceUntilIdle()
+        val failed = viewModel.uiState.value
+        assertTrue(failed.operationFailed)
+        assertFalse(failed.isSaving)
+        assertFalse(failed.isSaved)
+        assertEquals(before, failed.copy(operationFailed = false))
+        viewModel.consumeOperationFailure()
+        assertFalse(viewModel.uiState.value.operationFailed)
+        repository.failCreate = false
+        viewModel.save()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.operationFailed)
+        assertEquals(2, repository.createCount)
+        assertEquals("测试备注", repository.createdRecord?.notes)
+    }
+
+    @Test
+    fun `保存等待期间不重复写入也不改变待保存内容`() = runTest(dispatcher) {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val repository = FakeGiftRecordRepository(sampleRecord()).apply { beforeCreate = { gate.await() } }
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        viewModel.update { it.copy(amount = "100", eventDate = 1_753_200_000_000, notes = "保留内容") }
+        viewModel.save()
+        runCurrent()
+        viewModel.save()
+        viewModel.update { it.copy(amount = "200", notes = "误触修改") }
+        assertEquals("100", viewModel.uiState.value.amount)
+        assertEquals(1, repository.createCount)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(10000L, repository.createdRecord?.amountInCents)
+        assertEquals("保留内容", repository.createdRecord?.notes)
+    }
     private fun sampleContact() = Contact(id = 3, name = "测试联系人", phone = "13800000000")
 
     private fun sampleRecord() = GiftRecord(
@@ -131,6 +191,9 @@ class GiftRecordViewModelTest {
 private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordRepository {
     private val record = MutableStateFlow<GiftRecord?>(initial)
     private val item = MutableStateFlow<GiftRecordWithContact?>(GiftRecordWithContact(initial, "测试联系人"))
+    var createCount = 0
+    var failCreate = false
+    var beforeCreate: (suspend () -> Unit)? = null
     var updatedRecord: GiftRecord? = null
     var createdRecord: GiftRecord? = null
     var deletedRecord: GiftRecord? = null
@@ -144,6 +207,9 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
     override fun observeByContact(contactId: Long): Flow<List<GiftRecord>> = flowOf(record.value?.let(::listOf).orEmpty())
     override fun observeSearch(query: String): Flow<List<GiftRecordWithContact>> = flowOf(item.value?.let(::listOf).orEmpty())
     override suspend fun create(record: GiftRecord): Long {
+        createCount++
+        beforeCreate?.invoke()
+        if (failCreate) error("模拟保存失败")
         createdRecord = record
         return 1
     }
