@@ -1,4 +1,11 @@
 package com.yangsong.lizhang.ui.screen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.yangsong.lizhang.ui.component.GlassTokens
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.GlassButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,26 +31,18 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -186,13 +185,13 @@ fun SettingsScreen(
     )
 
     if (showBackupActions) {
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { showBackupActions = false },
             title = { Text(stringResource(R.string.settings_backup)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.settings_backup_description))
-                    Button(
+                    GlassButton(
                         onClick = {
                             showBackupActions = false
                             showCreateBackupPassword = true
@@ -201,7 +200,7 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.settings_backup_create_encrypted))
                     }
-                    TextButton(
+                    GlassTextButton(
                         onClick = {
                             showBackupActions = false
                             viewModel.prepareBackupExport()
@@ -210,7 +209,7 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.settings_backup_create_plain))
                     }
-                    TextButton(
+                    GlassTextButton(
                         onClick = {
                             showBackupActions = false
                             openBackup.launch(arrayOf(BackupArchiveCodec.MIME_TYPE))
@@ -223,7 +222,7 @@ fun SettingsScreen(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showBackupActions = false }) {
+                GlassTextButton(onClick = { showBackupActions = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -252,7 +251,7 @@ fun SettingsScreen(
     }
 
     if (showThemeOptions) {
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { showThemeOptions = false },
             title = { Text(stringResource(R.string.settings_theme)) },
             text = {
@@ -263,7 +262,7 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showThemeOptions = false }) {
+                GlassTextButton(onClick = { showThemeOptions = false }) {
                     Text(stringResource(R.string.action_done))
                 }
             },
@@ -271,7 +270,7 @@ fun SettingsScreen(
     }
 
     state.pendingRestore?.let { pending ->
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { if (!state.isRestoringBackup) viewModel.cancelRestore() },
             title = { Text(stringResource(R.string.settings_backup_restore_title)) },
             text = {
@@ -286,7 +285,7 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = viewModel::confirmRestore, enabled = !state.isRestoringBackup) {
+                GlassButton(onClick = viewModel::confirmRestore, enabled = !state.isRestoringBackup) {
                     if (state.isRestoringBackup) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
@@ -295,7 +294,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::cancelRestore, enabled = !state.isRestoringBackup) {
+                GlassTextButton(onClick = viewModel::cancelRestore, enabled = !state.isRestoringBackup) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -315,7 +314,7 @@ fun CreateEncryptedBackupDialog(
     val passwordTooShort = attempted && password.length < BackupEncryptionCodec.MIN_PASSWORD_LENGTH
     val confirmationMismatch = attempted && password != confirmation
 
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = { if (!isPreparing) onDismiss() },
         title = { Text(stringResource(R.string.settings_backup_password_create_title)) },
         text = {
@@ -345,7 +344,7 @@ fun CreateEncryptedBackupDialog(
             }
         },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = {
                     attempted = true
                     if (password.length >= BackupEncryptionCodec.MIN_PASSWORD_LENGTH &&
@@ -360,7 +359,7 @@ fun CreateEncryptedBackupDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isPreparing) {
+            GlassTextButton(onClick = onDismiss, enabled = !isPreparing) {
                 Text(stringResource(R.string.action_cancel))
             }
         },
@@ -376,7 +375,7 @@ fun RestoreBackupPasswordDialog(
     onDismiss: () -> Unit,
 ) {
     var password by remember(fileIdentity) { mutableStateOf("") }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = { if (!isReading) onDismiss() },
         title = { Text(stringResource(R.string.settings_backup_password_restore_title)) },
         text = {
@@ -394,7 +393,7 @@ fun RestoreBackupPasswordDialog(
             }
         },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = { if (password.isNotEmpty()) onConfirm(password) },
                 enabled = password.isNotEmpty() && !isReading,
             ) {
@@ -406,7 +405,7 @@ fun RestoreBackupPasswordDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isReading) {
+            GlassTextButton(onClick = onDismiss, enabled = !isReading) {
                 Text(stringResource(R.string.action_cancel))
             }
         },
@@ -584,10 +583,8 @@ private fun InputStream.readBackupBytes(): ByteArray {
 private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column {
         SectionHeader(title)
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp),
+        GlassCard(
+            shape = RoundedCornerShape(GlassTokens.Radius),
         ) {
             Column(Modifier.padding(horizontal = 16.dp), content = content)
         }

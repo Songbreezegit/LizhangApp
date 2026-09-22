@@ -1,4 +1,7 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.GlassButton
+import com.yangsong.lizhang.ui.component.GlassCard
 
 import android.Manifest
 import android.app.Activity
@@ -124,7 +127,7 @@ fun ContactImportContent(
         topBar = { AppTopBar(stringResource(R.string.contact_import_title), if (state.isImporting) null else onBack) },
         bottomBar = {
             Surface(shadowElevation = 4.dp) {
-                Button(
+                GlassButton(
                     onClick = onImport,
                     enabled = state.selectedKeys.isNotEmpty() && !state.isLoading && !state.isImporting &&
                         state.permissionState == ContactPermissionState.GRANTED,
@@ -145,10 +148,10 @@ fun ContactImportContent(
             if (state.permissionState != ContactPermissionState.GRANTED) {
                 item {
                     Text(stringResource(if (state.permissionState == ContactPermissionState.BLOCKED) R.string.contact_import_permission_blocked else R.string.contact_import_permission_denied))
-                    Button(onClick = onPermission) {
+                    GlassButton(onClick = onPermission) {
                         Text(stringResource(if (state.permissionState == ContactPermissionState.BLOCKED) R.string.contact_import_settings else R.string.contact_import_authorize))
                     }
-                    TextButton(onClick = onBack) { Text(stringResource(R.string.contact_import_back)) }
+                    GlassTextButton(onClick = onBack) { Text(stringResource(R.string.contact_import_back)) }
                 }
             } else if (state.isLoading) {
                 item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
@@ -157,14 +160,14 @@ fun ContactImportContent(
                     Text(stringResource(R.string.contact_import_description))
                     AppTextField(state.query, onQuery, stringResource(R.string.contact_import_search))
                     Row {
-                        TextButton(onClick = { onSelectAll(true) }, enabled = !state.isImporting) { Text(stringResource(R.string.contact_import_select_all)) }
-                        TextButton(onClick = { onSelectAll(false) }, enabled = !state.isImporting) { Text(stringResource(R.string.contact_import_deselect_all)) }
+                        GlassTextButton(onClick = { onSelectAll(true) }, enabled = !state.isImporting) { Text(stringResource(R.string.contact_import_select_all)) }
+                        GlassTextButton(onClick = { onSelectAll(false) }, enabled = !state.isImporting) { Text(stringResource(R.string.contact_import_deselect_all)) }
                     }
                 }
                 state.error?.let { error ->
                     item {
                         Text(stringResource(if (error == ContactImportError.READ) R.string.contact_import_read_failed else R.string.contact_import_failed), color = MaterialTheme.colorScheme.error)
-                        if (error == ContactImportError.READ) TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
+                        if (error == ContactImportError.READ) GlassTextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
                     }
                 }
                 if (state.loaded && state.contacts.isEmpty()) {
@@ -185,7 +188,7 @@ fun ContactImportContent(
 
 @Composable
 private fun ContactImportRow(row: ContactImportCandidate, selected: Boolean, enabled: Boolean, onToggle: (String) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    GlassCard(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth().toggleable(selected, enabled = enabled && !row.exists, role = Role.Checkbox) { onToggle(row.contact.phone) }.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,

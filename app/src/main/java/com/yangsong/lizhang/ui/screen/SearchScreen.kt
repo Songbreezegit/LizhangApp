@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassCard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -37,13 +38,11 @@ fun SearchScreen(
                 label = stringResource(R.string.search_hint),
                 leadingIcon = Icons.Outlined.Search,
             )
-            Card(
+            GlassCard(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(2.dp),
+                shape = RoundedCornerShape(GlassTokens.Radius),
             ) {
                 when {
                     state.error -> ErrorState(viewModel::retry)

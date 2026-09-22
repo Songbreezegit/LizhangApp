@@ -1,9 +1,10 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassIconButton
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -43,12 +44,9 @@ fun HomeContent(
 ) {
     Scaffold(
         floatingActionButton = {
-            Box(Modifier.padding(bottom=96.dp)) {
-                FloatingActionButton(
+            Box(Modifier.padding(bottom=GlassTokens.BottomClearance)) {
+                GlassFab(
                     onClick = { onNavigate(AppDestination.AddGift) },
-                    containerColor = CoralPrimary,
-                    contentColor = Color.White,
-                    shape = CircleShape,
                 ) { Icon(Icons.Outlined.Add, stringResource(R.string.action_add_gift), Modifier.size(30.dp)) }
             }
         },
@@ -58,7 +56,7 @@ fun HomeContent(
             state.error -> ErrorState(onRetry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = GlassTokens.ListBottomClearance),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
@@ -72,7 +70,7 @@ fun HomeContent(
                     )
                 }
                 item {
-                    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
+                    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
                         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                             SectionHeader(stringResource(R.string.home_recent), stringResource(R.string.action_all)) { onNavigate(AppDestination.Search) }
                             if (state.recentRecords.isEmpty()) {
@@ -104,8 +102,8 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.app_tagline), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
         }
-        IconButton(onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
-        IconButton(onNotice) {
+        GlassIconButton(onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
+        GlassIconButton(onNotice) {
             Icon(Icons.Outlined.NotificationsNone, stringResource(R.string.nav_notifications), Modifier.size(28.dp))
         }
     }
@@ -113,12 +111,11 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 
 @Composable
 private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
-    val largeText = LocalDensity.current.fontScale >= 1.2f
     var yearMenuExpanded by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().height(if (largeText) 254.dp else 220.dp), shape = RoundedCornerShape(26.dp), colors = CardDefaults.cardColors(containerColor = BlushSurface), elevation = CardDefaults.cardElevation(2.dp)) {
-        Box(Modifier.fillMaxSize()) {
-            Image(painterResource(R.drawable.home_hero_cat), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            Column(Modifier.fillMaxHeight().width(225.dp).padding(18.dp)) {
+    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(GlassTokens.Radius)) {
+        Box(Modifier.fillMaxWidth()) {
+            Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.matchParentSize().padding(start = 64.dp, bottom = 12.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomEnd)
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
                 Box {
                     Surface(
                         onClick = { yearMenuExpanded = true },
@@ -136,6 +133,8 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
                     DropdownMenu(
                         expanded = yearMenuExpanded,
                         onDismissRequest = { yearMenuExpanded = false },
+                        shape = RoundedCornerShape(GlassTokens.ControlRadius),
+                        containerColor = glassColor().copy(alpha = GlassTokens.FloatingAlpha),
                     ) {
                         state.availableYears.forEach { year ->
                             DropdownMenuItem(
@@ -152,20 +151,23 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                Text(stringResource(R.string.home_year_received), color = InkOnIllustration)
-                Text(CurrencyFormatter.formatCents(state.received), color = CoralOnContainer, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(CurrencyFormatter.formatCents(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                Text("${stringResource(R.string.home_year_given)}  ${CurrencyFormatter.formatCents(state.given)}", color = MintOnContainer, fontWeight = FontWeight.SemiBold)
-                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = InkOnIllustration, style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.home_year_given), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(CurrencyFormatter.formatCents(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(12.dp))
+                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar: () -> Unit, onStats: () -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
+        FlowRow(Modifier.fillMaxWidth().padding(vertical = 18.dp), maxItemsInEachRow = if (LocalDensity.current.fontScale >= 1.2f) 2 else 4, horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralOnContainer, onReceived)
             QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintOnContainer, onGiven)
             QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotOnContainer, onCalendar)
@@ -176,7 +178,7 @@ private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar
 
 @Composable
 private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, background: Color, tint: Color, onClick: () -> Unit) {
-    Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.width(if (LocalDensity.current.fontScale >= 1.2f) 140.dp else 76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = background) {
             Icon(icon, null, Modifier.padding(14.dp).size(28.dp), tint = tint)
         }

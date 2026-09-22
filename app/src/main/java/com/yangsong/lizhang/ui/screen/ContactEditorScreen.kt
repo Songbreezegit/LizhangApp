@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassIconButton
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -53,7 +55,7 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
                 onBack = requestBack,
                 action = if (state.isNewContact || state.loadFailed) null else {
                     {
-                        IconButton(onClick = { showDeleteConfirm = true }, enabled = !state.isDeleting) {
+                        GlassIconButton(onClick = { showDeleteConfirm = true }, enabled = !state.isDeleting) {
                             Icon(Icons.Outlined.DeleteOutline, stringResource(R.string.contact_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -70,10 +72,8 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 PageIllustration(R.drawable.page_contacts_cat, Modifier.fillMaxWidth().height(145.dp))
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(2.dp),
+                GlassCard(
+                    shape = RoundedCornerShape(GlassTokens.Radius),
                 ) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         Text(stringResource(R.string.contact_basic_info), style = MaterialTheme.typography.titleMedium)

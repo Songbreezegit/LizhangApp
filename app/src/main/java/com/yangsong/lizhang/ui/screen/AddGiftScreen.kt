@@ -1,7 +1,12 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.GlassButton
+import com.yangsong.lizhang.ui.component.GlassChip
+import com.yangsong.lizhang.ui.component.GlassIconButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -101,7 +106,7 @@ fun AddGiftContent(
     ){padding->
         when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
-            Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
+            GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){
                 Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
                     SelectionRow(
@@ -160,12 +165,12 @@ fun DiscardGiftChangesDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.record_discard_title)) },
         text = { Text(stringResource(R.string.record_discard_message)) },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
@@ -176,7 +181,7 @@ fun DiscardGiftChangesDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            GlassTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_continue_editing))
             }
         },
@@ -282,7 +287,7 @@ private fun ContactPickerSheet(
     }
 }
 
-@Composable private fun QuickContactDialog(isSaving:Boolean,onConfirm:(String,String,String)->Unit,onDismiss:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var relationship by remember{mutableStateOf("")};var attempted by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=onDismiss,title={Text(stringResource(R.string.contact_create_quick))},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){AppTextField(name,{name=it},stringResource(R.string.contact_name),error=if(attempted&&name.isBlank())stringResource(R.string.contact_name_required)else null);AppTextField(phone,{phone=it},stringResource(R.string.contact_phone));AppTextField(relationship,{relationship=it},stringResource(R.string.contact_relationship))}},confirmButton={Button({attempted=true;if(name.isNotBlank())onConfirm(name,phone,relationship)},enabled=!isSaving){Text(stringResource(R.string.action_confirm))}},dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}})}
+@Composable private fun QuickContactDialog(isSaving:Boolean,onConfirm:(String,String,String)->Unit,onDismiss:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var relationship by remember{mutableStateOf("")};var attempted by remember{mutableStateOf(false)};GlassDialog(onDismissRequest=onDismiss,title={Text(stringResource(R.string.contact_create_quick))},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){AppTextField(name,{name=it},stringResource(R.string.contact_name),error=if(attempted&&name.isBlank())stringResource(R.string.contact_name_required)else null);AppTextField(phone,{phone=it},stringResource(R.string.contact_phone));AppTextField(relationship,{relationship=it},stringResource(R.string.contact_relationship))}},confirmButton={GlassButton({attempted=true;if(name.isNotBlank())onConfirm(name,phone,relationship)},enabled=!isSaving){Text(stringResource(R.string.action_confirm))}},dismissButton={GlassTextButton(onDismiss){Text(stringResource(R.string.action_cancel))}})}
 
 @Composable
 private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit){
@@ -312,20 +317,20 @@ private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Uni
     LaunchedEffect(maxDay) {
         if (day > maxDay) day = maxDay
     }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest=onDismiss,
         title={Text(stringResource(R.string.date_choose))},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                IconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
+                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
                 Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
-                IconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
+                GlassIconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
             }
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->FilterChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->FilterChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->GlassChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
         }},
-        confirmButton={TextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},
-        dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}},
+        confirmButton={GlassTextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},
+        dismissButton={GlassTextButton(onDismiss){Text(stringResource(R.string.action_cancel))}},
     )
 }
 
