@@ -1,5 +1,7 @@
 # 全局 UI 重构 V1
 
+> 本文记录初版实现；当前视觉参数与实机返修结果以 [UI 返修说明](UI返修V1.md) 为准。
+
 ## 范围与版本
 
 - 基于 `feat/contact-bulk-management` 的 `2765a9f8a188100b7ec5a0db34d40b9d7edfb043`。
