@@ -1,7 +1,6 @@
 package com.yangsong.lizhang.domain.export
 
 import com.yangsong.lizhang.core.util.DateFormatter
-import com.yangsong.lizhang.domain.model.eventDisplayName
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import java.io.ByteArrayOutputStream
@@ -43,7 +42,7 @@ object GiftRecordXlsxFormatter {
             append(inlineCell("A", row, item.contactName))
             append(numberCell("B", row, BigDecimal.valueOf(record.amountInCents, 2).toPlainString(), style = 2))
             append(inlineCell("C", row, record.direction.label()))
-            append(inlineCell("D", row, record.eventDisplayName()))
+            append(inlineCell("D", row, record.eventExportLabel()))
             append(inlineCell("E", row, DateFormatter.format(record.eventDate)))
             append(inlineCell("F", row, record.notes.orEmpty()))
             append(inlineCell("G", row, DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss")))

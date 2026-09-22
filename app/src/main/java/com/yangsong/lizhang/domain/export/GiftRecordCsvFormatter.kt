@@ -1,7 +1,6 @@
 package com.yangsong.lizhang.domain.export
 
 import com.yangsong.lizhang.core.util.DateFormatter
-import com.yangsong.lizhang.domain.model.eventDisplayName
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import java.math.BigDecimal
@@ -20,7 +19,7 @@ object GiftRecordCsvFormatter {
                     item.contactName,
                     BigDecimal.valueOf(record.amountInCents, 2).toPlainString(),
                     record.direction.csvLabel(),
-                    record.eventDisplayName(),
+                    record.eventExportLabel(),
                     DateFormatter.format(record.eventDate),
                     record.notes.orEmpty(),
                     DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss"),

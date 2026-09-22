@@ -160,7 +160,7 @@ class GiftSaveFlowInstrumentedTest {
         compose.onNodeWithText("添加").performClick()
         compose.onNodeWithText("请输入事件名称").assertIsDisplayed()
         compose.onNodeWithTag("自定义事件名称").performTextInput("长".repeat(21))
-        compose.onNodeWithText("事件名称最多20个字符").assertIsDisplayed()
+        compose.onNodeWithText(compose.activity.getString(com.yangsong.lizhang.R.string.event_custom_too_long, com.yangsong.lizhang.domain.model.MAX_CUSTOM_EVENT_NAME_LENGTH)).assertIsDisplayed()
         compose.onNodeWithTag("自定义事件名称").performTextReplacement("  升学宴  ")
         compose.onNodeWithText("添加").performClick()
         compose.onNodeWithText("升学宴").assertIsSelected()

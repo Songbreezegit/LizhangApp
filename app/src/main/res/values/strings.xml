@@ -97,4 +97,12 @@
     <string name="contact_bulk_deleted">已删除 %1$d 位联系人</string>
     <string name="contact_bulk_deleted_records">已删除 %1$d 位联系人及 %2$d 条礼金记录</string>
     <string name="contact_bulk_delete_failed">删除失败，请稍后重试</string>
+    <string name="event_custom_action">+ 自定义</string>
+    <string name="event_custom_title">自定义事件</string>
+    <string name="event_custom_name">事件名称</string>
+    <string name="event_custom_hint">例如：升学宴</string>
+    <string name="event_custom_required">请输入事件名称</string>
+    <string name="event_custom_too_long">事件名称最多 %1$d 个字符</string>
+    <string name="event_custom_limit">最多 %1$d 个字符</string>
+    <string name="action_add">添加</string>
 </resources>

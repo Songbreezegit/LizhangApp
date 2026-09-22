@@ -12,11 +12,9 @@ import com.yangsong.lizhang.ui.theme.LiZhangTheme
 @PreviewTest @GlassConfigurations @Composable
 fun CustomEventDialogScreenshot() { LiZhangTheme { AppGradientBackground { CustomEventDialog("升学宴", {}, {}) } } }
 
-@PreviewTest @GlassConfigurations @Composable
-fun CustomEventSelectedScreenshot() { LiZhangTheme { AppGradientBackground {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        DirectionSelector(com.yangsong.lizhang.domain.model.GiftDirection.RECEIVED, {})
-        Spacer(Modifier.height(30.dp))
+@PreviewTest @GlassConfigurations @androidx.compose.ui.tooling.preview.Preview(name = "浅色412双行", widthDp = 412, heightDp = 500) @Composable
+fun CustomEventSelectedScreenshot() { LiZhangTheme { AppScaffold { padding ->
+    Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.Center) {
         EventTypeSelector(EventType.OTHER, {}, "升学宴", {})
     }
 } } }

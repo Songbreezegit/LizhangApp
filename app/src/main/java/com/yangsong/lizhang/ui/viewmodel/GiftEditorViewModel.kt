@@ -100,7 +100,7 @@ class GiftEditorViewModel(
 
     fun setCustomEvent(name: String) {
         val normalized = name.trim()
-        if (normalized.isEmpty() || normalized.codePointCount(0, normalized.length) > 20) return
+        if (normalized.isEmpty() || normalized.codePointCount(0, normalized.length) > MAX_CUSTOM_EVENT_NAME_LENGTH) return
         update { it.copy(eventType = EventType.OTHER, customEventName = normalized) }
     }
 

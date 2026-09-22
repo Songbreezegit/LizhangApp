@@ -54,6 +54,15 @@ class GiftRecordViewModelTest {
         assertEquals("毕业2026 ABC", editor.uiState.value.customEventName)
     }
 
+    @Test fun `最大长度按Unicode码点计算并保留首尾空格裁剪`() = runTest(dispatcher) {
+        val editor = GiftEditorViewModel(FakeGiftRecordRepository(sampleRecord()), FakeContactRepository(sampleContact()))
+        val accepted = "😀".repeat(20)
+        editor.setCustomEvent("  $accepted  ")
+        assertEquals(accepted, editor.uiState.value.customEventName)
+        editor.setCustomEvent("😀".repeat(21))
+        assertEquals("超长输入不可覆盖已接受名称", accepted, editor.uiState.value.customEventName)
+    }
+
     private val dispatcher = StandardTestDispatcher()
 
     @Before

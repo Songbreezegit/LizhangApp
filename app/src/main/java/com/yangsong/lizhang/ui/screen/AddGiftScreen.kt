@@ -124,9 +124,7 @@ fun AddGiftContent(
                         )
                     }
                     DirectionSelector(state.direction,onDirectionChange)
-                    Box(Modifier.padding(top = 12.dp)) {
-                        EventTypeSelector(state.eventType, onEventTypeChange, state.customEventName) { showCustomEvent = true }
-                    }
+                    EventTypeSelector(state.eventType, onEventTypeChange, state.customEventName) { showCustomEvent = true }
                     AppMultilineTextField(
                         state.notes,
                         onNotesChange,
