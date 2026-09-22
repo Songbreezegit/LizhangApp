@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassTokens
 import com.yangsong.lizhang.ui.component.GlassCard
 
@@ -102,7 +103,7 @@ private fun InformationPage(
     introduction: String? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(title, onBack) },
     ) { padding ->
         LazyColumn(

@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassSurface
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassTextButton
 import com.yangsong.lizhang.ui.component.GlassButton
 import com.yangsong.lizhang.ui.component.GlassCard
@@ -123,10 +125,10 @@ fun ContactImportContent(
     onRetry: () -> Unit,
     onPermission: () -> Unit,
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.contact_import_title), if (state.isImporting) null else onBack) },
         bottomBar = {
-            Surface(shadowElevation = 4.dp) {
+            GlassSurface {
                 GlassButton(
                     onClick = onImport,
                     enabled = state.selectedKeys.isNotEmpty() && !state.isLoading && !state.isImporting &&

@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.glassSwitchColors
+import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.yangsong.lizhang.ui.component.GlassTextButton
@@ -53,7 +55,7 @@ fun DirectionRecordsScreen(
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val title = stringResource(if (direction == GiftDirection.RECEIVED) R.string.shortcut_received else R.string.shortcut_given)
-    Scaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
+    AppScaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState(viewModel::retry)
@@ -88,7 +90,7 @@ fun DirectionRecordsScreen(
 @Composable
 fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
+    AppScaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState(viewModel::retry)
@@ -147,7 +149,7 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
         onClick = onClick,
         modifier = modifier.aspectRatio(1f).padding(2.dp),
         shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(day.toString(), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
@@ -224,7 +226,7 @@ fun NotificationsContent(
     snackbar: SnackbarHostState = remember { SnackbarHostState() },
     onEnabledChange: (Boolean) -> Unit = {}, onAdvanceClick: () -> Unit = {}, onTimeClick: () -> Unit = {},
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     ) { padding ->
@@ -258,7 +260,7 @@ fun NotificationsContent(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
-                            Switch(
+                            Switch(colors = glassSwitchColors(),
                                 checked = state.remindersEnabled,
                                 onCheckedChange = onEnabledChange,
                             )

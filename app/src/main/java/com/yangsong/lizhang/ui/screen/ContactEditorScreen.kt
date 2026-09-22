@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassIconButton
 
@@ -48,7 +49,7 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
         if (state.operationFailed) snackbar.showSnackbar(operationFailed)
     }
 
-    Scaffold(
+    AppScaffold(
         topBar = {
             AppTopBar(
                 title = stringResource(if (state.isNewContact) R.string.contact_create else R.string.contact_edit),

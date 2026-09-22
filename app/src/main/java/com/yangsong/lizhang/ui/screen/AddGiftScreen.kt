@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassTextButton
 import com.yangsong.lizhang.ui.component.GlassButton
 import com.yangsong.lizhang.ui.component.GlassChip
@@ -92,7 +93,7 @@ fun AddGiftContent(
     onRetry: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
-    Scaffold(
+    AppScaffold(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
         snackbarHost=snackbarHost,
         bottomBar = {
@@ -106,8 +107,8 @@ fun AddGiftContent(
     ){padding->
         when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
-            GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){
-                Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            Column {
+                Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(18.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
                     SelectionRow(
                         text=state.contacts.firstOrNull{it.id==state.contactId}?.name?:stringResource(R.string.field_contact_hint),
@@ -188,7 +189,7 @@ fun DiscardGiftChangesDialog(
     )
 }
 
-@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.background){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,7 +207,7 @@ private fun ContactPickerSheet(
                 it.phone.orEmpty().contains(query)
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = glassColor().copy(alpha = GlassTokens.DialogAlpha)) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -246,9 +247,9 @@ private fun ContactPickerSheet(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             color = if (contact.id == selectedId) {
-                                MaterialTheme.colorScheme.primaryContainer
+                                MaterialTheme.colorScheme.primary.copy(alpha = .12f)
                             } else {
-                                MaterialTheme.colorScheme.surface
+                                androidx.compose.ui.graphics.Color.Transparent
                             },
                         ) {
                             Row(

@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 
 import androidx.compose.foundation.layout.*
@@ -35,7 +36,7 @@ fun GiftRecordDetailScreen(
     LaunchedEffect(state.isDeleted) { if (state.isDeleted) onBack() }
     LaunchedEffect(state.deleteFailed) { if (state.deleteFailed) snackbar.showSnackbar(deleteFailed) }
 
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.record_detail_title), onBack) },
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     ) { padding ->

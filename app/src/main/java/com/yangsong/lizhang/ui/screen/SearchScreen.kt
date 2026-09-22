@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +23,7 @@ fun SearchScreen(
     onRecordClick: (Long) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_search), onBack) },
     ) { padding ->
         Column(

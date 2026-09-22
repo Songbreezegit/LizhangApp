@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.glassSwitchColors
+import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.yangsong.lizhang.ui.component.GlassTokens
@@ -33,7 +35,8 @@ import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.RadioButton
@@ -447,7 +450,7 @@ fun SettingsContent(
     onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_settings)) },
         snackbarHost = snackbarHost,
     ) { padding ->
@@ -463,24 +466,29 @@ fun SettingsContent(
                         Icons.Outlined.Backup,
                         stringResource(R.string.settings_backup),
                         onClick = onBackup,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (
                             state.isPreparingBackup || state.isReadingBackup || state.isRestoringBackup
                         ) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.TableView,
                         stringResource(R.string.settings_excel),
                         onClick = onExcelExport,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (state.isPreparingExcel) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.Description,
                         stringResource(R.string.settings_csv),
                         onClick = onCsvExport,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (state.isPreparingCsv) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
@@ -500,6 +508,7 @@ fun SettingsContent(
                         themeDescription,
                         onClick = onThemeOptions,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
@@ -510,7 +519,7 @@ fun SettingsContent(
                             )
                         },
                         trailing = {
-                            Switch(
+                            Switch(colors = glassSwitchColors(),
                                 checked = state.themeMode == AppThemeMode.DARK,
                                 onCheckedChange = {
                                     onThemeModeChange(if (it) AppThemeMode.DARK else AppThemeMode.LIGHT)
@@ -518,6 +527,7 @@ fun SettingsContent(
                             )
                         },
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.TextFields,
                         stringResource(R.string.settings_font),
@@ -534,6 +544,7 @@ fun SettingsContent(
                         stringResource(R.string.settings_version),
                         onClick = onAbout,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.PrivacyTip,
                         stringResource(R.string.settings_privacy),

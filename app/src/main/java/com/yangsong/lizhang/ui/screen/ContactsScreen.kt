@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.yangsong.lizhang.ui.component.GlassTextButton
@@ -152,7 +153,7 @@ fun ContactsContent(
     LaunchedEffect(state.isSelectionMode) { if (state.isSelectionMode) menuExpanded = false }
     BackHandler(menuExpanded && !state.isSelectionMode) { menuExpanded = false }
     Box(Modifier.fillMaxSize()) {
-    Scaffold(
+    AppScaffold(
         topBar = {
             if (state.isSelectionMode) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),

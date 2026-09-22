@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassChip
 
@@ -25,7 +26,7 @@ import com.yangsong.lizhang.ui.viewmodel.*
 @Composable
 fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
     val state= viewModel.uiState.collectAsStateWithLifecycle().value
-    Scaffold(topBar={AppTopBar(stringResource(R.string.nav_statistics),onBack)}){padding->
+    AppScaffold(topBar={AppTopBar(stringResource(R.string.nav_statistics),onBack)}){padding->
         when{
             state.isLoading->LoadingState()
             state.error->ErrorState(viewModel::retry)
@@ -57,7 +58,7 @@ fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
 }
 
 @Composable private fun StatsCard(title:String,content:@Composable ColumnScope.()->Unit){GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.padding(16.dp)){SectionHeader(title);content()}}}
-@Composable private fun MonthlyChart(months:List<MonthStat>){val max=(months.maxOfOrNull{it.received+it.given}?:1).coerceAtLeast(1);Row(Modifier.fillMaxWidth().height(150.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.Bottom){months.forEach{month->Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.fillMaxWidth().height((100f*(month.received+month.given)/max).dp.coerceAtLeast(3.dp)).background(if(month.month%2==0)CoralPrimary else LavenderPrimary,RoundedCornerShape(topStart=5.dp,topEnd=5.dp)));Text("${month.month}",style=MaterialTheme.typography.labelSmall)}}}}
+@Composable private fun MonthlyChart(months:List<MonthStat>){val max=(months.maxOfOrNull{it.received+it.given}?:1).coerceAtLeast(1);Row(Modifier.fillMaxWidth().height(150.dp),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.Bottom){months.forEach{month->Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally){Box(Modifier.fillMaxWidth().height((100f*(month.received+month.given)/max).dp.coerceAtLeast(3.dp)).background(if(month.month%2==0)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,RoundedCornerShape(topStart=5.dp,topEnd=5.dp)));Text("${month.month}",style=MaterialTheme.typography.labelSmall)}}}}
 @Composable private fun StatLine(label:String,amount:Long){Row(Modifier.fillMaxWidth().padding(vertical=9.dp)){Text(label,Modifier.weight(1f));Text(CurrencyFormatter.formatCents(amount),fontWeight=FontWeight.SemiBold)}}
 
 @Composable

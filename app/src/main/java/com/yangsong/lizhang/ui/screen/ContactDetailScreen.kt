@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassIconButton
 
@@ -28,7 +29,7 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
     var filter by remember{mutableStateOf<GiftDirection?>(null)}
     var showFilter by remember{mutableStateOf(false)}
     val visibleRecords=remember(state.records,filter){state.records.filter{filter==null||it.direction==filter}}
-    Scaffold(
+    AppScaffold(
         topBar={
             AppTopBar(
                 state.contact?.name?:stringResource(R.string.nav_contact_detail),
@@ -57,7 +58,7 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
             }
         }
     }
-    if(showFilter)ModalBottomSheet(onDismissRequest={showFilter=false}){Column(Modifier.fillMaxWidth().padding(horizontal=18.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.contact_filter),style=MaterialTheme.typography.titleLarge);FilterOption(stringResource(R.string.action_all),filter==null){filter=null;showFilter=false};GiftDirection.entries.forEach{direction->FilterOption(stringResource(direction.labelRes()),filter==direction){filter=direction;showFilter=false}}}}
+    if(showFilter)ModalBottomSheet(onDismissRequest={showFilter=false},containerColor=glassColor().copy(alpha=GlassTokens.DialogAlpha)){Column(Modifier.fillMaxWidth().padding(horizontal=18.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.contact_filter),style=MaterialTheme.typography.titleLarge);FilterOption(stringResource(R.string.action_all),filter==null){filter=null;showFilter=false};GiftDirection.entries.forEach{direction->FilterOption(stringResource(direction.labelRes()),filter==direction){filter=direction;showFilter=false}}}}
 }
 
-@Composable private fun FilterOption(label:String,selected:Boolean,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=if(selected)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface){Row(Modifier.padding(16.dp)){Text(label,Modifier.weight(1f));if(selected)Text("✓",color=MaterialTheme.colorScheme.primary)}}}
+@Composable private fun FilterOption(label:String,selected:Boolean,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=if(selected)MaterialTheme.colorScheme.primary.copy(alpha=.12f) else androidx.compose.ui.graphics.Color.Transparent){Row(Modifier.padding(16.dp)){Text(label,Modifier.weight(1f));if(selected)Text("✓",color=MaterialTheme.colorScheme.primary)}}}
