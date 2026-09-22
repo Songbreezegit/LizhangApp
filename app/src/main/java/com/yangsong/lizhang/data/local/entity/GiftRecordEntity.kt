@@ -28,4 +28,5 @@ data class GiftRecordEntity(
     val direction: GiftDirection,
     val notes: String? = null,
     val createdTime: Long = System.currentTimeMillis(),
+    @androidx.room.ColumnInfo(defaultValue = "NULL") val customEventName: String? = null,
 )

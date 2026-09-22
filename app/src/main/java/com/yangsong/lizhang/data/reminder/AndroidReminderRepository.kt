@@ -19,6 +19,7 @@ import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.domain.model.EventType
+import com.yangsong.lizhang.domain.model.eventDisplayText
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.reminder.PlannedReminder
 import com.yangsong.lizhang.domain.reminder.ReminderPlanner
@@ -109,6 +110,7 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
             putExtra(EXTRA_RECORD_ID, recordId)
             putExtra(EXTRA_CONTACT_NAME, contactName)
             putExtra(EXTRA_EVENT_TYPE, eventType.name)
+            putExtra(EXTRA_CUSTOM_EVENT_NAME, customEventName)
             putExtra(EXTRA_ADVANCE_DAYS, advanceDays)
         }
         return PendingIntent.getBroadcast(
@@ -174,6 +176,7 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val eventType = runCatching {
             enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
         }.getOrDefault(EventType.OTHER)
+        val eventName = eventDisplayText(eventType, intent.getStringExtra(EXTRA_CUSTOM_EVENT_NAME)) { context.eventTypeName(it) }
         val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
         val openApp = PendingIntent.getActivity(
             context,
@@ -188,12 +191,12 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
                 if (advanceDays == 0) {
                     context.getString(
                         R.string.reminder_notification_text,
-                        context.eventTypeName(eventType),
+                        eventName,
                     )
                 } else {
                     context.getString(
                         R.string.reminder_notification_text_advance,
-                        context.eventTypeName(eventType),
+                        eventName,
                         advanceDays,
                     )
                 },
@@ -247,6 +250,7 @@ private const val CHANNEL_ID = "gift_date_reminders"
 private const val EXTRA_RECORD_ID = "record_id"
 private const val EXTRA_CONTACT_NAME = "contact_name"
 private const val EXTRA_EVENT_TYPE = "event_type"
+private const val EXTRA_CUSTOM_EVENT_NAME = "custom_event_name"
 private const val EXTRA_ADVANCE_DAYS = "advance_days"
 
 private val rescheduleActions = setOf(

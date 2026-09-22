@@ -24,6 +24,7 @@ data class GiftEditorUiState(
     val contactId: Long? = null,
     val amount: String = "",
     val eventType: EventType = EventType.WEDDING,
+    val customEventName: String? = null,
     val eventDate: Long = Calendar.getInstance().startOfDay(),
     val direction: GiftDirection = GiftDirection.RECEIVED,
     val notes: String = "",
@@ -95,6 +96,14 @@ class GiftEditorViewModel(
         }
     }
 
+    fun selectEvent(type: EventType) = update { it.copy(eventType = type, customEventName = null) }
+
+    fun setCustomEvent(name: String) {
+        val normalized = name.trim()
+        if (normalized.isEmpty() || normalized.codePointCount(0, normalized.length) > 20) return
+        update { it.copy(eventType = EventType.OTHER, customEventName = normalized) }
+    }
+
     fun createContact(name: String, phone: String, relationship: String) {
         if (name.isBlank() || mutableUiState.value.isCreatingContact) return
         viewModelScope.launch {
@@ -145,6 +154,7 @@ class GiftEditorViewModel(
                         contactId = contactId,
                         amountInCents = amountInCents,
                         eventType = state.eventType,
+                        customEventName = state.customEventName,
                         eventDate = state.eventDate,
                         direction = state.direction,
                         notes = state.notes.trim().ifBlank { null },
@@ -167,6 +177,7 @@ class GiftEditorViewModel(
         contactId = record.contactId,
         amount = BigDecimal.valueOf(record.amountInCents, 2).stripTrailingZeros().toPlainString(),
         eventType = record.eventType,
+        customEventName = record.customEventName,
         eventDate = record.eventDate,
         direction = record.direction,
         notes = record.notes.orEmpty(),

@@ -32,7 +32,7 @@ class AppContainer(
         context.applicationContext,
         LiZhangDatabase::class.java,
         DatabaseConstants.NAME,
-    ).build()
+    ).addMigrations(com.yangsong.lizhang.data.local.MIGRATION_1_2).build()
 
     val contactRepository: ContactRepository = RoomContactRepository(database.contactDao())
     val giftRecordRepository: GiftRecordRepository = RoomGiftRecordRepository(database.giftRecordDao())

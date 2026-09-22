@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.domain.model.eventDisplayName
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 
@@ -62,7 +63,7 @@ fun GiftRecordDetailScreen(
                         Column(Modifier.padding(horizontal = 18.dp)) {
                             DetailRow(stringResource(R.string.field_contact), item.contactName)
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            DetailRow(stringResource(R.string.field_event), stringResource(record.eventType.labelRes()))
+                            DetailRow(stringResource(R.string.field_event), record.eventDisplayName())
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             DetailRow(stringResource(R.string.field_date), DateFormatter.format(record.eventDate))
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)

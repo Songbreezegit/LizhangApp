@@ -27,7 +27,7 @@ class InvalidBackupException(message: String, cause: Throwable? = null) : Except
 object BackupArchiveCodec {
     const val FILE_EXTENSION = "lizhangbackup"
     const val MIME_TYPE = "application/octet-stream"
-    const val FORMAT_VERSION = 2
+    const val FORMAT_VERSION = 3
     const val MAX_FILE_BYTES = 32 * 1024 * 1024 + 51
 
     private val magic = "LIZHANG-BACKUP\n".toByteArray(Charsets.US_ASCII)
@@ -59,6 +59,7 @@ object BackupArchiveCodec {
                     output.writeLong(record.contactId)
                     output.writeLong(record.amountInCents)
                     output.writeString(record.eventType.name)
+                    output.writeNullableString(record.customEventName)
                     output.writeLong(record.eventDate)
                     output.writeString(record.direction.name)
                     output.writeNullableString(record.notes)
@@ -130,6 +131,7 @@ object BackupArchiveCodec {
                     contactId = input.readLong(),
                     amountInCents = input.readLong(),
                     eventType = input.readEnum<EventType>("事件类型"),
+                    customEventName = if (version >= 3) input.readNullableString() else null,
                     eventDate = input.readLong(),
                     direction = input.readEnum<GiftDirection>("往来方向"),
                     notes = input.readNullableString(),

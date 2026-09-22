@@ -1,7 +1,7 @@
 package com.yangsong.lizhang.domain.export
 
 import com.yangsong.lizhang.core.util.DateFormatter
-import com.yangsong.lizhang.domain.model.EventType
+import com.yangsong.lizhang.domain.model.eventDisplayName
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import java.io.ByteArrayOutputStream
@@ -43,7 +43,7 @@ object GiftRecordXlsxFormatter {
             append(inlineCell("A", row, item.contactName))
             append(numberCell("B", row, BigDecimal.valueOf(record.amountInCents, 2).toPlainString(), style = 2))
             append(inlineCell("C", row, record.direction.label()))
-            append(inlineCell("D", row, record.eventType.label()))
+            append(inlineCell("D", row, record.eventDisplayName()))
             append(inlineCell("E", row, DateFormatter.format(record.eventDate)))
             append(inlineCell("F", row, record.notes.orEmpty()))
             append(inlineCell("G", row, DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss")))
@@ -71,14 +71,6 @@ object GiftRecordXlsxFormatter {
 
     private fun GiftDirection.label() = if (this == GiftDirection.RECEIVED) "收到" else "送出"
 
-    private fun EventType.label() = when (this) {
-        EventType.WEDDING -> "婚礼"
-        EventType.FULL_MONTH -> "满月"
-        EventType.BIRTHDAY -> "生日"
-        EventType.HOUSEWARMING -> "乔迁"
-        EventType.FESTIVAL -> "节日"
-        EventType.OTHER -> "其他"
-    }
 
     private fun ZipOutputStream.writeXml(path: String, content: String) {
         putNextEntry(ZipEntry(path))

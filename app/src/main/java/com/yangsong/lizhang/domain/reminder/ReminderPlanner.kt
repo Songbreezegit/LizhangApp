@@ -12,6 +12,7 @@ data class PlannedReminder(
     val eventType: EventType,
     val triggerAt: Long,
     val advanceDays: Int = 0,
+    val customEventName: String? = null,
 )
 
 val supportedReminderAdvanceDays = listOf(0, 1, 3, 7)
@@ -66,6 +67,7 @@ object ReminderPlanner {
                 recordId = item.record.id,
                 contactName = item.contactName,
                 eventType = item.record.eventType,
+                customEventName = item.record.customEventName,
                 triggerAt = triggerAt,
                 advanceDays = advanceDays,
             )

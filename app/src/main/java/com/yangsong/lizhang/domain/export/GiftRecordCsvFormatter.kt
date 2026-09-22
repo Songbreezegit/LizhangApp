@@ -1,7 +1,7 @@
 package com.yangsong.lizhang.domain.export
 
 import com.yangsong.lizhang.core.util.DateFormatter
-import com.yangsong.lizhang.domain.model.EventType
+import com.yangsong.lizhang.domain.model.eventDisplayName
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import java.math.BigDecimal
@@ -20,7 +20,7 @@ object GiftRecordCsvFormatter {
                     item.contactName,
                     BigDecimal.valueOf(record.amountInCents, 2).toPlainString(),
                     record.direction.csvLabel(),
-                    record.eventType.csvLabel(),
+                    record.eventDisplayName(),
                     DateFormatter.format(record.eventDate),
                     record.notes.orEmpty(),
                     DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss"),
@@ -39,12 +39,4 @@ object GiftRecordCsvFormatter {
         GiftDirection.GIVEN -> "送出"
     }
 
-    private fun EventType.csvLabel() = when (this) {
-        EventType.WEDDING -> "婚礼"
-        EventType.FULL_MONTH -> "满月"
-        EventType.BIRTHDAY -> "生日"
-        EventType.HOUSEWARMING -> "乔迁"
-        EventType.FESTIVAL -> "节日"
-        EventType.OTHER -> "其他"
-    }
 }
