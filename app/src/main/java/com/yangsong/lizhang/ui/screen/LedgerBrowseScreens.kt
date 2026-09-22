@@ -1,4 +1,13 @@
 package com.yangsong.lizhang.ui.screen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
+import com.yangsong.lizhang.ui.component.GlassIconButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -17,11 +26,9 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -63,7 +70,7 @@ fun DirectionRecordsScreen(
                     item { EmptyState(stringResource(R.string.records_empty, title), image = R.drawable.page_add_cat) }
                 } else {
                     item {
-                        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
+                        GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
                             Column(Modifier.padding(horizontal = 16.dp)) {
                                 state.records.forEachIndexed { index, record ->
                                     GiftRecordListItem(record) { onRecordClick(record.record.id) }
@@ -109,12 +116,12 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
 
 @Composable
 private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext: () -> Unit, onDay: (Int) -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
+    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
+                GlassIconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
                 Text(stringResource(R.string.calendar_month_title, state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                IconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
+                GlassIconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf(R.string.week_monday, R.string.week_tuesday, R.string.week_wednesday, R.string.week_thursday, R.string.week_friday, R.string.week_saturday, R.string.week_sunday).forEach {
@@ -175,74 +182,17 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
         }
     }
 
-    Scaffold(
-        topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
-        snackbarHost = { CenteredSnackbarHost(snackbar) },
-    ) { padding ->
-        when {
-            state.isLoading -> LoadingState()
-            state.error -> ErrorState(viewModel::retry)
-            else -> LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp)) }
-                item {
-                    Card(
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(2.dp),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    stringResource(R.string.reminder_switch_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    stringResource(R.string.reminder_switch_description_configurable),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                            Switch(
-                                checked = state.remindersEnabled,
-                                onCheckedChange = { enabled ->
-                                    when {
-                                        !enabled -> viewModel.setRemindersEnabled(false)
-                                        hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
-                                        else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-                item {
-                    ReminderScheduleCard(
-                        advanceDays = state.reminderAdvanceDays,
-                        hour = state.reminderHour,
-                        minute = state.reminderMinute,
-                        onAdvanceClick = { showAdvanceDialog = true },
-                        onTimeClick = { showTimeDialog = true },
-                    )
-                }
-                item { Text(stringResource(R.string.notifications_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                if (state.upcoming.isEmpty()) {
-                    item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }
-                } else {
-                    items(state.upcoming) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
-                }
+    NotificationsContent(state, onBack, onRecordClick, viewModel::retry, snackbar,
+        onEnabledChange = { enabled ->
+            when {
+                !enabled -> viewModel.setRemindersEnabled(false)
+                hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
+                else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-        }
-    }
-
+        },
+        onAdvanceClick = { showAdvanceDialog = true },
+        onTimeClick = { showTimeDialog = true },
+    )
     if (showAdvanceDialog) {
         ReminderAdvanceDialog(
             selectedDays = state.reminderAdvanceDays,
@@ -266,6 +216,75 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
     }
 }
 
+/** 无副作用的提醒页面视图，权限与调度仍由原页面和 ViewModel 处理。 */
+@Composable
+fun NotificationsContent(
+    state: com.yangsong.lizhang.ui.viewmodel.NotificationsUiState,
+    onBack: () -> Unit = {}, onRecordClick: (Long) -> Unit = {}, onRetry: () -> Unit = {},
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    onEnabledChange: (Boolean) -> Unit = {}, onAdvanceClick: () -> Unit = {}, onTimeClick: () -> Unit = {},
+) {
+    Scaffold(
+        topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
+    ) { padding ->
+        when {
+            state.isLoading -> LoadingState()
+            state.error -> ErrorState(onRetry)
+            else -> LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp)) }
+                item {
+                    GlassCard(
+                        shape = RoundedCornerShape(GlassTokens.Radius),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.reminder_switch_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    stringResource(R.string.reminder_switch_description_configurable),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                            Switch(
+                                checked = state.remindersEnabled,
+                                onCheckedChange = onEnabledChange,
+                            )
+                        }
+                    }
+                }
+                item {
+                    ReminderScheduleCard(
+                        advanceDays = state.reminderAdvanceDays,
+                        hour = state.reminderHour,
+                        minute = state.reminderMinute,
+                        onAdvanceClick = onAdvanceClick,
+                        onTimeClick = onTimeClick,
+                    )
+                }
+                item { Text(stringResource(R.string.notifications_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                if (state.upcoming.isEmpty()) {
+                    item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }
+                } else {
+                    items(state.upcoming) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ReminderScheduleCard(
     advanceDays: Int,
@@ -274,10 +293,8 @@ private fun ReminderScheduleCard(
     onAdvanceClick: () -> Unit,
     onTimeClick: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
+    GlassCard(
+        shape = RoundedCornerShape(GlassTokens.Radius),
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Text(
@@ -309,7 +326,7 @@ private fun ReminderScheduleCard(
 
 @Composable
 private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit) {
-    Surface(onClick = onClick, color = MaterialTheme.colorScheme.surface) {
+    Surface(onClick = onClick, color = androidx.compose.ui.graphics.Color.Transparent) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -322,28 +339,27 @@ private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit
 }
 
 @Composable
-private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
-    AlertDialog(
+fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_advance_title)) },
         text = {
-            Column {
+            Column(Modifier.selectableGroup()) {
                 supportedReminderAdvanceDays.forEach { days ->
-                    val label = reminderAdvanceLabel(days)
-                    Surface(onClick = { onSelect(days) }, color = MaterialTheme.colorScheme.surface) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = selectedDays == days, onClick = null)
-                            Text(label, Modifier.padding(start = 10.dp))
-                        }
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                            .selectable(selectedDays == days, role = Role.RadioButton, onClick = { onSelect(days) })
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = selectedDays == days, onClick = null)
+                        Text(reminderAdvanceLabel(days), Modifier.padding(start = 10.dp))
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { GlassTextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -370,15 +386,15 @@ private fun ReminderTimeDialog(
         initialMinute = initialMinute,
         is24Hour = true,
     )
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
         text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(timePickerState) } },
         confirmButton = {
-            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+            GlassTextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
                 Text(stringResource(R.string.action_confirm))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { GlassTextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
