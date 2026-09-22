@@ -32,7 +32,11 @@ annotation class GlassConfigurations
 fun GlassHomeScreenshot() {
     LiZhangTheme {
         Box(Modifier.fillMaxSize()) {
-            HomeContent(HomeUiState(isLoading = false, year = 2026, received = 120000, given = 60000), {})
+            HomeContent(HomeUiState(isLoading = false, year = 2026, received = 120000, given = 60000,
+                recentRecords = (1L..8L).map { com.yangsong.lizhang.domain.model.GiftRecordWithContact(
+                    com.yangsong.lizhang.domain.model.GiftRecord(it, it, 10000,
+                        com.yangsong.lizhang.domain.model.EventType.OTHER, 1789862400000L,
+                        com.yangsong.lizhang.domain.model.GiftDirection.RECEIVED, customEventName = "升学宴"), "示例联系人$it") }), {})
             BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
         }
     }

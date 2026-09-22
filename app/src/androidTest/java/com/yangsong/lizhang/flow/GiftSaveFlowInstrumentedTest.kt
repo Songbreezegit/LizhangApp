@@ -145,12 +145,47 @@ class GiftSaveFlowInstrumentedTest {
         assertEquals("保存测试备注", runBlocking { records.observeAll().first().single().record.notes })
     }
 
+    @Test fun 创建自定义事件并重新编辑仍显示真实名称() {
+        val editor = androidx.compose.runtime.mutableStateOf<GiftEditorViewModel?>(null)
+        compose.runOnUiThread {
+            compose.activity.enableEdgeToEdge()
+            editor.value = GiftEditorViewModel(repository, contacts, initialContactId = contactId).apply {
+                update { it.copy(amount = "100", eventDate = 1789862400000L) }
+            }
+        }
+        compose.setContent { LiZhangTheme {
+            androidx.compose.runtime.key(editor.value) { AddGiftScreen(requireNotNull(editor.value)) { returns.incrementAndGet() } }
+        } }
+        compose.onNodeWithText("+ 自定义").performScrollTo().performClick()
+        compose.onNodeWithText("添加").performClick()
+        compose.onNodeWithText("请输入事件名称").assertIsDisplayed()
+        compose.onNodeWithTag("自定义事件名称").performTextInput("长".repeat(21))
+        compose.onNodeWithText("事件名称最多20个字符").assertIsDisplayed()
+        compose.onNodeWithTag("自定义事件名称").performTextReplacement("  升学宴  ")
+        compose.onNodeWithText("添加").performClick()
+        compose.onNodeWithText("升学宴").assertIsSelected()
+        compose.onNodeWithTag("礼金保存栏").performClick()
+        compose.waitUntil(5000) { returns.get() == 1 }
+        val saved = runBlocking { records.observeAll().first().single().record }
+        assertEquals("升学宴", saved.customEventName)
+        assertEquals(EventType.OTHER, saved.eventType)
+        compose.runOnUiThread { editor.value = GiftEditorViewModel(repository, contacts, recordId = saved.id) }
+        compose.onNodeWithText("升学宴").performScrollTo().assertIsSelected()
+        capture("custom-event-edit")
+        compose.onNodeWithText("生日").performClick()
+        assertNull(editor.value!!.uiState.value.customEventName)
+        compose.onNodeWithTag("礼金保存栏").performClick()
+        compose.waitUntil(5000) { returns.get() == 2 }
+        assertNull(runBlocking { records.observeRecord(saved.id).first() }?.customEventName)
+    }
+
     @Test fun 备注键盘打开时保存栏可见并且关闭后回到底部() {
         start()
         val closedBottom = compose.onNodeWithTag("礼金保存栏").fetchSemanticsNode().boundsInRoot.bottom
-        compose.onNodeWithText("备注").performScrollTo().performClick()
+        compose.onNodeWithTag("记账底部留白").performScrollTo()
+        compose.onNodeWithText("备注").performClick()
         compose.waitUntil(5000) { imeBottom.get() > 0 }
-        compose.onNodeWithText("备注").performScrollTo()
+        compose.onNodeWithTag("记账底部留白").performScrollTo()
         compose.onNodeWithTag("礼金保存栏").assertIsDisplayed()
         val bar = compose.onNodeWithTag("礼金保存栏").fetchSemanticsNode().boundsInRoot
         val notes = compose.onNodeWithText("备注").fetchSemanticsNode().boundsInRoot

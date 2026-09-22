@@ -17,6 +17,43 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftRecordViewModelTest {
+    @Test fun `自定义事件新建编辑及标准事件清除`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val contacts = FakeContactRepository(sampleContact())
+        val editor = GiftEditorViewModel(repository, contacts, initialContactId = sampleContact().id)
+        editor.update { it.copy(amount = "100") }
+        editor.setCustomEvent("  升学宴  ")
+        assertEquals("升学宴", editor.uiState.value.customEventName)
+        assertEquals(EventType.OTHER, editor.uiState.value.eventType)
+        editor.save()
+        advanceUntilIdle()
+        assertEquals("升学宴", repository.createdRecord?.customEventName)
+        val existing = sampleRecord().copy(eventType = EventType.OTHER, customEventName = "升学宴")
+        val editRepository = FakeGiftRecordRepository(existing)
+        val edit = GiftEditorViewModel(editRepository, contacts, existing.id)
+        advanceUntilIdle()
+        assertEquals("升学宴", edit.uiState.value.customEventName)
+        edit.selectEvent(EventType.BIRTHDAY)
+        assertNull(edit.uiState.value.customEventName)
+        edit.setCustomEvent("开业")
+        edit.selectEvent(EventType.OTHER)
+        assertNull(edit.uiState.value.customEventName)
+        edit.setCustomEvent("百日宴")
+        edit.save()
+        advanceUntilIdle()
+        assertEquals("百日宴", editRepository.updatedRecord?.customEventName)
+    }
+
+    @Test fun `空白及超长自定义事件不改变选择`() = runTest(dispatcher) {
+        val editor = GiftEditorViewModel(FakeGiftRecordRepository(sampleRecord()), FakeContactRepository(sampleContact()))
+        editor.setCustomEvent("  ")
+        editor.setCustomEvent("长".repeat(21))
+        assertEquals(EventType.WEDDING, editor.uiState.value.eventType)
+        assertNull(editor.uiState.value.customEventName)
+        editor.setCustomEvent("毕业2026 ABC")
+        assertEquals("毕业2026 ABC", editor.uiState.value.customEventName)
+    }
+
     private val dispatcher = StandardTestDispatcher()
 
     @Before

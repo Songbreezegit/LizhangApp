@@ -30,6 +30,28 @@ import java.io.File
 class GradientUiDeviceTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun 浮动玻璃深浅色均可透出后方内容() {
+        val dark = mutableStateOf(false)
+        val background = mutableStateOf(Color.Red)
+        compose.setContent { LiZhangTheme(dark.value) {
+            Box(Modifier.size(200.dp).background(background.value)) {
+                Box(Modifier.fillMaxSize().glassFrame(floating = true).testTag("浮动玻璃"))
+            }
+        } }
+        fun center(): Color {
+            val pixels = compose.onNodeWithTag("浮动玻璃").captureToImage().toPixelMap()
+            return pixels[pixels.width / 2, pixels.height / 2]
+        }
+        for (isDark in listOf(false, true)) {
+            compose.runOnIdle { dark.value = isDark; background.value = Color.Red }
+            val red = center()
+            compose.runOnIdle { background.value = Color.Blue }
+            val blue = center()
+            assertTrue("浮动容器必须明显透出后方内容", red.red - blue.red > .30f)
+            assertTrue("浮动容器不允许实体底色", blue.blue - red.blue > .30f)
+        }
+    }
+
     @Test fun 普通卡片内部保持背景透色() {
         val background = mutableStateOf(Color(0xFFBFDCEC))
         compose.setContent { LiZhangTheme(false) {

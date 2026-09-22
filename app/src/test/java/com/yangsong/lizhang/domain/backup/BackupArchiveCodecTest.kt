@@ -20,7 +20,7 @@ class BackupArchiveCodecTest {
         val restored = BackupArchiveCodec.decode(BackupArchiveCodec.encode(archive))
 
         assertEquals(archive, restored)
-        assertEquals(2, BackupArchiveCodec.FORMAT_VERSION)
+        assertEquals(3, BackupArchiveCodec.FORMAT_VERSION)
     }
 
     @Test
@@ -35,13 +35,13 @@ class BackupArchiveCodecTest {
 
     @Test
     fun `高于当前格式的备份会明确拒绝`() {
-        val futureBytes = encodeVersionOneLayout(sampleArchive(), version = 3)
+        val futureBytes = encodeVersionOneLayout(sampleArchive(), version = 4)
 
         val error = assertThrows(InvalidBackupException::class.java) {
             BackupArchiveCodec.decode(futureBytes)
         }
 
-        assertTrue(error.message.orEmpty().contains("暂不支持此备份版本：3"))
+        assertTrue(error.message.orEmpty().contains("暂不支持此备份版本：4"))
     }
 
     @Test
@@ -103,6 +103,17 @@ class BackupArchiveCodecTest {
         }
     }
 
+    @Test fun `旧版格式二备份保留全部字段并将自定义名称置空`() {
+        val archive = sampleArchive()
+        assertEquals(archive, BackupArchiveCodec.decode(encodeVersionOneLayout(archive, 2)))
+    }
+
+    @Test fun `格式三保留自定义事件名称`() {
+        val archive = sampleArchive().let { it.copy(sourceDatabaseVersion = 2,
+            giftRecords = listOf(it.giftRecords.single().copy(eventType = EventType.OTHER, customEventName = "升学宴"))) }
+        assertEquals(archive, BackupArchiveCodec.decode(BackupArchiveCodec.encode(archive)))
+    }
+
     private fun sampleArchive() = BackupArchive(
         createdTime = 1_752_830_645_000,
         contacts = listOf(
@@ -135,6 +146,7 @@ class BackupArchiveCodecTest {
             DataOutputStream(buffer).use { output ->
                 output.writeInt(version)
                 output.writeLong(archive.createdTime)
+                if (version >= 2) output.writeInt(archive.sourceDatabaseVersion)
                 output.writeInt(archive.contacts.size)
                 archive.contacts.forEach { contact ->
                     output.writeLong(contact.id)

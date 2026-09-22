@@ -28,7 +28,7 @@ private fun GiftSaveFixture(loading: Boolean = false, message: String? = null, e
             eventDate = 1789862400000L, notes = "示例备注", isSaving = loading,
             isSaved = message != null && !error), {}, {}, {}, {}, {}, {}, {}, {},
             snackbarHost = {
-                if (message != null) GlassSnackbar(message, Modifier.padding(horizontal = 24.dp, vertical = 8.dp), isError = error)
+                if (message != null) GlassSnackbar(message, Modifier.padding(horizontal = 24.dp), isError = error)
             })
     }
 }
