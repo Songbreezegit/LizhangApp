@@ -68,7 +68,7 @@ class ContactBulkManagementFlowInstrumentedTest {
 
     @Test fun 管理入口多选数量取消全选及返回键恢复详情点击() {
         start()
-        compose.onNodeWithText("从通讯录导入").assertExists()
+        compose.onNodeWithTag("联系人添加菜单").assertExists()
         compose.onNodeWithText("管理").performClick()
         compose.onNodeWithText("已选择 0 人").assertExists()
         compose.onNodeWithText("删除 0 位联系人").assertIsNotEnabled()

@@ -87,7 +87,8 @@ class ContactImportFlowInstrumentedTest {
         try {
             compose.setContent { LiZhangTheme { LiZhangNavGraph(container) } }
             compose.onNodeWithText("联系人").performClick()
-            compose.onNodeWithText("从通讯录导入").performScrollTo().performClick()
+            compose.onNodeWithTag("联系人添加菜单").performClick()
+            compose.onNodeWithText("通讯录导入").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("导入 1 位联系人").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("导入 1 位联系人").performClick()
             compose.waitUntil(10_000) { compose.onAllNodesWithText("已导入 1 位联系人，跳过 0 位已存在联系人，0 位可能重复联系人未选择").fetchSemanticsNodes().isNotEmpty() }
@@ -95,5 +96,23 @@ class ContactImportFlowInstrumentedTest {
         } finally {
             runBlocking { container.contactRepository.observeContacts().first().filter { it.phone == "+12025550123" }.forEach { container.contactRepository.delete(it) } }
         }
+    }
+    @Test fun 手动添加导航返回及主导航恢复搜索状态() {
+        val container = AppContainer(ApplicationProvider.getApplicationContext<Context>(), DeviceContactRepository { emptyList() })
+        compose.setContent { LiZhangTheme { LiZhangNavGraph(container) } }
+        compose.onNodeWithText("联系人").performClick()
+        compose.onNodeWithTag("联系人添加菜单").performClick()
+        compose.onNodeWithText("手动添加").performClick()
+        compose.onNodeWithText("保存联系人").assertExists()
+        compose.onNodeWithContentDescription("返回").performClick()
+        compose.onNodeWithTag("联系人添加菜单").assertIsDisplayed()
+        compose.onNode(hasSetTextAction()).performTextInput("虚构搜索")
+        compose.onNodeWithText("首页").performClick()
+        compose.onNodeWithText("联系人").performClick()
+        compose.onNodeWithText("虚构搜索").assertExists()
+        compose.onNodeWithText("手动添加").assertDoesNotExist()
+        compose.onNodeWithText("我的").performClick()
+        compose.onNodeWithText("联系人").performClick()
+        compose.onNodeWithTag("联系人添加菜单").assertIsDisplayed()
     }
 }
