@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassIconButton
 
@@ -42,21 +43,13 @@ fun HomeContent(
     onYearSelected: (Int) -> Unit = {},
     onRetry: () -> Unit = {},
 ) {
-    Scaffold(
-        floatingActionButton = {
-            Box(Modifier.padding(bottom=GlassTokens.BottomClearance)) {
-                GlassFab(
-                    onClick = { onNavigate(AppDestination.AddGift) },
-                ) { Icon(Icons.Outlined.Add, stringResource(R.string.action_add_gift), Modifier.size(30.dp)) }
-            }
-        },
-    ) { padding ->
+    AppScaffold { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState(onRetry)
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = GlassTokens.ListBottomClearance),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
@@ -120,7 +113,7 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
                     Surface(
                         onClick = { yearMenuExpanded = true },
                         shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = .9f),
+                        color = glassColor(),
                     ) {
                         Row(
                             Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
@@ -168,10 +161,10 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
 private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar: () -> Unit, onStats: () -> Unit) {
     GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
         FlowRow(Modifier.fillMaxWidth().padding(vertical = 18.dp), maxItemsInEachRow = if (LocalDensity.current.fontScale >= 1.2f) 2 else 4, horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, CoralContainer, CoralOnContainer, onReceived)
-            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MintContainer, MintOnContainer, onGiven)
-            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, ApricotContainer, ApricotOnContainer, onCalendar)
-            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, LavenderContainer, LavenderOnContainer, onStats)
+            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, glassColor(), MaterialTheme.colorScheme.primary, onReceived)
+            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, glassColor(), MaterialTheme.colorScheme.secondary, onGiven)
+            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, glassColor(), MaterialTheme.colorScheme.primary, onCalendar)
+            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, glassColor(), MaterialTheme.colorScheme.secondary, onStats)
         }
     }
 }
