@@ -11,7 +11,10 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithCache
+import androidx.core.graphics.withSave
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -25,7 +28,8 @@ object GlassTokens {
     const val DarkAlpha = .62f
     const val BorderAlpha = .08f
     const val HighlightAlpha = .06f
-    const val FloatingAlpha = .97f
+    const val FloatingLightAlpha = .46f
+    const val FloatingDarkAlpha = .60f
     const val DialogAlpha = .94f
     const val ScrimAlpha = .62f
     const val SelectedAlpha = .55f
@@ -49,9 +53,9 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
     val base = glassColor()
     val dark = MaterialTheme.colorScheme.background.luminance() < .5f
     // 半透明内容不能覆盖普通 elevation 阴影的内部填充，否则整张卡片会透出灰底。
-    // 已验收的浮动导航保留其阴影；普通内容用高光描边与留白建立层级。
-    val frame = if (floating) shadow(GlassTokens.Elevation, shape) else this
-    val alpha = if (floating) GlassTokens.FloatingAlpha else base.alpha
+    // 浮动组件仅在轮廓外绘制阴影，避免灰色阴影填充透过玻璃。
+    val frame = if (floating) floatingGlassShadow(shape) else this
+    val alpha = if (floating) floatingGlassAlpha() else base.alpha
     val border = if (floating) MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha)
         else Color.White.copy(alpha = if (dark) .12f else .65f)
     return frame.clip(shape)
@@ -100,7 +104,7 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 
 @Composable fun GlassFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     FloatingActionButton(onClick, modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha), RoundedCornerShape(GlassTokens.ControlRadius)), shape = RoundedCornerShape(GlassTokens.ControlRadius),
-        containerColor = glassColor().copy(alpha = GlassTokens.FloatingAlpha), contentColor = MaterialTheme.colorScheme.primary,
+        containerColor = glassColor().copy(alpha = floatingGlassAlpha()), contentColor = MaterialTheme.colorScheme.primary,
         elevation = FloatingActionButtonDefaults.elevation(GlassTokens.FloatingElevation), content = content)
 }
 
@@ -161,4 +165,33 @@ fun glassSwitchColors() = SwitchDefaults.colors(
     uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .06f),
     uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
     uncheckedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = .16f),
+)
+
+@Composable
+fun floatingGlassAlpha(): Float = if (MaterialTheme.colorScheme.background.luminance() < .5f)
+    GlassTokens.FloatingDarkAlpha else GlassTokens.FloatingLightAlpha
+
+/** 阴影只在容器轮廓外绘制，不给半透明玻璃增加灰色内层底色。 */
+private fun Modifier.floatingGlassShadow(shape: Shape): Modifier = this.then(
+    Modifier.drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val path = androidx.compose.ui.graphics.Path().apply {
+            when (outline) {
+                is androidx.compose.ui.graphics.Outline.Rounded -> addRoundRect(outline.roundRect)
+                is androidx.compose.ui.graphics.Outline.Rectangle -> addRect(outline.rect)
+                is androidx.compose.ui.graphics.Outline.Generic -> addPath(outline.path)
+            }
+        }.asAndroidPath()
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.BLACK
+            setShadowLayer(GlassTokens.FloatingElevation.toPx(), 0f, 2.dp.toPx(), 0x22000000)
+        }
+        onDrawBehind {
+            val canvas = drawContext.canvas.nativeCanvas
+            canvas.withSave {
+                clipOutPath(path)
+                drawPath(path, paint)
+            }
+        }
+    },
 )

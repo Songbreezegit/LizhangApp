@@ -127,7 +127,7 @@ private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
                         expanded = yearMenuExpanded,
                         onDismissRequest = { yearMenuExpanded = false },
                         shape = RoundedCornerShape(GlassTokens.ControlRadius),
-                        containerColor = glassColor().copy(alpha = GlassTokens.FloatingAlpha),
+                        containerColor = glassColor().copy(alpha = floatingGlassAlpha()),
                     ) {
                         state.availableYears.forEach { year ->
                             DropdownMenuItem(

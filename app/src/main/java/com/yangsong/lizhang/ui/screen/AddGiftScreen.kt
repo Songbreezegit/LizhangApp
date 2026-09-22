@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -65,11 +66,12 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
         onAmountChange = { value -> viewModel.update { it.copy(amount = value) } },
         onDateClick = { showDatePicker = true },
         onDirectionChange = { value -> viewModel.update { it.copy(direction = value) } },
-        onEventTypeChange = { value -> viewModel.update { it.copy(eventType = value) } },
+        onEventTypeChange = viewModel::selectEvent,
         onNotesChange = { value -> viewModel.update { it.copy(notes = value) } },
         onSave = viewModel::save,
         onRetry = viewModel::retryLoad,
-        snackbarHost = { GlassSnackbarHost(snackbar, Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) },
+        onCustomEventChange = viewModel::setCustomEvent,
+        snackbarHost = { GlassSnackbarHost(snackbar, Modifier.padding(horizontal = 24.dp)) },
     )
     if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
     if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})
@@ -95,21 +97,14 @@ fun AddGiftContent(
     onSave: () -> Unit,
     onRetry: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    onCustomEventChange: (String) -> Unit = {},
 ) {
+    var showCustomEvent by rememberSaveable { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
     AppScaffold(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
-        bottomBar = {
-            if (!state.isLoading && !state.loadFailed) {
-                GiftSaveBar(
-                    isSaving = state.isSaving,
-                    onSave = onSave,
-                    enabled = !state.isSaved,
-                    feedbackHost = snackbarHost,
-                )
-            }
-        },
     ){padding->
-        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
             Column {
                 Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(18.dp)){
@@ -129,7 +124,9 @@ fun AddGiftContent(
                         )
                     }
                     DirectionSelector(state.direction,onDirectionChange)
-                    EventTypeSelector(state.eventType,onEventTypeChange)
+                    Box(Modifier.padding(top = 12.dp)) {
+                        EventTypeSelector(state.eventType, onEventTypeChange, state.customEventName) { showCustomEvent = true }
+                    }
                     AppMultilineTextField(
                         state.notes,
                         onNotesChange,
@@ -138,22 +135,31 @@ fun AddGiftContent(
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(124.dp).testTag("记账底部留白"))
         }}
     }
+    if (!state.isLoading && !state.loadFailed) {
+        // 内容与反馈共用覆盖层，不改变 Scaffold 可用高度。
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().imePadding().navigationBarsPadding()) {
+            Box(Modifier.fillMaxWidth().padding(bottom = 6.dp)) { snackbarHost() }
+            GiftSaveBar(state.isSaving, onSave, enabled = !state.isSaved)
+        }
+    }
+    }
+    if (showCustomEvent) CustomEventDialog(state.customEventName.orEmpty(),
+        onConfirm = { onCustomEventChange(it); showCustomEvent = false },
+        onDismiss = { showCustomEvent = false })
 }
 
 @Composable
 fun GiftSaveBar(
     isSaving: Boolean,
     onSave: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    feedbackHost: @Composable () -> Unit = {},
 ) {
     val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
-    Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding()) {
-        // 反馈占用独立空间，Scaffold 将其计入底部高度，不遮挡字段或保存操作。
-        feedbackHost()
+    Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
                 Modifier.fillMaxWidth().height(76.dp).glassFrame(glassShape, floating = true)

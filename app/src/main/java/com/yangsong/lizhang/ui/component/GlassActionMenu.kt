@@ -36,7 +36,7 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
                     slideInVertically(tween(200, (actions.lastIndex - index) * 45)) { it / 3 } + scaleIn(initialScale = .96f),
                 exit = fadeOut(tween(100)) + slideOutVertically(tween(140)) { it / 3 } + scaleOut(targetScale = .96f),
             ) {
-                GlassButton(onClick = { onDismiss(); action.onClick() }, colors = ButtonDefaults.buttonColors(containerColor = glassColor().copy(alpha = GlassTokens.FloatingAlpha), contentColor = MaterialTheme.colorScheme.primary)) {
+                GlassButton(onClick = { onDismiss(); action.onClick() }, colors = ButtonDefaults.buttonColors(containerColor = glassColor().copy(alpha = floatingGlassAlpha()), contentColor = MaterialTheme.colorScheme.primary)) {
                     Icon(action.icon, null)
                     Spacer(Modifier.width(10.dp))
                     Text(action.label)
