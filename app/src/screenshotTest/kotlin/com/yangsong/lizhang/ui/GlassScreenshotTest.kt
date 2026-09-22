@@ -68,3 +68,22 @@ fun GlassRemindersScreenshot() {
 fun GlassReminderDialogScreenshot() {
     LiZhangTheme { ReminderAdvanceDialog(3, {}, {}) }
 }
+
+@PreviewTest @GlassConfigurations @Composable
+fun GlassAddGiftScreenshot() {
+    LiZhangTheme {
+        com.yangsong.lizhang.ui.screen.AddGiftContent(
+            com.yangsong.lizhang.ui.viewmodel.GiftEditorUiState(eventDate = 1789862400000L), {}, {}, {}, {}, {}, {}, {}, {})
+    }
+}
+
+@PreviewTest @GlassConfigurations @Composable
+fun GlassSettingsScreenshot() {
+    LiZhangTheme {
+        Box(Modifier.fillMaxSize()) {
+            com.yangsong.lizhang.ui.screen.SettingsContent(
+                com.yangsong.lizhang.ui.viewmodel.SettingsUiState(), {}, {}, {}, {})
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+        }
+    }
+}

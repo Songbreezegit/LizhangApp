@@ -8,19 +8,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GlassContrastTest {
-    @Test fun `深浅玻璃表面上的正文金额和危险操作保持可读`() {
-        val lightGlass = CardWhite.copy(alpha = GlassTokens.LightAlpha).compositeOver(CreamBackground)
-        val darkGlass = DarkSurface.copy(alpha = GlassTokens.DarkAlpha).compositeOver(DarkBackground)
-        val pairs = listOf(
-            InkPrimary to lightGlass, InkSecondary to lightGlass,
-            CoralPrimary to lightGlass, MintPrimary to lightGlass, AppError to lightGlass,
-            DarkText to darkGlass, DarkSecondary to darkGlass, DarkCoral to darkGlass,
-            Color(0xFF72D89F) to darkGlass, Color(0xFFFF8A94) to darkGlass,
-        )
-        pairs.forEach { (foreground, background) ->
-            val ratio = (maxOf(foreground.luminance(), background.luminance()) + .05f) /
-                (minOf(foreground.luminance(), background.luminance()) + .05f)
-            assertTrue("玻璃表面文字对比度不足：$ratio", ratio >= 4.5f)
+    @Test fun `渐变各位置及玻璃层上的文字金额保持可读`() {
+        fun verify(foregrounds: List<Color>, stops: List<Color>, surface: Color, alpha: Float) {
+            stops.forEach { stop ->
+                listOf(stop, surface.copy(alpha = alpha).compositeOver(stop),
+                    surface.copy(alpha = alpha - GlassTokens.HighlightAlpha).compositeOver(stop)).forEach { background ->
+                    foregrounds.forEach { foreground ->
+                        val ratio = (maxOf(foreground.luminance(), background.luminance()) + .05f) /
+                            (minOf(foreground.luminance(), background.luminance()) + .05f)
+                        assertTrue("渐变与玻璃表面文字对比度不足：$ratio", ratio >= 4.5f)
+                    }
+                }
+            }
         }
+        verify(listOf(InkPrimary, InkSecondary, CoralPrimary, MintPrimary, AppError),
+            listOf(GradientTop, CreamBackground, GradientBottom), CardWhite, GlassTokens.LightAlpha)
+        verify(listOf(DarkText, DarkSecondary, DarkCoral, DarkBlue, Color(0xFFFF8A94)),
+            listOf(DarkGradientTop, DarkBackground, DarkGradientBottom), DarkSurface, GlassTokens.DarkAlpha)
     }
 }
