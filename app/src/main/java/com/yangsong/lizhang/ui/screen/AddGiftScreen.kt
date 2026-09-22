@@ -29,7 +29,10 @@ import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.*
-import kotlinx.coroutines.delay
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,16 +48,16 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
     val operationFailed=stringResource(R.string.record_save_failed)
     val requestBack = {
         when {
-            state.isSaving -> Unit
+            state.isSaving || state.isSaved -> Unit
             state.hasUnsavedChanges -> showDiscardConfirmation = true
             else -> onBack()
         }
     }
-    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving) {
+    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving || state.isSaved) {
         requestBack()
     }
-    LaunchedEffect(state.isSaved){if(state.isSaved){snackbar.showSnackbar(savedMessage);delay(450);onBack()}}
-    LaunchedEffect(state.operationFailed){if(state.operationFailed)snackbar.showSnackbar(operationFailed)}
+    GiftSaveFeedbackEffects(state.isSaved, state.operationFailed, snackbar, savedMessage, operationFailed,
+        onFailureConsumed = viewModel::consumeOperationFailure, onBack = onBack)
     AddGiftContent(
         state = state,
         onBack = requestBack,
@@ -66,7 +69,7 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
         onNotesChange = { value -> viewModel.update { it.copy(notes = value) } },
         onSave = viewModel::save,
         onRetry = viewModel::retryLoad,
-        snackbarHost = { CenteredSnackbarHost(snackbar) },
+        snackbarHost = { GlassSnackbarHost(snackbar, Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) },
     )
     if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
     if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})
@@ -95,17 +98,18 @@ fun AddGiftContent(
 ) {
     AppScaffold(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
-        snackbarHost=snackbarHost,
         bottomBar = {
             if (!state.isLoading && !state.loadFailed) {
                 GiftSaveBar(
                     isSaving = state.isSaving,
                     onSave = onSave,
+                    enabled = !state.isSaved,
+                    feedbackHost = snackbarHost,
                 )
             }
         },
     ){padding->
-        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
             Column {
                 Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(18.dp)){
@@ -140,27 +144,37 @@ fun AddGiftContent(
 }
 
 @Composable
-private fun GiftSaveBar(
+fun GiftSaveBar(
     isSaving: Boolean,
     onSave: () -> Unit,
+    enabled: Boolean = true,
+    feedbackHost: @Composable () -> Unit = {},
 ) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .imePadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        PrimaryButton(
-            text = stringResource(R.string.action_save_record),
-            onClick = onSave,
-            modifier = Modifier.fillMaxWidth(),
-            loading = isSaving,
-            icon = Icons.Outlined.Check,
-        )
+    val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
+    Column(Modifier.fillMaxWidth().imePadding().navigationBarsPadding()) {
+        // 反馈占用独立空间，Scaffold 将其计入底部高度，不遮挡字段或保存操作。
+        feedbackHost()
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().height(76.dp).glassFrame(glassShape, floating = true)
+                    .testTag("礼金保存栏")
+                    .clickable(enabled = enabled && !isSaving, role = Role.Button, onClick = onSave),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
+                        strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
     }
 }
-
 @Composable
 fun DiscardGiftChangesDialog(
     onConfirm: () -> Unit,
