@@ -20,6 +20,7 @@ fun GiftSaveSuccessScreenshot() = GiftSaveFixture(message = "礼金记录已保�
 @PreviewTest @GlassConfigurations @Composable
 fun GiftSaveFailureScreenshot() = GiftSaveFixture(message = "保存失败，请重试", error = true)
 
+// AddGiftContent 内部持有页面采样源；图案穿透场景另见 FrostedSaveScreenshot，GPU 模糊由设备测试验收。
 @Composable
 private fun GiftSaveFixture(loading: Boolean = false, message: String? = null, error: Boolean = false) {
     LiZhangTheme {

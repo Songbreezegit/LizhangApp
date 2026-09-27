@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.ui.navigation
 
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +53,7 @@ fun LiZhangNavGraph(
     onReminderRequestConsumed: () -> Unit = {},
 ) {
     val nav = rememberNavController()
+    val hazeState = rememberHazeState()
     val reminderLaunchViewModel: ReminderLaunchViewModel = viewModel(
         factory = ReminderLaunchViewModel.factory(appContainer.giftRecordRepository),
     )
@@ -86,7 +89,7 @@ fun LiZhangNavGraph(
         }
     }
     Box(Modifier.fillMaxSize()) {
-    NavHost(nav, AppDestination.Home.route) {
+    NavHost(nav, AppDestination.Home.route, Modifier.hazeSource(hazeState)) {
         composable(AppDestination.Home.route) {
             HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
         }
@@ -244,7 +247,7 @@ fun LiZhangNavGraph(
     currentMainTab
         ?.takeUnless { it == AppDestination.AddGift || (it == AppDestination.Contacts && contactsSelectionMode) }
         ?.let { tab ->
-        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
+        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter), hazeState)
     }
     CenteredSnackbarHost(snackbar)
     }

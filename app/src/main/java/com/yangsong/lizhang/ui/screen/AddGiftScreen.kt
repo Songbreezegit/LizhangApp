@@ -7,6 +7,9 @@ import com.yangsong.lizhang.ui.component.GlassIconButton
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassDialog
 
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -99,9 +102,11 @@ fun AddGiftContent(
     snackbarHost: @Composable () -> Unit = {},
     onCustomEventChange: (String) -> Unit = {},
 ) {
+    val hazeState = rememberHazeState()
     var showCustomEvent by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
     AppScaffold(
+        modifier = Modifier.hazeSource(hazeState),
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
     ){padding->
         when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
@@ -140,7 +145,7 @@ fun AddGiftContent(
         // 内容与反馈共用覆盖层，不改变 Scaffold 可用高度。
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().imePadding().navigationBarsPadding()) {
             Box(Modifier.fillMaxWidth().padding(bottom = 6.dp)) { snackbarHost() }
-            GiftSaveBar(state.isSaving, onSave, enabled = !state.isSaved)
+            GiftSaveBar(state.isSaving, onSave, enabled = !state.isSaved, hazeState = hazeState)
         }
     }
     }
@@ -155,12 +160,13 @@ fun GiftSaveBar(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    hazeState: HazeState,
 ) {
     val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(76.dp).glassFrame(glassShape, floating = true)
+                Modifier.fillMaxWidth().height(76.dp).frostedGlassFrame(hazeState, glassShape)
                     .testTag("礼金保存栏")
                     .clickable(enabled = enabled && !isSaving, role = Role.Button, onClick = onSave),
                 verticalAlignment = Alignment.CenterVertically,

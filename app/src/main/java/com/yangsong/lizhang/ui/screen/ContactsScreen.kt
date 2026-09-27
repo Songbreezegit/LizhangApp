@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -147,6 +149,7 @@ fun ContactsContent(
     onConfirmCascade: (Boolean) -> Unit = {},
     initiallyExpanded: Boolean = false,
 ) {
+    val hazeState = rememberHazeState()
     val busy = state.isDeleting || state.isPreparingDelete
     val focusManager = LocalFocusManager.current
     var menuExpanded by remember { mutableStateOf(initiallyExpanded) }
@@ -154,6 +157,7 @@ fun ContactsContent(
     BackHandler(menuExpanded && !state.isSelectionMode) { menuExpanded = false }
     Box(Modifier.fillMaxSize()) {
     AppScaffold(
+        modifier = Modifier.hazeSource(hazeState),
         topBar = {
             if (state.isSelectionMode) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -240,7 +244,7 @@ fun ContactsContent(
         Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
                 listOf(GlassAction("通讯录导入", Icons.Outlined.Contacts, onImportContacts),
-                    GlassAction("手动添加", Icons.Outlined.PersonAdd, onAddContact)))
+                    GlassAction("手动添加", Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)
         }
     }
     }

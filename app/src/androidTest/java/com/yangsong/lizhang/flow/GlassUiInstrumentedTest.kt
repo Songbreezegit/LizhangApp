@@ -105,7 +105,7 @@ class GlassUiInstrumentedTest {
     @Test fun 底部四个入口选中状态及重复点击不重复导航() {
         val destination = mutableStateOf<AppDestination>(AppDestination.Home)
         var clicks = 0
-        compose.setContent { LiZhangTheme { BottomNavBar(destination.value, { destination.value = it; clicks++ }) } }
+        compose.setContent { LiZhangTheme { BottomNavBar(destination.value, { destination.value = it; clicks++ }, hazeState = dev.chrisbanes.haze.rememberHazeState(blurEnabled = false)) } }
         listOf("联系人" to AppDestination.Contacts, "记一笔" to AppDestination.AddGift,
             "我的" to AppDestination.Settings, "首页" to AppDestination.Home).forEach { (label, route) ->
             compose.onNodeWithText(label).performClick().assertIsSelected()

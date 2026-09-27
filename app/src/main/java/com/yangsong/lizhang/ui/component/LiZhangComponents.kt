@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.component
+import dev.chrisbanes.haze.HazeState
 import com.yangsong.lizhang.ui.mapper.eventDisplayLabel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -48,10 +49,10 @@ import com.yangsong.lizhang.ui.theme.*
 
 private data class NavItem(val destination:AppDestination,val label:Int,val icon:ImageVector)
 private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.Outlined.Home),NavItem(AppDestination.Contacts,R.string.nav_contacts,Icons.Outlined.PersonOutline),NavItem(AppDestination.AddGift,R.string.nav_add_gift,Icons.Outlined.EditNote),NavItem(AppDestination.Settings,R.string.nav_settings,Icons.Outlined.AccountCircle))
-@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit,modifier:Modifier=Modifier){
+@Composable fun BottomNavBar(current:AppDestination,onNavigate:(AppDestination)->Unit,modifier:Modifier=Modifier,hazeState:HazeState){
     val glassShape=RoundedCornerShape(GlassTokens.FloatingRadius)
     Box(modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=16.dp,vertical=8.dp).heightIn(min=80.dp)){
-        Box(Modifier.matchParentSize().glassFrame(glassShape, floating = true))
+        Box(Modifier.matchParentSize().frostedGlassFrame(hazeState, glassShape))
         Row(
             Modifier.fillMaxWidth().padding(horizontal=6.dp, vertical=10.dp).selectableGroup(),
             verticalAlignment=Alignment.CenterVertically,
@@ -132,7 +133,7 @@ fun EventTypeSelector(selected: EventType, onSelected: (EventType) -> Unit,
 private val compoundSurnames=listOf("欧阳","司马","上官","诸葛","东方","皇甫","尉迟","公孙","慕容","司徒")
 private fun contactSurname(name:String):String{val clean=name.trim();if(clean.isBlank())return "人";compoundSurnames.firstOrNull{clean.startsWith(it)}?.let{return it};return clean.first().toString().uppercase()}
 @Composable fun ContactAvatar(name:String,size:androidx.compose.ui.unit.Dp,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.secondary){Surface(modifier.size(size),shape=CircleShape,color=tint.copy(alpha=.10f)){Box(contentAlignment=Alignment.Center){val surname=contactSurname(name);Text(surname,color=tint,style=if(surname.length>1)MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}}}
-@Composable fun GiftRecordListItem(item:GiftRecordWithContact,onClick:(()->Unit)?=null){val click=if(onClick==null)Modifier else Modifier.clickable(onClick=onClick);Row(click.fillMaxWidth().padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){ContactAvatar(item.contactName,52.dp,tint=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Row(verticalAlignment=Alignment.CenterVertically){Text(item.contactName,style=MaterialTheme.typography.bodyLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.width(8.dp));Surface(shape=RoundedCornerShape(6.dp),color=Color.Transparent){Text(stringResource(item.record.direction.labelRes()),Modifier.padding(horizontal=6.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}};Text("${item.record.eventDisplayLabel()} · ${DateFormatter.format(item.record.eventDate)}",color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Text((if(item.record.direction==GiftDirection.RECEIVED)"+"else"-")+CurrencyFormatter.formatCents(item.record.amountInCents),color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}}
+@Composable fun GiftRecordListItem(item:GiftRecordWithContact,onClick:(()->Unit)?=null){val click=if(onClick==null)Modifier else Modifier.clickable(onClick=onClick);Row(click.fillMaxWidth().padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){ContactAvatar(item.contactName,52.dp,tint=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Row(verticalAlignment=Alignment.CenterVertically){Text(item.contactName,style=MaterialTheme.typography.bodyLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.width(8.dp));Surface(shape=RoundedCornerShape(6.dp),color=Color.Transparent){Text(stringResource(item.record.direction.labelRes()),Modifier.padding(horizontal=6.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}};Text("${item.record.eventDisplayLabel()} · ${DateFormatter.format(item.record.eventDate)}",color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Text((if (item.record.direction == GiftDirection.RECEIVED) "+" else "-")+CurrencyFormatter.formatCents(item.record.amountInCents),color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}}
 @Composable
 fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) {
     val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.2f

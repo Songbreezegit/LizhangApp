@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.flow
 
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -80,7 +82,9 @@ class GradientUiDeviceTest {
         val records = listOf(GiftRecordWithContact(
             GiftRecord(1, 1, 10000, EventType.WEDDING, 1789862400000L, GiftDirection.RECEIVED), contact.name))
         compose.setContent { LiZhangTheme(dark.value) {
+            val hazeState = rememberHazeState()
             Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
                 key(page.intValue, dark.value) {
                     when (page.intValue) {
                         0 -> HomeContent(HomeUiState(isLoading = false, year = 2026, received = 30000, given = 20000, recentRecords = records), {})
@@ -91,9 +95,10 @@ class GradientUiDeviceTest {
                         4 -> SettingsContent(SettingsUiState(), {}, {}, {}, {})
                     }
                 }
+                }
                 if (page.intValue in listOf(0, 1, 4)) BottomNavBar(
                     when(page.intValue) { 1 -> AppDestination.Contacts; 4 -> AppDestination.Settings; else -> AppDestination.Home },
-                    {}, Modifier.align(Alignment.BottomCenter))
+                    {}, Modifier.align(Alignment.BottomCenter), hazeState)
             }
         } }
         fun capture(name: String) {

@@ -2,6 +2,8 @@ package com.yangsong.lizhang.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +37,9 @@ import com.yangsong.lizhang.ui.viewmodel.GiftEditorUiState
 @Composable
 fun HomeStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             HomeContent(
                 state = HomeUiState(
                     isLoading = false,
@@ -49,7 +53,8 @@ fun HomeStandardScreenshotTest() {
                 ),
                 onNavigate = {},
             )
-            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -65,12 +70,15 @@ fun HomeStandardScreenshotTest() {
 @Composable
 fun HomeEmptyLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             HomeContent(
                 state = HomeUiState(isLoading = false, year = 2026),
                 onNavigate = {},
             )
-            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -80,7 +88,9 @@ fun HomeEmptyLargeTextScreenshotTest() {
 @Composable
 fun ContactsStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             ContactsContent(
                 state = ContactsUiState(
                     contacts = listOf(
@@ -103,7 +113,8 @@ fun ContactsStandardScreenshotTest() {
                 onContactClick = {},
                 onAddContact = {},
             )
-            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -119,7 +130,9 @@ fun ContactsStandardScreenshotTest() {
 @Composable
 fun ContactsEmptyLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             ContactsContent(
                 state = ContactsUiState(isLoading = false),
                 onQueryChange = {},
@@ -127,7 +140,8 @@ fun ContactsEmptyLargeTextScreenshotTest() {
                 onContactClick = {},
                 onAddContact = {},
             )
-            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -228,7 +242,9 @@ fun AddGiftDarkLargeEmptyScreenshotTest() {
 @Composable
 fun SettingsScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             SettingsContent(
                 SettingsUiState(),
                 onCsvExport = {},
@@ -236,7 +252,8 @@ fun SettingsScreenshotTest() {
                 onBackup = {},
                 onThemeModeChange = {},
             )
-            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -246,7 +263,9 @@ fun SettingsScreenshotTest() {
 @Composable
 fun SettingsDarkScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             SettingsContent(
                 SettingsUiState(),
                 onCsvExport = {},
@@ -254,7 +273,8 @@ fun SettingsDarkScreenshotTest() {
                 onBackup = {},
                 onThemeModeChange = {},
             )
-            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }

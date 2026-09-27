@@ -9,6 +9,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -22,7 +26,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 
-/** 统一的轻玻璃参数；不采样背景、不创建模糊图层，适用于长列表和旧设备。 */
+/** 普通卡片的轻玻璃参数；浮层背景模糊统一由 FrostedGlassTokens 管理。 */
 object GlassTokens {
     const val LightAlpha = .42f
     const val DarkAlpha = .62f
@@ -102,10 +106,21 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = glassColor()), content = content)
 }
 
-@Composable fun GlassFab(onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    FloatingActionButton(onClick, modifier.border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha), RoundedCornerShape(GlassTokens.ControlRadius)), shape = RoundedCornerShape(GlassTokens.ControlRadius),
-        containerColor = glassColor().copy(alpha = floatingGlassAlpha()), contentColor = MaterialTheme.colorScheme.primary,
-        elevation = FloatingActionButtonDefaults.elevation(GlassTokens.FloatingElevation), content = content)
+/** 不使用 Material FAB 的实体 Surface，背景与前景分别绘制。 */
+@Composable fun GlassFab(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    hazeState: HazeState,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier.size(56.dp)
+            .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius))
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary, content = content)
+    }
 }
 
 @Composable fun GlassChip(
@@ -172,7 +187,7 @@ fun floatingGlassAlpha(): Float = if (MaterialTheme.colorScheme.background.lumin
     GlassTokens.FloatingDarkAlpha else GlassTokens.FloatingLightAlpha
 
 /** 阴影只在容器轮廓外绘制，不给半透明玻璃增加灰色内层底色。 */
-private fun Modifier.floatingGlassShadow(shape: Shape): Modifier = this.then(
+internal fun Modifier.floatingGlassShadow(shape: Shape): Modifier = this.then(
     Modifier.drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
         val path = androidx.compose.ui.graphics.Path().apply {

@@ -3,6 +3,8 @@ package com.yangsong.lizhang.ui
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,13 +33,16 @@ annotation class GlassConfigurations
 @PreviewTest @GlassConfigurations @Composable
 fun GlassHomeScreenshot() {
     LiZhangTheme {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             HomeContent(HomeUiState(isLoading = false, year = 2026, received = 120000, given = 60000,
                 recentRecords = (1L..8L).map { com.yangsong.lizhang.domain.model.GiftRecordWithContact(
                     com.yangsong.lizhang.domain.model.GiftRecord(it, it, 10000,
                         com.yangsong.lizhang.domain.model.EventType.OTHER, 1789862400000L,
                         com.yangsong.lizhang.domain.model.GiftDirection.RECEIVED, customEventName = "升学宴"), "示例联系人$it") }), {})
-            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -54,11 +59,14 @@ fun GlassContactManagementScreenshot() = ContactsFixture(false, true)
 @Composable
 private fun ContactsFixture(expanded: Boolean, managing: Boolean = false) {
     LiZhangTheme {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             ContactsContent(ContactsUiState(isLoading = false, isSelectionMode = managing,
                 contacts = (1L..8L).map { ContactLedgerSummary(Contact(it, "示例联系人$it", relationship = "朋友"), 20000, 10000) }),
                 {}, {}, {}, {}, initiallyExpanded = expanded)
-            if (!managing) BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            if (!managing) BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
@@ -84,10 +92,13 @@ fun GlassAddGiftScreenshot() {
 @PreviewTest @GlassConfigurations @Composable
 fun GlassSettingsScreenshot() {
     LiZhangTheme {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             com.yangsong.lizhang.ui.screen.SettingsContent(
                 com.yangsong.lizhang.ui.viewmodel.SettingsUiState(), {}, {}, {}, {})
-            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
