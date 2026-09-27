@@ -153,6 +153,7 @@ fun AddGiftStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
         AddGiftContent(
             state = GiftEditorUiState(
+                eventDate = 1790467200000L, // 固定测试日期，避免基线随运行日期漂移。
                 contactId = 1,
                 amount = "200",
                 contacts = listOf(Contact(id = 1, name = "王阿姨")),
@@ -196,6 +197,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
         AddGiftContent(
             state = GiftEditorUiState(
+                eventDate = 1790467200000L, // 固定测试日期，避免基线随运行日期漂移。
                 contactId = 1,
                 amount = "800",
                 contacts = listOf(Contact(id = 1, name = "王阿姨")),
@@ -224,7 +226,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
 fun AddGiftDarkLargeEmptyScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
         AddGiftContent(
-            state = GiftEditorUiState(),
+            state = GiftEditorUiState(eventDate = 1790467200000L),
             onBack = {},
             onContactClick = {},
             onAmountChange = {},

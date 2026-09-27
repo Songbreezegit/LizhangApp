@@ -47,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,7 +62,6 @@ import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
-import com.yangsong.lizhang.ui.component.SectionHeader
 import com.yangsong.lizhang.ui.component.SettingsRow
 import com.yangsong.lizhang.ui.viewmodel.ExportDocument
 import com.yangsong.lizhang.ui.viewmodel.ExportFormat
@@ -457,11 +457,11 @@ fun SettingsContent(
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 124.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item { PageIllustration(R.drawable.page_settings_cat, Modifier.fillMaxWidth().height(190.dp)) }
             item {
-                SettingsGroup(stringResource(R.string.settings_data)) {
+                SettingsGroup {
                     SettingsRow(
                         Icons.Outlined.Backup,
                         stringResource(R.string.settings_backup),
@@ -496,7 +496,7 @@ fun SettingsContent(
                 }
             }
             item {
-                SettingsGroup(stringResource(R.string.settings_display)) {
+                SettingsGroup {
                     val themeDescription = when (state.themeMode) {
                         AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
                         AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
@@ -537,7 +537,7 @@ fun SettingsContent(
                 }
             }
             item {
-                SettingsGroup(stringResource(R.string.settings_about_group)) {
+                SettingsGroup {
                     SettingsRow(
                         Icons.Outlined.Info,
                         stringResource(R.string.settings_about),
@@ -591,13 +591,11 @@ private fun InputStream.readBackupBytes(): ByteArray {
 }
 
 @Composable
-private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        SectionHeader(title)
-        GlassCard(
-            shape = RoundedCornerShape(GlassTokens.Radius),
-        ) {
-            Column(Modifier.padding(horizontal = 16.dp), content = content)
-        }
+private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    GlassCard(
+        modifier = Modifier.testTag("设置功能分组"),
+        shape = RoundedCornerShape(GlassTokens.Radius),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp), content = content)
     }
 }

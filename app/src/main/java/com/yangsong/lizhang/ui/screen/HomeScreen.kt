@@ -3,6 +3,29 @@ import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassIconButton
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
+import kotlinx.coroutines.flow.drop
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -42,42 +64,71 @@ fun HomeContent(
     onRecordClick: (Long) -> Unit = {},
     onYearSelected: (Int) -> Unit = {},
     onRetry: () -> Unit = {},
+    initiallyYearMenuExpanded: Boolean = false,
 ) {
-    AppScaffold { padding ->
-        when {
-            state.isLoading -> LoadingState()
-            state.error -> ErrorState(onRetry)
-            else -> LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
-                item { HeroSummaryCard(state, onYearSelected) }
-                item {
-                    QuickActions(
-                        onReceived = { onNavigate(AppDestination.ReceivedRecords) },
-                        onGiven = { onNavigate(AppDestination.GivenRecords) },
-                        onCalendar = { onNavigate(AppDestination.Calendar) },
-                        onStats = { onNavigate(AppDestination.Statistics) },
-                    )
+    val listState = rememberLazyListState()
+    var yearMenuExpanded by remember { mutableStateOf(initiallyYearMenuExpanded) }
+    var yearButtonBounds by remember { mutableStateOf(Rect.Zero) }
+    var yearMenuBounds by remember { mutableStateOf(Rect.Zero) }
+    var pageBounds by remember { mutableStateOf(Rect.Zero) }
+    BackHandler(yearMenuExpanded) { yearMenuExpanded = false }
+    LaunchedEffect(listState) {
+        snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, listState.isScrollInProgress) }
+            .drop(1).collect { yearMenuExpanded = false }
+    }
+    Box(Modifier.fillMaxSize().onGloballyPositioned { pageBounds = it.boundsInRoot() }
+        .pointerInput(yearMenuExpanded, yearButtonBounds, yearMenuBounds) {
+            // 在子控件消费事件之前观察外部触摸；不消费事件，保留页面滚动与原有点击。
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                val point = down.position + pageBounds.topLeft
+                if (yearMenuExpanded && !yearButtonBounds.contains(point) && !yearMenuBounds.contains(point)) {
+                    yearMenuExpanded = false
                 }
-                item {
-                    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                            SectionHeader(stringResource(R.string.home_recent), stringResource(R.string.action_all)) { onNavigate(AppDestination.Search) }
-                            if (state.recentRecords.isEmpty()) {
-                                EmptyState(
-                                    stringResource(R.string.home_empty_title),
-                                    stringResource(R.string.home_empty_desc),
-                                    stringResource(R.string.action_add_gift),
-                                    { onNavigate(AppDestination.AddGift) },
-                                    R.drawable.page_add_cat,
-                                )
-                            } else {
-                                state.recentRecords.take(4).forEachIndexed { index, item ->
-                                    GiftRecordListItem(item) { onRecordClick(item.record.id) }
-                                    if (index < state.recentRecords.take(4).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            }
+        }) {
+        AppScaffold { padding ->
+            when {
+                state.isLoading -> LoadingState()
+                state.error -> ErrorState(onRetry)
+                else -> LazyColumn(
+                    Modifier.fillMaxSize().padding(padding).testTag("首页列表"),
+                    state = listState,
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 124.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    item { HomeHeader({ onNavigate(AppDestination.Search) }, { onNavigate(AppDestination.Notifications) }) }
+                    item {
+                        HeroSummaryCard(state, onYearSelected, yearMenuExpanded,
+                            onExpandedChange = { yearMenuExpanded = it },
+                            onButtonBounds = { yearButtonBounds = it },
+                            onMenuBounds = { yearMenuBounds = it })
+                    }
+                    item {
+                        QuickActions(
+                            onReceived = { onNavigate(AppDestination.ReceivedRecords) },
+                            onGiven = { onNavigate(AppDestination.GivenRecords) },
+                            onCalendar = { onNavigate(AppDestination.Calendar) },
+                            onStats = { onNavigate(AppDestination.Statistics) },
+                        )
+                    }
+                    item {
+                        GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                                SectionHeader(stringResource(R.string.home_recent), stringResource(R.string.action_all)) { onNavigate(AppDestination.Search) }
+                                if (state.recentRecords.isEmpty()) {
+                                    EmptyState(
+                                        stringResource(R.string.home_empty_title),
+                                        stringResource(R.string.home_empty_desc),
+                                        stringResource(R.string.action_add_gift),
+                                        { onNavigate(AppDestination.AddGift) },
+                                        R.drawable.page_add_cat,
+                                    )
+                                } else {
+                                    state.recentRecords.take(4).forEachIndexed { index, item ->
+                                        GiftRecordListItem(item) { onRecordClick(item.record.id) }
+                                        if (index < state.recentRecords.take(4).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                                    }
                                 }
                             }
                         }
@@ -105,57 +156,93 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 }
 
 @Composable
-private fun HeroSummaryCard(state: HomeUiState, onYearSelected: (Int) -> Unit) {
-    var yearMenuExpanded by remember { mutableStateOf(false) }
-    GlassCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(GlassTokens.Radius)) {
-        Box(Modifier.fillMaxWidth()) {
-            Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.matchParentSize().padding(start = 64.dp, bottom = 12.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomEnd)
-            Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                Box {
-                    Surface(
-                        onClick = { yearMenuExpanded = true },
-                        shape = RoundedCornerShape(14.dp),
-                        color = glassColor(),
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
-                            Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year))
-                        }
-                    }
-                    DropdownMenu(
-                        expanded = yearMenuExpanded,
-                        onDismissRequest = { yearMenuExpanded = false },
-                        shape = RoundedCornerShape(GlassTokens.ControlRadius),
-                        containerColor = glassColor().copy(alpha = floatingGlassAlpha()),
-                    ) {
-                        state.availableYears.forEach { year ->
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.year_format, year)) },
-                                onClick = {
-                                    yearMenuExpanded = false
-                                    onYearSelected(year)
+private fun HeroSummaryCard(
+    state: HomeUiState,
+    onYearSelected: (Int) -> Unit,
+    yearMenuExpanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onButtonBounds: (Rect) -> Unit,
+    onMenuBounds: (Rect) -> Unit,
+) {
+    val yearMenuHazeState = rememberHazeState()
+    val anchor = remember { YearMenuAnchor() }
+    Layout(modifier = Modifier.fillMaxWidth(), content = {
+        GlassCard(Modifier.fillMaxWidth().hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
+            Box(Modifier.fillMaxWidth()) {
+                Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.matchParentSize().padding(start = 64.dp, bottom = 12.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomEnd)
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                    Box {
+                        Surface(
+                            onClick = { onExpandedChange(!yearMenuExpanded) },
+                            modifier = Modifier.testTag("年份入口")
+                                .layout { measurable, constraints ->
+                                    val button = measurable.measure(constraints)
+                                    anchor.height = button.height
+                                    layout(button.width, button.height) { button.placeRelative(0, 0) }
+                                }
+                                .semantics { stateDescription = if (yearMenuExpanded) "已展开" else "已收起" }
+                                .onGloballyPositioned {
+                                    onButtonBounds(it.boundsInRoot())
                                 },
-                                leadingIcon = if (year == state.year) {
-                                    { Icon(Icons.Outlined.Check, null) }
-                                } else null,
-                            )
+                            shape = RoundedCornerShape(14.dp),
+                            color = glassColor(),
+                        ) {
+                            Row(
+                                Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
+                                Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year))
+                            }
                         }
                     }
+                    Spacer(Modifier.height(18.dp))
+                    Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(CurrencyFormatter.formatCents(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    Text(stringResource(R.string.home_year_given), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(CurrencyFormatter.formatCents(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(12.dp))
+                    Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                Spacer(Modifier.height(18.dp))
-                Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(CurrencyFormatter.formatCents(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
-                Text(stringResource(R.string.home_year_given), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(CurrencyFormatter.formatCents(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(12.dp))
-                Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
+        AnimatedVisibility(
+            visible = yearMenuExpanded,
+            enter = fadeIn(tween(160)) + expandVertically(tween(160), expandFrom = Alignment.Top),
+            exit = fadeOut(tween(160)) + shrinkVertically(tween(160), shrinkTowards = Alignment.Top),
+        ) {
+            FrostedYearMenu(
+                years = state.availableYears,
+                selectedYear = state.year,
+                hazeState = yearMenuHazeState,
+                modifier = Modifier.onGloballyPositioned { onMenuBounds(it.boundsInRoot()) },
+                onYearSelected = { year ->
+                    onExpandedChange(false)
+                    onYearSelected(year)
+                },
+            )
+        }
+    }) { measurables, constraints ->
+        // 先测量卡片及年份入口，再约束和放置菜单；首帧与预览无需等待位置回调重组。
+        val card = measurables.first().measure(constraints.copy(minHeight = 0))
+        val inset = 20.dp.roundToPx()
+        val menuTop = inset + anchor.height + 8.dp.roundToPx()
+        val menu = measurables.getOrNull(1)?.measure(constraints.copy(
+            minWidth = 0, minHeight = 0,
+            maxWidth = (card.width - inset * 2).coerceAtLeast(0),
+            maxHeight = (card.height - menuTop - 8.dp.roundToPx()).coerceIn(0, 240.dp.roundToPx()),
+        ))
+        layout(card.width, card.height) {
+            card.placeRelative(0, 0)
+            menu?.placeRelative(inset, menuTop)
+        }
     }
+}
+
+private class YearMenuAnchor {
+    // 仅在当前布局测量中传递入口高度，不作为重组状态。
+    var height: Int = 0
 }
 
 @Composable
