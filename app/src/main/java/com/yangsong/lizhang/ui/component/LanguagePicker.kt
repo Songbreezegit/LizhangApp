@@ -33,6 +33,7 @@ fun AppLanguage.displayName(): String = stringResource(when (this) {
 @Composable
 fun LanguagePicker(onDismiss: () -> Unit) {
     val selected = currentAppLanguage()
+    val transition = LocalAppearanceTransition.current
     GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.language)) },
@@ -45,9 +46,11 @@ fun LanguagePicker(onDismiss: () -> Unit) {
                             role = Role.RadioButton,
                             onClick = {
                                 onDismiss()
-                                AppCompatDelegate.setApplicationLocales(
-                                    LocaleListCompat.forLanguageTags(language.localeTag),
-                                )
+                                if (language != selected) transition {
+                                    AppCompatDelegate.setApplicationLocales(
+                                        LocaleListCompat.forLanguageTags(language.localeTag),
+                                    )
+                                }
                             },
                         ).padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,

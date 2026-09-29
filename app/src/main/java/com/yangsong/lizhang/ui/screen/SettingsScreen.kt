@@ -1,5 +1,8 @@
 package com.yangsong.lizhang.ui.screen
 import com.yangsong.lizhang.ui.component.LanguagePicker
+import com.yangsong.lizhang.ui.component.LocalAppearanceTransition
+import com.yangsong.lizhang.ui.component.LocalAppearanceOpacity
+import androidx.compose.ui.graphics.graphicsLayer
 import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.component.displayName
@@ -96,6 +99,10 @@ fun SettingsScreen(
     var showBackupActions by remember { mutableStateOf(false) }
     var showCreateBackupPassword by remember { mutableStateOf(false) }
     var showThemeOptions by remember { mutableStateOf(false) }
+    val transition = LocalAppearanceTransition.current
+    val changeTheme: (AppThemeMode) -> Unit = { mode ->
+        if (mode != state.themeMode) transition { viewModel.setThemeMode(mode) }
+    }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
         val document = documentToSave?.takeIf { it.format == format }
@@ -186,7 +193,7 @@ fun SettingsScreen(
         onCsvExport = { viewModel.prepareCsvExport(context.giftExportLabels()) },
         onExcelExport = { viewModel.prepareExcelExport(context.giftExportLabels()) },
         onBackup = { showBackupActions = true },
-        onThemeModeChange = viewModel::setThemeMode,
+        onThemeModeChange = changeTheme,
         onThemeOptions = { showThemeOptions = true },
         onFontGuide = onFontGuide,
         onAbout = onAbout,
@@ -261,14 +268,16 @@ fun SettingsScreen(
     }
 
     if (showThemeOptions) {
+        val opacity = LocalAppearanceOpacity.current
         GlassDialog(
+            modifier = Modifier.graphicsLayer { alpha = opacity() },
             onDismissRequest = { showThemeOptions = false },
             title = { Text(stringResource(R.string.settings_theme)) },
             text = {
                 Column {
-                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, viewModel::setThemeMode)
-                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, viewModel::setThemeMode)
-                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, viewModel::setThemeMode)
+                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, changeTheme)
+                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, changeTheme)
+                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, changeTheme)
                 }
             },
             confirmButton = {

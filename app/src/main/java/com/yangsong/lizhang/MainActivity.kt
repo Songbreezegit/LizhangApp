@@ -15,6 +15,7 @@ import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.ui.navigation.LiZhangNavGraph
 import com.yangsong.lizhang.ui.navigation.ReminderLaunchRequest
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
+import com.yangsong.lizhang.ui.component.AppearanceTransition
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : AppCompatActivity() {
@@ -35,16 +36,18 @@ class MainActivity : AppCompatActivity() {
                 AppThemeMode.DARK -> true
             }
             LiZhangTheme(darkTheme = darkTheme) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    LiZhangNavGraph(
-                        appContainer = appContainer,
-                        reminderLaunchRequest = pendingReminder,
-                        onReminderRequestConsumed = {
-                            if (reminderLaunchRequest.value == pendingReminder) {
-                                reminderLaunchRequest.value = null
-                            }
-                        },
-                    )
+                AppearanceTransition {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        LiZhangNavGraph(
+                            appContainer = appContainer,
+                            reminderLaunchRequest = pendingReminder,
+                            onReminderRequestConsumed = {
+                                if (reminderLaunchRequest.value == pendingReminder) {
+                                    reminderLaunchRequest.value = null
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }

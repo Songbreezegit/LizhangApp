@@ -27,6 +27,35 @@ class LocalizationInstrumentedTest {
     }
 
     @Test
+    fun 主题开关与弹窗切换后保留设置页() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("我的").performClick()
+        compose.onNodeWithText("深色模式").performScrollTo()
+        compose.onNode(isToggleable()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("语言").assertIsDisplayed()
+        compose.onNode(isToggleable()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("主题设置").performClick()
+        val options = compose.onAllNodes(
+            SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
+                androidx.compose.ui.semantics.Role.RadioButton) and hasAnyAncestor(isDialog()),
+        )
+        options.assertCountEquals(3)
+        options[2].performClick()
+        compose.waitForIdle()
+        options[2].assertIsSelected()
+        options[1].performClick()
+        compose.waitForIdle()
+        options[1].assertIsSelected()
+        compose.onNodeWithText("完成").performClick()
+        compose.onNodeWithText("语言").assertIsDisplayed()
+    }
+
+    @Test
     fun 四语言资源复数和默认回退() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         for ((tag, title) in listOf("zh-CN" to "语言", "en" to "Language", "ja" to "言語", "ko" to "언어", "fr" to "语言")) {
