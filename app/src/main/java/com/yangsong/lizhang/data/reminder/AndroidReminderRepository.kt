@@ -122,13 +122,14 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     }
 
     private fun createNotificationChannel() {
+        val localizedContext = ContextCompat.getContextForLanguage(context)
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            context.getString(R.string.reminder_channel_name),
+            localizedContext.getString(R.string.reminder_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = context.getString(R.string.reminder_channel_description)
+            description = localizedContext.getString(R.string.reminder_channel_description)
         }
         manager.createNotificationChannel(channel)
     }
@@ -164,6 +165,7 @@ class ReminderCoordinator(
 
 class ReminderNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val localizedContext = ContextCompat.getContextForLanguage(context)
         val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
         if (!preferences.getBoolean(KEY_ENABLED, false)) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -176,7 +178,7 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val eventType = runCatching {
             enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
         }.getOrDefault(EventType.OTHER)
-        val eventName = eventDisplayText(eventType, intent.getStringExtra(EXTRA_CUSTOM_EVENT_NAME)) { context.eventTypeName(it) }
+        val eventName = eventDisplayText(eventType, intent.getStringExtra(EXTRA_CUSTOM_EVENT_NAME)) { localizedContext.eventTypeName(it) }
         val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
         val openApp = PendingIntent.getActivity(
             context,
@@ -186,16 +188,17 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_gift)
-            .setContentTitle(context.getString(R.string.reminder_notification_title, contactName))
+            .setContentTitle(localizedContext.getString(R.string.reminder_notification_title, contactName))
             .setContentText(
                 if (advanceDays == 0) {
-                    context.getString(
+                    localizedContext.getString(
                         R.string.reminder_notification_text,
                         eventName,
                     )
                 } else {
-                    context.getString(
-                        R.string.reminder_notification_text_advance,
+                    localizedContext.resources.getQuantityString(
+                        R.plurals.reminder_notification_text_advance,
+                        advanceDays,
                         eventName,
                         advanceDays,
                     )

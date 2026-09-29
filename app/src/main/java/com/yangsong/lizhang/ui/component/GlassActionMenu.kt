@@ -32,6 +32,8 @@ data class GlassAction(val label: String, val icon: ImageVector, val onClick: ()
 /** 菜单由页面控制，便于统一处理返回键、管理模式与导航。 */
 @Composable
 fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Unit, actions: List<GlassAction>, hazeState: HazeState) {
+    val menuDescription = androidx.compose.ui.res.stringResource(if (expanded) com.yangsong.lizhang.R.string.menu_close else com.yangsong.lizhang.R.string.contact_create)
+    val expandedDescription = androidx.compose.ui.res.stringResource(if (expanded) com.yangsong.lizhang.R.string.state_expanded else com.yangsong.lizhang.R.string.state_collapsed)
     val rotation by animateFloatAsState(if (expanded) 45f else 0f, tween(180), label = "添加按钮旋转")
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         actions.forEachIndexed { index, action ->
@@ -56,8 +58,8 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
             }
         }
         GlassFab(onToggle, Modifier.testTag("联系人添加菜单").semantics {
-            contentDescription = if (expanded) "关闭添加菜单" else "添加联系人"
-            stateDescription = if (expanded) "已展开" else "已收起"
+            contentDescription = menuDescription
+            stateDescription = expandedDescription
         }, hazeState = hazeState) { Icon(Icons.Outlined.Add, null, Modifier.rotate(rotation).size(28.dp)) }
     }
 }

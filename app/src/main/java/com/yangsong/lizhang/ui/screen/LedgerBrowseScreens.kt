@@ -66,7 +66,7 @@ fun DirectionRecordsScreen(
             ) {
                 item { PageIllustration(R.drawable.page_add_cat, Modifier.fillMaxWidth().height(175.dp)) }
                 item {
-                    SectionHeader(stringResource(R.string.records_count, state.records.size))
+                    SectionHeader(androidx.compose.ui.res.pluralStringResource(R.plurals.records_count, state.records.size, state.records.size))
                 }
                 if (state.records.isEmpty()) {
                     item { EmptyState(stringResource(R.string.records_empty, title), image = R.drawable.page_add_cat) }
@@ -100,7 +100,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item { CalendarCard(state, viewModel::previousMonth, viewModel::nextMonth, viewModel::selectDay) }
-                item { SectionHeader(stringResource(R.string.calendar_day_records, state.month, state.selectedDay)) }
+                item { SectionHeader(stringResource(R.string.calendar_records_on, com.yangsong.lizhang.ui.mapper.displayCalendarDate(state.year, state.month, state.selectedDay))) }
                 if (state.selectedRecords.isEmpty()) {
                     item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
                 } else {
@@ -122,7 +122,7 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 GlassIconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
-                Text(stringResource(R.string.calendar_month_title, state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(com.yangsong.lizhang.ui.mapper.displayYearMonth(state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 GlassIconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
             }
             Row(Modifier.fillMaxWidth()) {

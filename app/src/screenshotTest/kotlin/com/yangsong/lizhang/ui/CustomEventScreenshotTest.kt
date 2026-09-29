@@ -12,7 +12,7 @@ import com.yangsong.lizhang.ui.theme.LiZhangTheme
 @PreviewTest @GlassConfigurations @Composable
 fun CustomEventDialogScreenshot() { LiZhangTheme { AppGradientBackground { CustomEventDialog("升学宴", {}, {}) } } }
 
-@PreviewTest @GlassConfigurations @androidx.compose.ui.tooling.preview.Preview(name = "浅色412双行", widthDp = 412, heightDp = 500) @Composable
+@PreviewTest @GlassConfigurations @androidx.compose.ui.tooling.preview.Preview(locale = "zh-rCN", name = "浅色412双行", widthDp = 412, heightDp = 500) @Composable
 fun CustomEventSelectedScreenshot() { LiZhangTheme { AppScaffold { padding ->
     Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.Center) {
         EventTypeSelector(EventType.OTHER, {}, "升学宴", {})

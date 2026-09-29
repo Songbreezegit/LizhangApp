@@ -129,11 +129,38 @@ fun EventTypeSelector(selected: EventType, onSelected: (EventType) -> Unit,
     }
 }
 
-@Composable fun AmountSummaryCard(label:String,amount:Long,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){GlassCard(modifier,shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(CurrencyFormatter.formatCents(amount),color=tint,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
+@Composable fun AmountSummaryCard(label:String,amount:Long,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.primary){GlassCard(modifier,shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(label,color=MaterialTheme.colorScheme.onSurfaceVariant);Text(com.yangsong.lizhang.ui.mapper.displayAmount(amount),color=tint,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold)}}}
 private val compoundSurnames=listOf("欧阳","司马","上官","诸葛","东方","皇甫","尉迟","公孙","慕容","司徒")
-private fun contactSurname(name:String):String{val clean=name.trim();if(clean.isBlank())return "人";compoundSurnames.firstOrNull{clean.startsWith(it)}?.let{return it};return clean.first().toString().uppercase()}
-@Composable fun ContactAvatar(name:String,size:androidx.compose.ui.unit.Dp,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.secondary){Surface(modifier.size(size),shape=CircleShape,color=tint.copy(alpha=.10f)){Box(contentAlignment=Alignment.Center){val surname=contactSurname(name);Text(surname,color=tint,style=if(surname.length>1)MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}}}
-@Composable fun GiftRecordListItem(item:GiftRecordWithContact,onClick:(()->Unit)?=null){val click=if(onClick==null)Modifier else Modifier.clickable(onClick=onClick);Row(click.fillMaxWidth().padding(vertical=14.dp),verticalAlignment=Alignment.CenterVertically){ContactAvatar(item.contactName,52.dp,tint=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Row(verticalAlignment=Alignment.CenterVertically){Text(item.contactName,style=MaterialTheme.typography.bodyLarge,fontWeight=FontWeight.Bold);Spacer(Modifier.width(8.dp));Surface(shape=RoundedCornerShape(6.dp),color=Color.Transparent){Text(stringResource(item.record.direction.labelRes()),Modifier.padding(horizontal=6.dp,vertical=2.dp),style=MaterialTheme.typography.labelSmall,color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}};Text("${item.record.eventDisplayLabel()} · ${DateFormatter.format(item.record.eventDate)}",color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodySmall)};Text((if (item.record.direction == GiftDirection.RECEIVED) "+" else "-")+CurrencyFormatter.formatCents(item.record.amountInCents),color=if(item.record.direction==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold)}}
+private fun contactSurname(name:String):String{val clean=name.trim();if(clean.isBlank())return "";compoundSurnames.firstOrNull{clean.startsWith(it)}?.let{return it};return clean.first().toString().uppercase()}
+@Composable fun ContactAvatar(name:String,size:androidx.compose.ui.unit.Dp,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.secondary){Surface(modifier.size(size),shape=CircleShape,color=tint.copy(alpha=.10f)){Box(contentAlignment=Alignment.Center){val surname=contactSurname(name).ifEmpty { stringResource(R.string.contact_avatar_fallback) };Text(surname,color=tint,style=if(surname.length>1)MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}}}
+@Composable
+fun GiftRecordListItem(item: GiftRecordWithContact, onClick: (() -> Unit)? = null) {
+    val click = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    val tint = if (item.record.direction == GiftDirection.RECEIVED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+    val amount = stringResource(
+        if (item.record.direction == GiftDirection.RECEIVED) R.string.amount_received else R.string.amount_given,
+        com.yangsong.lizhang.ui.mapper.displayAmount(item.record.amountInCents),
+    )
+    val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.2f
+    Row(click.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        ContactAvatar(item.contactName, 52.dp, tint = tint)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(item.contactName, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(item.record.direction.labelRes()), Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall, color = tint)
+            }
+            Text(stringResource(R.string.record_event_date, item.record.eventDisplayLabel(), com.yangsong.lizhang.ui.mapper.displayDate(item.record.eventDate)),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (largeText) Text(amount, color = tint, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        if (!largeText) Text(amount, Modifier.widthIn(max = 150.dp), color = tint,
+            style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    }
+}
 @Composable
 fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) {
     val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.2f
@@ -147,12 +174,12 @@ fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) {
             Text(summary.contact.phone ?: summary.contact.relationship.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             if (largeText) {
-                Text("${stringResource(R.string.contact_net)}  ${CurrencyFormatter.formatCents(summary.netInCents)}",
+                Text(stringResource(R.string.contact_net_amount, stringResource(R.string.contact_net), com.yangsong.lizhang.ui.mapper.displayAmount(summary.netInCents)),
                     color = amountColor, style = MaterialTheme.typography.bodyMedium)
             }
         }
         if (!largeText) Column(horizontalAlignment = Alignment.End) {
-            Text(CurrencyFormatter.formatCents(summary.netInCents), fontWeight = FontWeight.SemiBold, color = amountColor)
+            Text(com.yangsong.lizhang.ui.mapper.displayAmount(summary.netInCents), fontWeight = FontWeight.SemiBold, color = amountColor)
             Text(stringResource(R.string.contact_net), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
         Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)

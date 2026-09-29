@@ -96,7 +96,7 @@ fun ContactsScreen(
             feedback.deleteFailed -> context.getString(R.string.contact_bulk_delete_failed)
             feedback.deleteResult != null -> feedback.deleteResult.let { result ->
                 if (result.deletedGiftRecords > 0) context.getString(R.string.contact_bulk_deleted_records, result.deletedContacts, result.deletedGiftRecords)
-                else context.getString(R.string.contact_bulk_deleted, result.deletedContacts)
+                else context.resources.getQuantityString(R.plurals.contact_bulk_deleted, result.deletedContacts, result.deletedContacts)
             }
             else -> null
         }
@@ -186,7 +186,7 @@ fun ContactsContent(
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     ) {
                         if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else Text(stringResource(R.string.contact_bulk_delete_action, state.selectedContactIds.size))
+                        else Text(androidx.compose.ui.res.pluralStringResource(R.plurals.contact_bulk_delete_action, state.selectedContactIds.size, state.selectedContactIds.size))
                     }
                 }
             }
@@ -237,14 +237,14 @@ fun ContactsContent(
     if (menuExpanded && !state.isSelectionMode) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = GlassTokens.ScrimAlpha)).testTag("关闭联系人菜单遮罩").clickable(
             interactionSource = remember { MutableInteractionSource() }, indication = null,
-            onClickLabel = "关闭添加菜单",
+            onClickLabel = stringResource(R.string.menu_close),
         ) { menuExpanded = false })
     }
     if (!state.isSelectionMode) {
         Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
-                listOf(GlassAction("通讯录导入", Icons.Outlined.Contacts, onImportContacts),
-                    GlassAction("手动添加", Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)
+                listOf(GlassAction(stringResource(R.string.contact_import_menu), Icons.Outlined.Contacts, onImportContacts),
+                    GlassAction(stringResource(R.string.contact_add_manual), Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)
         }
     }
     }
@@ -252,7 +252,7 @@ fun ContactsContent(
         val hasRecords = preview.giftRecordCount > 0
         GlassDialog(
             onDismissRequest = { if (!state.isDeleting) onDismissDelete() },
-            title = { Text(stringResource(R.string.contact_bulk_confirm_title, preview.contactCount)) },
+            title = { Text(androidx.compose.ui.res.pluralStringResource(R.plurals.contact_bulk_confirm_title, preview.contactCount, preview.contactCount)) },
             text = {
                 Column(verticalArrangement = spacedBy(12.dp)) {
                     if (state.deletePreviewChanged) Text(stringResource(R.string.contact_bulk_preview_changed), color = MaterialTheme.colorScheme.error)
@@ -263,7 +263,7 @@ fun ContactsContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Checkbox(state.cascadeConfirmed, onCheckedChange = null, enabled = !state.isDeleting)
-                        Text(stringResource(R.string.contact_bulk_acknowledge, preview.giftRecordCount), Modifier.weight(1f))
+                        Text(androidx.compose.ui.res.pluralStringResource(R.plurals.contact_bulk_acknowledge, preview.giftRecordCount, preview.giftRecordCount), Modifier.weight(1f))
                     }
                 }
             },

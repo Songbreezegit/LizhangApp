@@ -7,6 +7,7 @@ import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.backup.BackupArchiveCodec
 import com.yangsong.lizhang.domain.backup.InvalidBackupPasswordException
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
+import com.yangsong.lizhang.domain.export.GiftExportLabels
 import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
 import com.yangsong.lizhang.domain.repository.BackupRepository
 import com.yangsong.lizhang.domain.repository.BackupSummary
@@ -96,9 +97,9 @@ class SettingsViewModel(
         _uiState.update { it.copy(themeMode = mode) }
     }
 
-    fun prepareCsvExport() = prepareExport(ExportFormat.CSV)
+    fun prepareCsvExport(labels: GiftExportLabels) = prepareExport(ExportFormat.CSV, labels)
 
-    fun prepareExcelExport() = prepareExport(ExportFormat.EXCEL)
+    fun prepareExcelExport(labels: GiftExportLabels) = prepareExport(ExportFormat.EXCEL, labels)
 
     fun prepareBackupExport(password: String? = null) {
         if (_uiState.value.isBusy()) return
@@ -107,7 +108,7 @@ class SettingsViewModel(
             runCatching { withContext(backgroundDispatcher) { backupRepository.createBackup(password) } }
                 .onSuccess { backup ->
                     val timestamp = DateFormatter.format(now(), "yyyyMMdd_HHmmss")
-                    val filePrefix = if (password.isNullOrEmpty()) "礼账备份" else "礼账加密备份"
+                    val filePrefix = if (password.isNullOrEmpty()) "Lizhang_backup" else "Lizhang_encrypted_backup"
                     _uiState.update {
                         it.copy(
                             isPreparingBackup = false,
@@ -225,7 +226,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun prepareExport(format: ExportFormat) {
+    private fun prepareExport(format: ExportFormat, labels: GiftExportLabels) {
         require(format != ExportFormat.BACKUP)
         if (_uiState.value.isBusy()) return
         viewModelScope.launch {
@@ -250,15 +251,15 @@ class SettingsViewModel(
                         val timestamp = DateFormatter.format(now(), "yyyyMMdd_HHmmss")
                         val document = when (format) {
                             ExportFormat.CSV -> ExportDocument(
-                                fileName = "礼账_$timestamp.csv",
+                                fileName = "Lizhang_$timestamp.csv",
                                 mimeType = "text/csv",
-                                bytes = GiftRecordCsvFormatter.format(records).toByteArray(Charsets.UTF_8),
+                                bytes = GiftRecordCsvFormatter.format(labels, records).toByteArray(Charsets.UTF_8),
                                 format = format,
                             )
                             ExportFormat.EXCEL -> ExportDocument(
-                                fileName = "礼账_$timestamp.xlsx",
+                                fileName = "Lizhang_$timestamp.xlsx",
                                 mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                bytes = GiftRecordXlsxFormatter.format(records),
+                                bytes = GiftRecordXlsxFormatter.format(labels, records),
                                 format = format,
                             )
                             ExportFormat.BACKUP -> error("备份导出使用独立流程")

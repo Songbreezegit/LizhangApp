@@ -149,7 +149,9 @@ private fun InformationCard(section: InformationSection) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                stringResource(section.body),
+                if (section.body == R.string.settings_version) {
+                    stringResource(section.body, com.yangsong.lizhang.BuildConfig.VERSION_NAME)
+                } else stringResource(section.body),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

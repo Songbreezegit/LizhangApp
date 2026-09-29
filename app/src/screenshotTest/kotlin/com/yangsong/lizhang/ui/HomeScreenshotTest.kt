@@ -33,7 +33,7 @@ import com.yangsong.lizhang.ui.viewmodel.SettingsUiState
 import com.yangsong.lizhang.ui.viewmodel.GiftEditorUiState
 
 @PreviewTest
-@Preview(name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun HomeStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -60,7 +60,7 @@ fun HomeStandardScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "首页空状态大字体",
     widthDp = 412,
     heightDp = 915,
@@ -84,7 +84,7 @@ fun HomeEmptyLargeTextScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "联系人标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "联系人标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun ContactsStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -120,7 +120,7 @@ fun ContactsStandardScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "联系人空状态大字体",
     widthDp = 412,
     heightDp = 915,
@@ -147,7 +147,7 @@ fun ContactsEmptyLargeTextScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "记一笔标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "记一笔标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun AddGiftStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -173,7 +173,7 @@ fun AddGiftStandardScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "记一笔放弃填写确认", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "记一笔放弃填写确认", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun AddGiftDiscardConfirmationScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -185,7 +185,7 @@ fun AddGiftDiscardConfirmationScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "记一笔深色大字体",
     widthDp = 412,
     heightDp = 915,
@@ -215,7 +215,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "记一笔深色大字体空表单",
     widthDp = 412,
     heightDp = 915,
@@ -240,7 +240,7 @@ fun AddGiftDarkLargeEmptyScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun SettingsScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -261,7 +261,7 @@ fun SettingsScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "我的深色模式", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "我的深色模式", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun SettingsDarkScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
@@ -282,7 +282,7 @@ fun SettingsDarkScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun CreateEncryptedBackupScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -295,7 +295,7 @@ fun CreateEncryptedBackupScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun RestoreEncryptedBackupErrorScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -310,7 +310,7 @@ fun RestoreEncryptedBackupErrorScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "隐私说明大字体",
     widthDp = 412,
     heightDp = 915,

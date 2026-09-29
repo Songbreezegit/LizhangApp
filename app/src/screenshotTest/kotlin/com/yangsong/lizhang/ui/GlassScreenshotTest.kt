@@ -24,10 +24,10 @@ import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.NotificationsUiState
 
 // 所有截图仅使用虚构展示数据，不读取设备联系人或数据库。
-@Preview(name = "浅色360", widthDp = 360, heightDp = 800)
-@Preview(name = "深色390", widthDp = 390, heightDp = 844, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Preview(name = "大字体412", widthDp = 412, heightDp = 915, fontScale = 1.5f)
-@Preview(name = "深色大字体360", widthDp = 360, heightDp = 800, fontScale = 1.5f, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(locale = "zh-rCN", name = "浅色360", widthDp = 360, heightDp = 800)
+@Preview(locale = "zh-rCN", name = "深色390", widthDp = 390, heightDp = 844, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(locale = "zh-rCN", name = "大字体412", widthDp = 412, heightDp = 915, fontScale = 1.5f)
+@Preview(locale = "zh-rCN", name = "深色大字体360", widthDp = 360, heightDp = 800, fontScale = 1.5f, uiMode = Configuration.UI_MODE_NIGHT_YES)
 annotation class GlassConfigurations
 
 @PreviewTest @GlassConfigurations @Composable

@@ -12,6 +12,7 @@ import com.yangsong.lizhang.domain.model.DeviceContact
 import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecord
+import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
 import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
 import kotlinx.coroutines.*
@@ -128,8 +129,8 @@ class ContactImportRepositoryInstrumentedTest {
         assertEquals(contact, repository.observeContact(contact.id).first())
         val rows = gifts.observeSearch("备份导入测试").first()
         assertEquals(giftId, rows.single().record.id)
-        assertTrue(GiftRecordCsvFormatter.format(rows).contains("备份导入测试"))
-        assertTrue(GiftRecordXlsxFormatter.format(rows).isNotEmpty())
+        assertTrue(GiftRecordCsvFormatter.format(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.giftExportLabels(), rows).contains("备份导入测试"))
+        assertTrue(GiftRecordXlsxFormatter.format(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.giftExportLabels(), rows).isNotEmpty())
         assertEquals(1, repository.observeContactSummaries().first().size)
     }
 }

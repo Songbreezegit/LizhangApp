@@ -1,17 +1,23 @@
 package com.yangsong.lizhang.core.util
 
 import java.text.NumberFormat
+import java.math.BigDecimal
+import java.util.Currency
+import java.util.concurrent.ConcurrentHashMap
 import java.util.Locale
 
 object CurrencyFormatter {
-    private val formatter = ThreadLocal.withInitial {
-        NumberFormat.getCurrencyInstance(Locale.CHINA).apply {
-            maximumFractionDigits = 2
-            minimumFractionDigits = 2
-        }
-    }
+    private val formatters = ConcurrentHashMap<Locale, ThreadLocal<NumberFormat>>()
 
-    /** 金额展示常位于滚动列表中，线程内复用非线程安全的 NumberFormat。 */
-    fun formatCents(amountInCents: Long): String =
-        requireNotNull(formatter.get()).format(amountInCents / 100.0)
+    /** 只本地化展示格式，货币始终为人民币，金额仍以分保存。 */
+    fun formatCents(amountInCents: Long, locale: Locale = Locale.getDefault()): String =
+        requireNotNull(formatters.getOrPut(locale) {
+            ThreadLocal.withInitial {
+                NumberFormat.getCurrencyInstance(locale).apply {
+                    currency = Currency.getInstance("CNY")
+                    maximumFractionDigits = 2
+                    minimumFractionDigits = 2
+                }
+            }
+        }.get()).format(BigDecimal.valueOf(amountInCents, 2))
 }

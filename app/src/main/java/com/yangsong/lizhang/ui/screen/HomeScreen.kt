@@ -165,6 +165,7 @@ private fun HeroSummaryCard(
     onMenuBounds: (Rect) -> Unit,
 ) {
     val yearMenuHazeState = rememberHazeState()
+    val expandedDescription = stringResource(if (yearMenuExpanded) R.string.state_expanded else R.string.state_collapsed)
     val anchor = remember { YearMenuAnchor() }
     Layout(modifier = Modifier.fillMaxWidth(), content = {
         GlassCard(Modifier.fillMaxWidth().hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
@@ -180,7 +181,7 @@ private fun HeroSummaryCard(
                                     anchor.height = button.height
                                     layout(button.width, button.height) { button.placeRelative(0, 0) }
                                 }
-                                .semantics { stateDescription = if (yearMenuExpanded) "已展开" else "已收起" }
+                                .semantics { stateDescription = expandedDescription }
                                 .onGloballyPositioned {
                                     onButtonBounds(it.boundsInRoot())
                                 },
@@ -198,12 +199,12 @@ private fun HeroSummaryCard(
                     }
                     Spacer(Modifier.height(18.dp))
                     Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.formatCents(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text(com.yangsong.lizhang.ui.mapper.displayAmount(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(10.dp))
                     Text(stringResource(R.string.home_year_given), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(CurrencyFormatter.formatCents(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
+                    Text(com.yangsong.lizhang.ui.mapper.displayAmount(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(12.dp))
-                    Text("${stringResource(R.string.home_net)}  ${CurrencyFormatter.formatCents(state.net)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.contact_net_amount, stringResource(R.string.home_net), com.yangsong.lizhang.ui.mapper.displayAmount(state.net)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.viewmodel
+import com.yangsong.lizhang.fixtures.chineseExportLabels
 
 import com.yangsong.lizhang.domain.export.GiftRecordCsvFormatter
 import com.yangsong.lizhang.domain.export.GiftRecordXlsxFormatter
@@ -62,7 +63,7 @@ class CsvExportTest {
 
     @Test
     fun `CSV 使用 BOM 中文表头并正确转义特殊字符`() {
-        val csv = GiftRecordCsvFormatter.format(
+        val csv = GiftRecordCsvFormatter.format(chineseExportLabels,
             listOf(sampleItem(contactName = "王,阿姨", notes = "祝福\"满满\"\n第二行")),
         )
 
@@ -80,20 +81,38 @@ class CsvExportTest {
             now = { now },
         )
 
-        viewModel.prepareCsvExport()
+        viewModel.prepareCsvExport(chineseExportLabels)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isPreparingCsv)
         val document = viewModel.uiState.value.pendingExport
-        assertEquals("礼账_20250718_172405.csv", document?.fileName)
+        assertEquals("Lizhang_20250718_172405.csv", document?.fileName)
         assertEquals("text/csv", document?.mimeType)
         assertEquals(ExportFormat.CSV, document?.format)
         assertTrue(document?.bytes?.toString(Charsets.UTF_8).orEmpty().contains("张同学,123.45,收到,婚礼"))
     }
 
     @Test
+    fun `导出文案可本地化且金额和自定义事件保持原值`() {
+        val labels = chineseExportLabels.copy(
+            headers = listOf("Contact", "Amount (CNY)", "Direction", "Occasion", "Date", "Notes", "Created At"),
+            sheetName = "Gift Records",
+            directions = mapOf(GiftDirection.RECEIVED to "Received", GiftDirection.GIVEN to "Given"),
+            events = EventType.entries.associateWith { "Occasion" },
+        )
+        val item = sampleItem().let { it.copy(record = it.record.copy(eventType = EventType.OTHER, customEventName = "测试事件")) }
+        val csv = GiftRecordCsvFormatter.format(labels, listOf(item))
+        assertTrue(csv.startsWith("\uFEFFContact,Amount (CNY),Direction"))
+        assertTrue(csv.contains("123.45,Received,测试事件"))
+        val entries = GiftRecordXlsxFormatter.format(labels, listOf(item)).unzipXmlEntries()
+        assertTrue(entries.getValue("xl/workbook.xml").contains("Gift Records"))
+        assertTrue(entries.getValue("xl/worksheets/sheet1.xml").contains("Received"))
+        assertTrue(entries.getValue("xl/worksheets/sheet1.xml").contains("测试事件"))
+    }
+
+    @Test
     fun `XLSX 包含标准工作簿结构与已转义业务数据`() {
-        val bytes = GiftRecordXlsxFormatter.format(
+        val bytes = GiftRecordXlsxFormatter.format(chineseExportLabels,
             listOf(sampleItem(contactName = "王&阿姨", notes = "祝福<满满>")),
         )
         val entries = bytes.unzipXmlEntries()
@@ -119,12 +138,12 @@ class CsvExportTest {
             now = { now },
         )
 
-        viewModel.prepareExcelExport()
+        viewModel.prepareExcelExport(chineseExportLabels)
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.isPreparingExcel)
         val document = viewModel.uiState.value.pendingExport
-        assertEquals("礼账_20250718_172405.xlsx", document?.fileName)
+        assertEquals("Lizhang_20250718_172405.xlsx", document?.fileName)
         assertEquals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", document?.mimeType)
         assertEquals(ExportFormat.EXCEL, document?.format)
         assertEquals('P'.code.toByte(), document?.bytes?.get(0))
@@ -134,7 +153,7 @@ class CsvExportTest {
     fun `没有记录时不启动文件保存器`() = runTest(dispatcher) {
         val viewModel = SettingsViewModel(CsvGiftRepository(emptyList()), FakeBackupRepository())
 
-        viewModel.prepareCsvExport()
+        viewModel.prepareCsvExport(chineseExportLabels)
         advanceUntilIdle()
 
         assertNull(viewModel.uiState.value.pendingExport)
@@ -158,7 +177,7 @@ class CsvExportTest {
 
         val document = viewModel.uiState.value.pendingExport
         assertFalse(viewModel.uiState.value.isPreparingBackup)
-        assertEquals("礼账备份_20250718_172405.lizhangbackup", document?.fileName)
+        assertEquals("Lizhang_backup_20250718_172405.lizhangbackup", document?.fileName)
         assertEquals(ExportFormat.BACKUP, document?.format)
         assertArrayEquals(backupRepository.backupBytes, document?.bytes)
     }
@@ -180,7 +199,7 @@ class CsvExportTest {
 
         assertEquals("安全密码123", backupRepository.createdPassword)
         assertEquals(
-            "礼账加密备份_20250718_172405.lizhangbackup",
+            "Lizhang_encrypted_backup_20250718_172405.lizhangbackup",
             viewModel.uiState.value.pendingExport?.fileName,
         )
     }

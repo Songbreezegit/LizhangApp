@@ -65,7 +65,7 @@ fun GiftRecordDetailScreen(
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             DetailRow(stringResource(R.string.field_event), record.eventDisplayLabel())
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            DetailRow(stringResource(R.string.field_date), DateFormatter.format(record.eventDate))
+                            DetailRow(stringResource(R.string.field_date), com.yangsong.lizhang.ui.mapper.displayDate(record.eventDate))
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             DetailRow(stringResource(R.string.field_direction), stringResource(record.direction.labelRes()))
                             if (!record.notes.isNullOrBlank()) {

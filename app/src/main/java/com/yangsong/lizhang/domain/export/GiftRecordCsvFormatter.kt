@@ -9,18 +9,18 @@ import java.math.BigDecimal
 object GiftRecordCsvFormatter {
     private const val UTF8_BOM = "\uFEFF"
 
-    fun format(records: List<GiftRecordWithContact>): String = buildString {
+    fun format(labels: GiftExportLabels, records: List<GiftRecordWithContact>): String = buildString {
         append(UTF8_BOM)
-        appendLine("联系人,金额（元）,往来方向,事件类型,事件日期,备注,创建时间")
+        appendLine(labels.headers.joinToString(",", transform = ::escape))
         records.forEach { item ->
             val record = item.record
             appendLine(
                 listOf(
                     item.contactName,
                     BigDecimal.valueOf(record.amountInCents, 2).toPlainString(),
-                    record.direction.csvLabel(),
-                    record.eventExportLabel(),
-                    DateFormatter.format(record.eventDate),
+                    labels.directions.getValue(record.direction),
+                    record.eventExportLabel(labels),
+                    DateFormatter.format(record.eventDate, "yyyy-MM-dd"),
                     record.notes.orEmpty(),
                     DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss"),
                 ).joinToString(",", transform = ::escape),
@@ -31,11 +31,6 @@ object GiftRecordCsvFormatter {
     private fun escape(value: String): String {
         val requiresQuotes = value.any { it == ',' || it == '"' || it == '\n' || it == '\r' }
         return if (requiresQuotes) "\"${value.replace("\"", "\"\"")}\"" else value
-    }
-
-    private fun GiftDirection.csvLabel() = when (this) {
-        GiftDirection.RECEIVED -> "收到"
-        GiftDirection.GIVEN -> "送出"
     }
 
 }

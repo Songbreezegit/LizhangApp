@@ -18,7 +18,7 @@ fun CustomEventDialog(initialName: String = "", onConfirm: (String) -> Unit, onD
     val normalized = name.trim()
     val tooLong = normalized.codePointCount(0, normalized.length) > MAX_CUSTOM_EVENT_NAME_LENGTH
     val error = when {
-        tooLong -> stringResource(R.string.event_custom_too_long, MAX_CUSTOM_EVENT_NAME_LENGTH)
+        tooLong -> androidx.compose.ui.res.pluralStringResource(R.plurals.event_custom_too_long, MAX_CUSTOM_EVENT_NAME_LENGTH, MAX_CUSTOM_EVENT_NAME_LENGTH)
         submitted && normalized.isEmpty() -> stringResource(R.string.event_custom_required)
         else -> null
     }
@@ -27,7 +27,7 @@ fun CustomEventDialog(initialName: String = "", onConfirm: (String) -> Unit, onD
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth().testTag("自定义事件名称"),
                     label = { Text(stringResource(R.string.event_custom_name)) }, placeholder = { Text(stringResource(R.string.event_custom_hint)) }, singleLine = true,
-                    isError = error != null, supportingText = { Text(error ?: stringResource(R.string.event_custom_limit, MAX_CUSTOM_EVENT_NAME_LENGTH)) })
+                    isError = error != null, supportingText = { Text(error ?: androidx.compose.ui.res.pluralStringResource(R.plurals.event_custom_limit, MAX_CUSTOM_EVENT_NAME_LENGTH, MAX_CUSTOM_EVENT_NAME_LENGTH)) })
             }
         },
         confirmButton = { GlassButton(onClick = {

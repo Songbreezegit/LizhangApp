@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.domain.backup
+import com.yangsong.lizhang.fixtures.chineseExportLabels
 
 import com.yangsong.lizhang.domain.model.*
 import com.yangsong.lizhang.domain.export.*
@@ -19,8 +20,8 @@ class CustomEventDisplayTest {
     }
     @Test fun CSV与Excel导出真实自定义名称() {
         val items = listOf(GiftRecordWithContact(record, "示例联系人"))
-        assertTrue(GiftRecordCsvFormatter.format(items).contains("升学宴"))
-        val bytes = GiftRecordXlsxFormatter.format(items)
+        assertTrue(GiftRecordCsvFormatter.format(chineseExportLabels, items).contains("升学宴"))
+        val bytes = GiftRecordXlsxFormatter.format(chineseExportLabels, items)
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             var found = false
             while (true) {

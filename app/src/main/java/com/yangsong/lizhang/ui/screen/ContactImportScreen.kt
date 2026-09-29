@@ -136,7 +136,7 @@ fun ContactImportContent(
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
                 ) {
                     if (state.isImporting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Text(stringResource(R.string.contact_import_action, state.selectedKeys.size))
+                    else Text(androidx.compose.ui.res.pluralStringResource(R.plurals.contact_import_action, state.selectedKeys.size, state.selectedKeys.size))
                 }
             }
         },

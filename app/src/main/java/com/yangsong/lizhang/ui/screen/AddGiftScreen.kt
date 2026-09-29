@@ -121,7 +121,7 @@ fun AddGiftContent(
                     )
                     if(state.validationError==GiftRecordValidationError.CONTACT_REQUIRED)Text(stringResource(R.string.error_contact_required),color=MaterialTheme.colorScheme.error)
                     AmountTextField(state.amount,onAmountChange,if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
-                    SelectionRow(DateFormatter.format(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
+                    SelectionRow(com.yangsong.lizhang.ui.mapper.displayDate(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
                     if (state.validationError == GiftRecordValidationError.DATE_IN_FUTURE) {
                         Text(
                             stringResource(R.string.error_date_in_future),
@@ -351,7 +351,7 @@ private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Uni
                 Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
                 GlassIconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
             }
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(com.yangsong.lizhang.ui.mapper.displayMonth(value))})}}
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->GlassChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
         }},
         confirmButton={GlassTextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},

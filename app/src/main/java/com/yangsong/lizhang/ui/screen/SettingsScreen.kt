@@ -1,4 +1,10 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.LanguagePicker
+import com.yangsong.lizhang.ui.mapper.giftExportLabels
+import com.yangsong.lizhang.ui.component.currentAppLanguage
+import com.yangsong.lizhang.ui.component.displayName
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.ChevronRight
 import com.yangsong.lizhang.ui.component.glassSwitchColors
 import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
@@ -20,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -176,8 +183,8 @@ fun SettingsScreen(
 
     SettingsContent(
         state = state,
-        onCsvExport = viewModel::prepareCsvExport,
-        onExcelExport = viewModel::prepareExcelExport,
+        onCsvExport = { viewModel.prepareCsvExport(context.giftExportLabels()) },
+        onExcelExport = { viewModel.prepareExcelExport(context.giftExportLabels()) },
         onBackup = { showBackupActions = true },
         onThemeModeChange = viewModel::setThemeMode,
         onThemeOptions = { showThemeOptions = true },
@@ -280,7 +287,7 @@ fun SettingsScreen(
                 Text(
                     stringResource(
                         R.string.settings_backup_restore_message,
-                        DateFormatter.format(pending.summary.createdTime, "yyyy-MM-dd HH:mm"),
+                        com.yangsong.lizhang.ui.mapper.displayDateTime(pending.summary.createdTime),
                         pending.summary.contactCount,
                         pending.summary.giftRecordCount,
                         pending.summary.sourceDatabaseVersion,
@@ -329,9 +336,7 @@ fun CreateEncryptedBackupDialog(
                     label = stringResource(R.string.settings_backup_password),
                     isError = passwordTooShort,
                     supportingText = if (passwordTooShort) {
-                        stringResource(
-                            R.string.settings_backup_password_too_short,
-                            BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
+                        androidx.compose.ui.res.pluralStringResource(R.plurals.settings_backup_password_too_short, BackupEncryptionCodec.MIN_PASSWORD_LENGTH, BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
                         )
                     } else null,
                 )
@@ -450,6 +455,8 @@ fun SettingsContent(
     onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    if (showLanguagePicker) LanguagePicker { showLanguagePicker = false }
     AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_settings)) },
         snackbarHost = snackbarHost,
@@ -497,6 +504,20 @@ fun SettingsContent(
             }
             item {
                 SettingsGroup {
+                    SettingsRow(
+                        Icons.Outlined.Language,
+                        stringResource(R.string.language),
+                        onClick = { showLanguagePicker = true },
+                        trailing = {
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text(currentAppLanguage().displayName(), Modifier.widthIn(max = 80.dp),
+                                    style = MaterialTheme.typography.bodyMedium)
+                                androidx.compose.material3.Icon(Icons.Outlined.ChevronRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     val themeDescription = when (state.themeMode) {
                         AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
                         AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
@@ -541,7 +562,7 @@ fun SettingsContent(
                     SettingsRow(
                         Icons.Outlined.Info,
                         stringResource(R.string.settings_about),
-                        stringResource(R.string.settings_version),
+                        stringResource(R.string.settings_version, com.yangsong.lizhang.BuildConfig.VERSION_NAME),
                         onClick = onAbout,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)

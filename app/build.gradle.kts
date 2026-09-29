@@ -16,20 +16,31 @@ android {
         applicationId = "com.yangsong.lizhang"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.8.1"
+        versionCode = 10
+        versionName = "0.9.0"
+        resourceConfigurations += listOf("zh", "en", "ja", "ko")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 }
+
+// 显式中文资源防止「中文 + 英文系统语言」的资源匹配跳过默认中文。
+// 中文只有 values/strings.xml 一份维护源，构建时自动生成语言限定副本。
+val generateChineseResources by tasks.registering(Copy::class) {
+    from("src/main/res/values/strings.xml")
+    into(layout.buildDirectory.dir("generated/chineseResources/values-zh"))
+}
+android.sourceSets.getByName("main").res.srcDir(layout.buildDirectory.dir("generated/chineseResources"))
+tasks.named("preBuild").configure { dependsOn(generateChineseResources) }
 
 kotlin {
     jvmToolchain(17)
@@ -42,6 +53,7 @@ room {
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")

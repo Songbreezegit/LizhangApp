@@ -2,7 +2,7 @@ package com.yangsong.lizhang
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +17,7 @@ import com.yangsong.lizhang.ui.navigation.ReminderLaunchRequest
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val reminderLaunchRequest = MutableStateFlow<ReminderLaunchRequest?>(null)
     private var nextRequestKey = 0L
 
