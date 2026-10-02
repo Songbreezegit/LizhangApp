@@ -9,6 +9,12 @@ import com.yangsong.lizhang.MainActivity
 object ReminderNavigationContract {
     const val ACTION_OPEN_RECORD = "com.yangsong.lizhang.action.OPEN_REMINDER_RECORD"
     const val EXTRA_RECORD_ID = "reminder_record_id"
+    const val ACTION_OPEN_REMINDERS = "com.yangsong.lizhang.action.OPEN_REMINDERS"
+
+    fun createOpenRemindersIntent(context: Context): Intent = Intent(context, MainActivity::class.java).apply {
+        action = ACTION_OPEN_REMINDERS
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    }
 
     fun createOpenRecordIntent(context: Context, recordId: Long): Intent =
         Intent(context, MainActivity::class.java).apply {

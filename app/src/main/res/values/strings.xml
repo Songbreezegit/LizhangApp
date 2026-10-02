@@ -100,19 +100,13 @@
     <string name="week_friday">五</string>
     <string name="week_saturday">六</string>
     <string name="week_sunday">日</string>
-    <string name="notifications_desc">根据历史礼金记录的月日，显示未来 30 天内即将到来的年度日期提醒。</string>
-    <string name="notifications_empty">近期没有提醒</string>
-    <string name="notifications_empty_desc">未来 30 天内没有历史礼金日期；新增记录后会自动计算。</string>
-    <string name="reminder_switch_title">系统日期提醒</string>
-    <string name="reminder_switch_description">开启后按所选日期和时间发送通知</string>
+    <string name="notifications_desc">提醒由你单独创建，保存礼金记录不会自动生成提醒。</string>
+    <string name="notifications_empty">还没有独立提醒</string>
+    <string name="notifications_empty_desc">点击“新增提醒”，为未来的安排设置一次性或每年重复的提醒。</string>
+    <string name="reminder_switch_title">系统通知</string>
     <string name="reminder_permission_denied">未获得通知权限，系统提醒未开启</string>
-    <string name="reminder_channel_name">礼金日期提醒</string>
-    <string name="reminder_channel_description">根据礼金记录日期发送年度提醒</string>
-    <string name="reminder_notification_title">%1$s的礼金日期提醒</string>
-    <string name="reminder_notification_text">今天是记录中的%1$s日期，打开礼账查看往来。</string>
-    <plurals name="reminder_notification_text_advance">
-        <item quantity="other">距离记录中的%1$s日期还有 %2$d 天，打开礼账查看往来。</item>
-    </plurals>
+    <string name="reminder_channel_name">独立日期提醒</string>
+    <string name="reminder_channel_description">发送用户主动创建的日期提醒</string>
     <string name="reminder_record_unavailable">该提醒对应的礼金记录已不存在</string>
     <string name="record_detail_title">礼金记录详情</string>
     <string name="record_edit">编辑礼金记录</string>
@@ -217,7 +211,7 @@
     <string name="direction_received">收到</string>
     <string name="direction_given">送出</string>
     <string name="reminder_schedule_title">提醒设置</string>
-    <string name="reminder_switch_description_configurable">开启后按下方设置发送系统通知</string>
+    <string name="reminder_switch_description_configurable">开启后发送你创建的独立提醒</string>
     <string name="reminder_advance_title">提醒日期</string>
     <string name="reminder_advance_same_day">当天提醒</string>
     <string name="reminder_advance_one_day">提前 1 天</string>
@@ -225,7 +219,7 @@
     <string name="reminder_advance_seven_days">提前 7 天</string>
     <string name="reminder_time_title">提醒时间</string>
     <string name="reminder_time_value">%1$02d:%2$02d</string>
-    <string name="reminder_schedule_description">系统会按此设置重新安排全部年度日期提醒</string>
+    <string name="reminder_schedule_description">日期与时间统一应用于独立提醒；错过的时刻不会补发。</string>
     <string name="reminder_time_dialog_title">选择提醒时间</string>
     <string name="contact_import_title">导入联系人</string>
     <string name="contact_import_description">选择需要添加到礼账的联系人</string>
@@ -304,4 +298,23 @@
     <string name="export_event_date">事件日期</string>
     <string name="export_created_time">创建时间</string>
     <string name="export_sheet_name">礼金记录</string>
+    <string name="independent_add">新增提醒</string>
+    <string name="independent_edit">编辑提醒</string>
+    <string name="independent_title">提醒名称</string>
+    <string name="independent_date_value">日期：%1$s</string>
+    <string name="independent_annually">每年重复</string>
+    <string name="independent_date_rule">仅能选择未来日期，默认只提醒一次。</string>
+    <string name="independent_save_failed">提醒未保存，请重试。</string>
+    <string name="independent_notification_text">提醒日期：%1$s</string>
+    <string name="independent_once">仅一次</string>
+    <string name="independent_expired">已过提醒时间</string>
+    <string name="independent_disabled">已停用</string>
+    <string name="independent_next">下次：%1$s</string>
+    <string name="independent_delete_title">删除提醒？</string>
+    <string name="independent_delete_desc">删除后将取消此提醒的系统通知。</string>
+    <string name="independent_list_title">我的提醒</string>
+    <string name="independent_enable">启用提醒</string>
+    <string name="independent_disable">停用提醒</string>
+    <string name="independent_save">保存提醒</string>
+    <string name="independent_storage_notice">独立提醒保存在本机，不包含在礼金备份中。</string>
 </resources>

@@ -4,6 +4,11 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.Lifecycle
+import com.yangsong.lizhang.ui.component.LocalAppearanceActions
+import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,6 +56,8 @@ fun LiZhangNavGraph(
     appContainer: AppContainer,
     reminderLaunchRequest: ReminderLaunchRequest? = null,
     onReminderRequestConsumed: () -> Unit = {},
+    openRemindersRequest: Long? = null,
+    onOpenRemindersConsumed: () -> Unit = {},
 ) {
     val nav = rememberNavController()
     val hazeState = rememberHazeState()
@@ -63,9 +70,19 @@ fun LiZhangNavGraph(
     var contactsSelectionMode by remember { mutableStateOf(false) }
     val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
+    val transition = LocalAppearanceActions.current as? AppearanceTransitionHost
+    val navigationReady = backStackEntry?.lifecycle?.currentStateAsState()?.value == Lifecycle.State.RESUMED
+    // 导航条目恢复到可交互状态后才能消费语言交接，不按固定帧数估计。
+    SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
     val go: (AppDestination) -> Unit = { nav.open(it) }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
+    LaunchedEffect(openRemindersRequest) {
+        if (openRemindersRequest != null) {
+            nav.navigate(AppDestination.Notifications.route) { launchSingleTop = true }
+            onOpenRemindersConsumed()
+        }
+    }
 
     LaunchedEffect(reminderLaunchRequest?.requestKey) {
         reminderLaunchRequest?.let { request ->
@@ -206,12 +223,10 @@ fun LiZhangNavGraph(
             NotificationsScreen(
                 viewModel(
                     factory = NotificationsViewModel.factory(
-                        appContainer.giftRecordRepository,
                         appContainer.reminderRepository,
                     ),
                 ),
                 nav::popBackStack,
-                openRecord,
             )
         }
         composable(AppDestination.Search.route) {

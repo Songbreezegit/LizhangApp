@@ -1,8 +1,13 @@
 package com.yangsong.lizhang.ui.screen
 import com.yangsong.lizhang.ui.component.LanguagePicker
-import com.yangsong.lizhang.ui.component.LocalAppearanceTransition
-import com.yangsong.lizhang.ui.component.LocalAppearanceOpacity
-import androidx.compose.ui.graphics.graphicsLayer
+import com.yangsong.lizhang.ui.component.LocalAppearanceActions
+import com.yangsong.lizhang.ui.component.LocalPendingDark
+import com.yangsong.lizhang.ui.component.LocalCurrentLanguage
+import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.runtime.DisposableEffect
 import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.component.displayName
@@ -33,6 +38,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.yangsong.lizhang.ui.component.AppearanceListRestoration
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
@@ -99,9 +109,17 @@ fun SettingsScreen(
     var showBackupActions by remember { mutableStateOf(false) }
     var showCreateBackupPassword by remember { mutableStateOf(false) }
     var showThemeOptions by remember { mutableStateOf(false) }
-    val transition = LocalAppearanceTransition.current
+    val transition = LocalAppearanceActions.current
     val changeTheme: (AppThemeMode) -> Unit = { mode ->
-        if (mode != state.themeMode) transition { viewModel.setThemeMode(mode) }
+        if (mode != state.themeMode) {
+            if (transition != null) transition.colors { viewModel.setThemeMode(mode) }
+            else viewModel.setThemeMode(mode)
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            if ((context as? android.app.Activity)?.isChangingConfigurations != true) transition?.cancel()
+        }
     }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
@@ -193,7 +211,7 @@ fun SettingsScreen(
         onCsvExport = { viewModel.prepareCsvExport(context.giftExportLabels()) },
         onExcelExport = { viewModel.prepareExcelExport(context.giftExportLabels()) },
         onBackup = { showBackupActions = true },
-        onThemeModeChange = changeTheme,
+        onThemeModeChange = viewModel::setThemeMode,
         onThemeOptions = { showThemeOptions = true },
         onFontGuide = onFontGuide,
         onAbout = onAbout,
@@ -268,13 +286,11 @@ fun SettingsScreen(
     }
 
     if (showThemeOptions) {
-        val opacity = LocalAppearanceOpacity.current
         GlassDialog(
-            modifier = Modifier.graphicsLayer { alpha = opacity() },
             onDismissRequest = { showThemeOptions = false },
             title = { Text(stringResource(R.string.settings_theme)) },
             text = {
-                Column {
+                Column(Modifier.selectableGroup()) {
                     ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, changeTheme)
                     ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, changeTheme)
                     ThemeModeOption(AppThemeMode.DARK, state.themeMode, changeTheme)
@@ -464,16 +480,27 @@ fun SettingsContent(
     onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
+    val transition = LocalAppearanceActions.current
+    val effectiveDark = LocalPendingDark.current ?: LocalEffectiveDarkTheme.current
+    var switchCenter by remember { mutableStateOf(Offset.Zero) }
+    val toggleDark: () -> Unit = {
+        val target = !effectiveDark
+        val change = { onThemeModeChange(if (target) AppThemeMode.DARK else AppThemeMode.LIGHT) }
+        if (transition != null) transition.circular(switchCenter, target, change) else change()
+    }
     var showLanguagePicker by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    AppearanceListRestoration(listState)
     if (showLanguagePicker) LanguagePicker { showLanguagePicker = false }
     AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_settings)) },
         snackbarHost = snackbarHost,
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).testTag("设置列表"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 124.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
+            state = listState,
         ) {
             item { PageIllustration(R.drawable.page_settings_cat, Modifier.fillMaxWidth().height(190.dp)) }
             item {
@@ -519,7 +546,7 @@ fun SettingsContent(
                         onClick = { showLanguagePicker = true },
                         trailing = {
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                Text(currentAppLanguage().displayName(), Modifier.widthIn(max = 80.dp),
+                                Text((LocalCurrentLanguage.current ?: currentAppLanguage()).displayName(), Modifier.widthIn(max = 80.dp),
                                     style = MaterialTheme.typography.bodyMedium)
                                 androidx.compose.material3.Icon(Icons.Outlined.ChevronRight, null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -543,17 +570,14 @@ fun SettingsContent(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
                         themeDescription,
-                        onClick = {
-                            onThemeModeChange(
-                                if (state.themeMode == AppThemeMode.DARK) AppThemeMode.LIGHT else AppThemeMode.DARK,
-                            )
-                        },
+                        onClick = toggleDark,
                         trailing = {
                             Switch(colors = glassSwitchColors(),
-                                checked = state.themeMode == AppThemeMode.DARK,
-                                onCheckedChange = {
-                                    onThemeModeChange(if (it) AppThemeMode.DARK else AppThemeMode.LIGHT)
+                                modifier = Modifier.onGloballyPositioned {
+                                    switchCenter = it.positionInWindow() + Offset(it.size.width / 2f, it.size.height / 2f)
                                 },
+                                checked = effectiveDark,
+                                onCheckedChange = { toggleDark() },
                             )
                         },
                     )
@@ -599,9 +623,10 @@ private fun ThemeModeOption(
         AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
     }
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().selectable(selected = selected == mode, role = Role.RadioButton,
+            onClick = { onSelect(mode) }).padding(vertical = 4.dp),
     ) {
-        RadioButton(selected = selected == mode, onClick = { onSelect(mode) })
+        RadioButton(selected = selected == mode, onClick = null, modifier = Modifier.size(48.dp))
         Text(label, Modifier.padding(top = 12.dp))
     }
 }

@@ -18,199 +18,153 @@ import androidx.core.content.edit
 import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
-import com.yangsong.lizhang.domain.model.EventType
-import com.yangsong.lizhang.domain.model.eventDisplayText
-import com.yangsong.lizhang.domain.model.GiftRecordWithContact
-import com.yangsong.lizhang.domain.reminder.PlannedReminder
-import com.yangsong.lizhang.domain.reminder.ReminderPlanner
-import com.yangsong.lizhang.domain.reminder.ReminderSettings
-import com.yangsong.lizhang.domain.reminder.isSupportedReminderAdvanceDays
-import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.reminder.*
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+import java.time.LocalDate
 
+/** 提醒与原有提醒偏好一样仅保存在应用私有区域；不读取礼金表。 */
 class AndroidReminderRepository(private val context: Context) : ReminderRepository {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val alarmManager = context.getSystemService(AlarmManager::class.java)
-    private val _settings = MutableStateFlow(
-        ReminderSettings(
-            enabled = preferences.getBoolean(KEY_ENABLED, false),
-            advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0)
-                .takeIf(::isSupportedReminderAdvanceDays) ?: 0,
-            hour = preferences.getInt(KEY_HOUR, 9),
-            minute = preferences.getInt(KEY_MINUTE, 0),
-        ),
-    )
-    override val settings = _settings
-
+    override val settings = MutableStateFlow(ReminderSettings(
+        enabled = preferences.getBoolean(KEY_ENABLED, false),
+        advanceDays = preferences.getInt(KEY_ADVANCE_DAYS, 0).takeIf(::isSupportedReminderAdvanceDays) ?: 0,
+        hour = preferences.getInt(KEY_HOUR, 9).coerceIn(0, 23),
+        minute = preferences.getInt(KEY_MINUTE, 0).coerceIn(0, 59),
+    ))
+    override val reminders = MutableStateFlow(readReminders())
+    init {
+        // 升级时取消旧的礼金推导闹钟，不把历史礼金擅自转换为独立提醒。
+        preferences.getStringSet("scheduled", emptySet()).orEmpty().forEach { token ->
+            val parts = token.split('|')
+            if (parts.size == 2) cancelIntent(Uri.parse("lizhang://reminder/${parts[0]}/${parts[1]}"))
+        }
+        preferences.edit { remove("scheduled") }
+        context.getSystemService(NotificationManager::class.java).deleteNotificationChannel("gift_date_reminders")
+    }
     override fun setEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(KEY_ENABLED, enabled) }
-        _settings.value = _settings.value.copy(enabled = enabled)
+        settings.value = settings.value.copy(enabled = enabled)
         if (!enabled) cancelScheduled()
     }
-
     override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) {
-        val updated = _settings.value.copy(
-            advanceDays = advanceDays,
-            hour = hour,
-            minute = minute,
-        )
-        preferences.edit {
-            putInt(KEY_ADVANCE_DAYS, updated.advanceDays)
-            putInt(KEY_HOUR, updated.hour)
-            putInt(KEY_MINUTE, updated.minute)
-        }
-        _settings.value = updated
+        val updated = settings.value.copy(advanceDays = advanceDays, hour = hour, minute = minute)
+        preferences.edit { putInt(KEY_ADVANCE_DAYS, advanceDays); putInt(KEY_HOUR, hour); putInt(KEY_MINUTE, minute) }
+        settings.value = updated
     }
-
-    override fun synchronize(records: List<GiftRecordWithContact>) {
+    @Synchronized override fun save(reminder: IndependentReminder) {
+        require(reminder.title.trim().length in 1..80)
+        require(IndependentReminderPlanner.canSave(reminder.date))
+        val id = if (reminder.id > 0) reminder.id else preferences.getLong("next_id", 1)
+        require(reminder.id == 0L || reminders.value.any { it.id == reminder.id })
+        val value = reminder.copy(id = id, title = reminder.title.trim(), lastNotifiedDate = null)
+        persist(reminders.value.filterNot { it.id == id } + value, maxOf(id + 1, preferences.getLong("next_id", 1)))
+    }
+    @Synchronized override fun delete(id: Long) { persist(reminders.value.filterNot { it.id == id }) }
+    @Synchronized override fun setReminderEnabled(id: Long, enabled: Boolean) {
+        persist(reminders.value.map { if (it.id == id) it.copy(enabled = enabled) else it })
+    }
+    @Synchronized override fun markNotified(id: Long, occurrence: LocalDate) {
+        persist(reminders.value.map { if (it.id == id) it.copy(lastNotifiedDate = occurrence) else it })
+    }
+    private fun persist(values: List<IndependentReminder>, nextId: Long = preferences.getLong("next_id", 1)) {
+        val array = JSONArray()
+        values.forEach { value -> array.put(JSONObject().apply {
+            put("id", value.id); put("title", value.title); put("date", value.date.toString())
+            put("annually", value.annually); put("enabled", value.enabled)
+            value.lastNotifiedDate?.let { put("notified", it.toString()) }
+        }) }
+        check(preferences.edit().putString("independent_reminders", array.toString()).putLong("next_id", nextId).commit())
+        reminders.value = values
+    }
+    private fun readReminders(): List<IndependentReminder> = runCatching {
+        val array = JSONArray(preferences.getString("independent_reminders", "[]"))
+        (0 until array.length()).mapNotNull { index -> runCatching {
+            val value = array.getJSONObject(index)
+            IndependentReminder(value.getLong("id"), value.getString("title"), LocalDate.parse(value.getString("date")),
+                value.optBoolean("annually"), value.optBoolean("enabled", true),
+                value.optString("notified").takeIf { it.isNotBlank() }?.let(LocalDate::parse))
+        }.getOrNull() }.distinctBy { it.id }
+    }.getOrDefault(emptyList())
+    @Synchronized override fun synchronize() {
         cancelScheduled()
-        val currentSettings = settings.value
-        if (!currentSettings.enabled) return
-        createNotificationChannel()
-        val tokens = ReminderPlanner.plan(
-            records = records,
-            lookaheadDays = 366,
-            advanceDays = currentSettings.advanceDays,
-            reminderHour = currentSettings.hour,
-            reminderMinute = currentSettings.minute,
-        ).map { reminder ->
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                reminder.triggerAt,
-                reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT),
-            )
-            reminder.token()
+        if (!settings.value.enabled) return
+        val localized = ContextCompat.getContextForLanguage(context)
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, localized.getString(R.string.reminder_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = localized.getString(R.string.reminder_channel_description)
+            })
+        val tokens = reminders.value.mapNotNull { IndependentReminderPlanner.next(it, settings.value) }.map { plan ->
+            val intent = Intent(context, ReminderNotificationReceiver::class.java).apply {
+                data = reminderUri(plan.reminder.id, plan.triggerAt)
+                putExtra("id", plan.reminder.id); putExtra("occurrence", plan.occurrence.toString())
+                putExtra("trigger", plan.triggerAt)
+            }
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, plan.triggerAt,
+                PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            "${plan.reminder.id}|${plan.triggerAt}"
         }.toSet()
-        preferences.edit { putStringSet(KEY_SCHEDULED, tokens) }
+        preferences.edit { putStringSet("independent_scheduled", tokens) }
     }
-
     private fun cancelScheduled() {
-        preferences.getStringSet(KEY_SCHEDULED, emptySet()).orEmpty().forEach { token ->
+        preferences.getStringSet("independent_scheduled", emptySet()).orEmpty().forEach { token ->
             val parts = token.split('|')
-            val recordId = parts.getOrNull(0)?.toLongOrNull() ?: return@forEach
-            val triggerAt = parts.getOrNull(1)?.toLongOrNull() ?: return@forEach
-            val reminder = PlannedReminder(recordId, "", EventType.OTHER, triggerAt)
-            alarmManager.cancel(reminder.pendingIntent(PendingIntent.FLAG_UPDATE_CURRENT))
+            if (parts.size == 2) cancelIntent(Uri.parse("lizhang://independent-reminder/${parts[0]}/${parts[1]}"))
         }
-        preferences.edit { remove(KEY_SCHEDULED) }
+        preferences.edit { remove("independent_scheduled") }
     }
-
-    private fun PlannedReminder.pendingIntent(extraFlags: Int): PendingIntent {
-        val intent = Intent(context, ReminderNotificationReceiver::class.java).apply {
-            data = reminderUri(recordId, triggerAt)
-            putExtra(EXTRA_RECORD_ID, recordId)
-            putExtra(EXTRA_CONTACT_NAME, contactName)
-            putExtra(EXTRA_EVENT_TYPE, eventType.name)
-            putExtra(EXTRA_CUSTOM_EVENT_NAME, customEventName)
-            putExtra(EXTRA_ADVANCE_DAYS, advanceDays)
+    private fun cancelIntent(uri: Uri) {
+        val intent = Intent(context, ReminderNotificationReceiver::class.java).setData(uri)
+        PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)?.let {
+            alarmManager.cancel(it); it.cancel()
         }
-        return PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            extraFlags or PendingIntent.FLAG_IMMUTABLE,
-        )
     }
-
-    private fun createNotificationChannel() {
-        val localizedContext = ContextCompat.getContextForLanguage(context)
-        val manager = context.getSystemService(NotificationManager::class.java)
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            localizedContext.getString(R.string.reminder_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = localizedContext.getString(R.string.reminder_channel_description)
-        }
-        manager.createNotificationChannel(channel)
-    }
-
-    private fun PlannedReminder.token() = "$recordId|$triggerAt"
 }
 
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class ReminderCoordinator(
-    private val giftRecordRepository: GiftRecordRepository,
-    private val reminderRepository: ReminderRepository,
-    private val scope: CoroutineScope,
-) {
+/** 只观察独立提醒及其设置；保存礼金不会触发调度。 */
+class ReminderCoordinator(private val repository: ReminderRepository, private val scope: CoroutineScope) {
     private var synchronizationJob: Job? = null
-
     fun start() {
         if (synchronizationJob != null) return
-        synchronizationJob = reminderRepository.settings
-            .flatMapLatest { settings ->
-                if (settings.enabled) giftRecordRepository.observeAll() else emptyFlow()
-            }
-            .onEach(reminderRepository::synchronize)
-            .launchIn(scope)
+        synchronizationJob = combine(repository.settings, repository.reminders) { _, _ -> Unit }
+            .onEach { repository.synchronize() }.launchIn(scope)
     }
-
-    fun refresh() {
-        if (!reminderRepository.settings.value.enabled) return
-        scope.launch {
-            reminderRepository.synchronize(giftRecordRepository.observeAll().first())
-        }
-    }
+    fun refresh() { repository.synchronize() }
 }
 
 class ReminderNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val localizedContext = ContextCompat.getContextForLanguage(context)
-        val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-        if (!preferences.getBoolean(KEY_ENABLED, false)) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) return
-
-        val recordId = intent.getLongExtra(EXTRA_RECORD_ID, 0)
-        val contactName = intent.getStringExtra(EXTRA_CONTACT_NAME).orEmpty()
-        val eventType = runCatching {
-            enumValueOf<EventType>(intent.getStringExtra(EXTRA_EVENT_TYPE).orEmpty())
-        }.getOrDefault(EventType.OTHER)
-        val eventName = eventDisplayText(eventType, intent.getStringExtra(EXTRA_CUSTOM_EVENT_NAME)) { localizedContext.eventTypeName(it) }
-        val advanceDays = intent.getIntExtra(EXTRA_ADVANCE_DAYS, 0)
-        val openApp = PendingIntent.getActivity(
-            context,
-            recordId.notificationId(),
-            ReminderNavigationContract.createOpenRecordIntent(context, recordId),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_gift)
-            .setContentTitle(localizedContext.getString(R.string.reminder_notification_title, contactName))
-            .setContentText(
-                if (advanceDays == 0) {
-                    localizedContext.getString(
-                        R.string.reminder_notification_text,
-                        eventName,
-                    )
-                } else {
-                    localizedContext.resources.getQuantityString(
-                        R.plurals.reminder_notification_text_advance,
-                        advanceDays,
-                        eventName,
-                        advanceDays,
-                    )
-                },
-            )
-            .setContentIntent(openApp)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .build()
-        runCatching {
-            NotificationManagerCompat.from(context).notify(recordId.notificationId(), notification)
-        }
+        // 旧礼金闹钟及未知来源不再发送通知。
+        if (intent.data?.authority != "independent-reminder") return
+        val app = context.applicationContext as? LiZhangApplication ?: return
+        val repository = app.appContainer.reminderRepository
+        if (!repository.settings.value.enabled) return
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val id = intent.getLongExtra("id", 0)
+        val reminder = repository.reminders.value.firstOrNull { it.id == id && it.enabled } ?: return
+        val occurrence = runCatching { LocalDate.parse(intent.getStringExtra("occurrence")) }.getOrNull() ?: return
+        if ((reminder.lastNotifiedDate != null && occurrence <= reminder.lastNotifiedDate) || occurrence < LocalDate.now()) return
+        val trigger = intent.getLongExtra("trigger", 0)
+        if (trigger <= 0 || trigger > System.currentTimeMillis()) return
+        // 修改设置后到达的旧广播不能消费新提醒。
+        val expected = IndependentReminderPlanner.next(reminder, repository.settings.value, trigger - 1)
+        if (expected?.occurrence != occurrence || expected.triggerAt != trigger) return
+        val localized = ContextCompat.getContextForLanguage(context)
+        val open = PendingIntent.getActivity(context, id.toInt(), ReminderNavigationContract.createOpenRemindersIntent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification_gift)
+            .setContentTitle(reminder.title).setContentText(localized.getString(R.string.independent_notification_text, occurrence.toString()))
+            .setContentIntent(open).setAutoCancel(true).setCategory(NotificationCompat.CATEGORY_REMINDER).build()
+        runCatching { NotificationManagerCompat.from(context).notify(id.toInt(), notification) }
+            .onSuccess { repository.markNotified(id, occurrence) }
     }
 }
 
@@ -222,44 +176,12 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
         application.appContainer.refreshReminderSchedules()
     }
 }
-
-private fun reminderUri(recordId: Long, triggerAt: Long): Uri = Uri.Builder()
-    .scheme("lizhang")
-    .authority("reminder")
-    .appendPath(recordId.toString())
-    .appendPath(triggerAt.toString())
-    .build()
-
-private fun Long.notificationId(): Int = (this xor (this ushr 32)).toInt()
-
-private fun Context.eventTypeName(eventType: EventType): String = getString(
-    when (eventType) {
-        EventType.WEDDING -> R.string.event_wedding
-        EventType.FULL_MONTH -> R.string.event_full_month
-        EventType.BIRTHDAY -> R.string.event_birthday
-        EventType.HOUSEWARMING -> R.string.event_housewarming
-        EventType.FESTIVAL -> R.string.event_festival
-        EventType.OTHER -> R.string.event_other
-    },
-)
-
+private fun reminderUri(id: Long, trigger: Long): Uri = Uri.parse("lizhang://independent-reminder/$id/$trigger")
 private const val PREFERENCES_NAME = "reminder_preferences"
 private const val KEY_ENABLED = "enabled"
 private const val KEY_ADVANCE_DAYS = "advance_days"
 private const val KEY_HOUR = "hour"
 private const val KEY_MINUTE = "minute"
-private const val KEY_SCHEDULED = "scheduled"
-private const val CHANNEL_ID = "gift_date_reminders"
-private const val EXTRA_RECORD_ID = "record_id"
-private const val EXTRA_CONTACT_NAME = "contact_name"
-private const val EXTRA_EVENT_TYPE = "event_type"
-private const val EXTRA_CUSTOM_EVENT_NAME = "custom_event_name"
-private const val EXTRA_ADVANCE_DAYS = "advance_days"
-
-private val rescheduleActions = setOf(
-    Intent.ACTION_BOOT_COMPLETED,
-    Intent.ACTION_MY_PACKAGE_REPLACED,
-    Intent.ACTION_TIME_CHANGED,
-    Intent.ACTION_TIMEZONE_CHANGED,
-    Intent.ACTION_DATE_CHANGED,
-)
+private const val CHANNEL_ID = "independent_date_reminders"
+private val rescheduleActions = setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
+    Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_DATE_CHANGED)

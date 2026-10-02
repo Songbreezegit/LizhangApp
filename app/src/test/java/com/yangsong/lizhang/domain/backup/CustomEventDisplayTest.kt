@@ -3,7 +3,6 @@ import com.yangsong.lizhang.fixtures.chineseExportLabels
 
 import com.yangsong.lizhang.domain.model.*
 import com.yangsong.lizhang.domain.export.*
-import com.yangsong.lizhang.domain.reminder.ReminderPlanner
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -33,9 +32,5 @@ class CustomEventDisplayTest {
             }
             assertTrue(found)
         }
-    }
-    @Test fun 提醒规划保留自定义名称() {
-        val items = listOf(GiftRecordWithContact(record, "示例联系人"))
-        assertEquals("升学宴", ReminderPlanner.plan(items, lookaheadDays = 366).single().customEventName)
     }
 }

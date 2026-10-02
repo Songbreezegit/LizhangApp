@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.luminance
+import com.yangsong.lizhang.ui.theme.LocalThemeDarkFraction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 
@@ -49,19 +49,19 @@ object GlassTokens {
 }
 
 @Composable fun glassColor(): Color = MaterialTheme.colorScheme.surface.copy(
-    alpha = if (MaterialTheme.colorScheme.background.luminance() < .5f) GlassTokens.DarkAlpha else GlassTokens.LightAlpha,
+    alpha = GlassTokens.LightAlpha + (GlassTokens.DarkAlpha - GlassTokens.LightAlpha) * LocalThemeDarkFraction.current,
 )
 
 @Composable
 fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), floating: Boolean = false): Modifier {
     val base = glassColor()
-    val dark = MaterialTheme.colorScheme.background.luminance() < .5f
+    val fraction = LocalThemeDarkFraction.current
     // 半透明内容不能覆盖普通 elevation 阴影的内部填充，否则整张卡片会透出灰底。
     // 浮动组件仅在轮廓外绘制阴影，避免灰色阴影填充透过玻璃。
     val frame = if (floating) floatingGlassShadow(shape) else this
     val alpha = if (floating) floatingGlassAlpha() else base.alpha
     val border = if (floating) MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.BorderAlpha)
-        else Color.White.copy(alpha = if (dark) .12f else .65f)
+        else Color.White.copy(alpha = .65f + (.12f - .65f) * fraction)
     return frame.clip(shape)
         .background(Brush.verticalGradient(listOf(base.copy(alpha = alpha), base.copy(alpha = alpha - GlassTokens.HighlightAlpha))))
         .border(BorderStroke(1.dp, border), shape)
@@ -183,8 +183,8 @@ fun glassSwitchColors() = SwitchDefaults.colors(
 )
 
 @Composable
-fun floatingGlassAlpha(): Float = if (MaterialTheme.colorScheme.background.luminance() < .5f)
-    GlassTokens.FloatingDarkAlpha else GlassTokens.FloatingLightAlpha
+fun floatingGlassAlpha(): Float = GlassTokens.FloatingLightAlpha +
+    (GlassTokens.FloatingDarkAlpha - GlassTokens.FloatingLightAlpha) * LocalThemeDarkFraction.current
 
 /** 阴影只在容器轮廓外绘制，不给半透明玻璃增加灰色内层底色。 */
 internal fun Modifier.floatingGlassShadow(shape: Shape): Modifier = this.then(

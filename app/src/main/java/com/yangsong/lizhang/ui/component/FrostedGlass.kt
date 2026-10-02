@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.luminance
+import com.yangsong.lizhang.ui.theme.LocalThemeDarkFraction
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.ExperimentalHazeApi
@@ -37,9 +37,9 @@ fun Modifier.frostedGlassFrame(
 ): Modifier {
     val preview = LocalInspectionMode.current
     val colors = MaterialTheme.colorScheme
-    val dark = colors.background.luminance() < .5f
-    val tint = HazeTint(colors.surface.copy(alpha = if (dark)
-        FrostedGlassTokens.DarkTintAlpha else FrostedGlassTokens.LightTintAlpha))
+    val fraction = LocalThemeDarkFraction.current
+    val tint = HazeTint(colors.surface.copy(alpha = FrostedGlassTokens.LightTintAlpha +
+        (FrostedGlassTokens.DarkTintAlpha - FrostedGlassTokens.LightTintAlpha) * fraction))
     return floatingGlassShadow(shape)
         .clip(shape)
         .hazeEffect(

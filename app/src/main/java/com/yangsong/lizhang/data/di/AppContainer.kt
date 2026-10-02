@@ -40,7 +40,6 @@ class AppContainer(
     val reminderRepository: ReminderRepository = AndroidReminderRepository(context.applicationContext)
     val themeRepository: ThemeRepository = SharedPreferencesThemeRepository(context.applicationContext)
     private val reminderCoordinator = ReminderCoordinator(
-        giftRecordRepository,
         reminderRepository,
         applicationScope,
     )

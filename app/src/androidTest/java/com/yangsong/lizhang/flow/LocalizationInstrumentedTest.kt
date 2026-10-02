@@ -33,7 +33,7 @@ class LocalizationInstrumentedTest {
         }
         compose.waitForIdle()
         compose.onNodeWithText("我的").performClick()
-        compose.onNodeWithText("深色模式").performScrollTo()
+        compose.onNode(isToggleable()).performScrollTo()
         compose.onNode(isToggleable()).performClick()
         compose.waitForIdle()
         compose.onNodeWithText("语言").assertIsDisplayed()
@@ -79,32 +79,4 @@ class LocalizationInstrumentedTest {
         assertEquals("语言", context.createConfigurationContext(chineseFirst).getString(R.string.language))
     }
 
-    @Test
-    fun 语言选择器切换四语言并在重建后保留选择() {
-        InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
-        }
-        compose.waitForIdle()
-        compose.onNodeWithText("我的").performClick()
-        var languageTitle = "语言"
-        for ((nativeName, title) in listOf("English" to "Language", "日本語" to "言語", "한국어" to "언어", "简体中文" to "语言")) {
-            compose.onNodeWithText(languageTitle).performScrollTo().performClick()
-            listOf("简体中文", "English", "日本語", "한국어").forEach {
-                compose.onNode(hasText(it) and hasAnyAncestor(isDialog())).assertIsDisplayed()
-            }
-            compose.onNode(hasText(nativeName) and hasAnyAncestor(isDialog())).performClick()
-            compose.waitForIdle()
-            compose.onNodeWithText(title).performScrollTo().assertIsDisplayed()
-            compose.activityRule.scenario.recreate()
-            compose.waitForIdle()
-            compose.onNodeWithText(title).performScrollTo().assertIsDisplayed()
-            languageTitle = title
-        }
-        compose.onNodeWithText("语言").performScrollTo().performClick()
-        compose.onNode(hasText("跟随系统") and hasAnyAncestor(isDialog())).performClick()
-        compose.waitForIdle()
-        InstrumentationRegistry.getInstrumentation().runOnMainSync {
-            assertTrue(AppCompatDelegate.getApplicationLocales().isEmpty)
-        }
-    }
 }

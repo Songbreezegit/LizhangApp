@@ -6,7 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
-import com.yangsong.lizhang.domain.reminder.ReminderPlanner
+import com.yangsong.lizhang.domain.reminder.IndependentReminder
+import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import java.util.Calendar
 import java.util.TimeZone
@@ -159,7 +160,7 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
 }
 
 data class NotificationsUiState(
-    val upcoming: List<GiftRecordWithContact> = emptyList(),
+    val reminders: List<IndependentReminder> = emptyList(),
     val remindersEnabled: Boolean = false,
     val reminderAdvanceDays: Int = 0,
     val reminderHour: Int = 9,
@@ -168,57 +169,25 @@ data class NotificationsUiState(
     val error: Boolean = false,
 )
 
-class NotificationsViewModel(
-    repository: GiftRecordRepository,
-    private val reminderRepository: ReminderRepository,
-    private val now: () -> Long = System::currentTimeMillis,
-    private val timeZone: TimeZone = TimeZone.getDefault(),
-) : ViewModel() {
-    private val retrySignal = RetrySignal()
-
-    val uiState: StateFlow<NotificationsUiState> = retrySignal.flow(
-        source = {
-            combine(
-                repository.observeAll(),
-                reminderRepository.settings,
-            ) { records, settings ->
-                val recordsById = records.associateBy { it.record.id }
-                val upcoming = ReminderPlanner.plan(
-                    records = records,
-                    now = now(),
-                    timeZone = timeZone,
-                    advanceDays = settings.advanceDays,
-                    reminderHour = settings.hour,
-                    reminderMinute = settings.minute,
-                )
-                    .mapNotNull { recordsById[it.recordId] }
-                NotificationsUiState(
-                    upcoming = upcoming,
-                    remindersEnabled = settings.enabled,
-                    reminderAdvanceDays = settings.advanceDays,
-                    reminderHour = settings.hour,
-                    reminderMinute = settings.minute,
-                    isLoading = false,
-                )
-            }
-        },
-        onError = { NotificationsUiState(isLoading = false, error = true) },
-    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
-
+class NotificationsViewModel(private val reminderRepository: ReminderRepository) : ViewModel() {
+    val uiState: StateFlow<NotificationsUiState> = combine(reminderRepository.reminders, reminderRepository.settings) { reminders, settings ->
+        NotificationsUiState(reminders = reminders.sortedWith(compareBy<IndependentReminder> { !it.enabled }.thenBy { it.date }.thenBy { it.id }),
+            remindersEnabled = settings.enabled, reminderAdvanceDays = settings.advanceDays,
+            reminderHour = settings.hour, reminderMinute = settings.minute, isLoading = false)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NotificationsUiState())
     fun setRemindersEnabled(enabled: Boolean) = reminderRepository.setEnabled(enabled)
-    fun retry() = retrySignal.retry()
-
-    fun updateReminderSchedule(advanceDays: Int, hour: Int, minute: Int) =
-        reminderRepository.updateSchedule(advanceDays, hour, minute)
-
+    fun retry() = reminderRepository.synchronize()
+    fun updateReminderSchedule(advanceDays: Int, hour: Int, minute: Int) = reminderRepository.updateSchedule(advanceDays, hour, minute)
+    fun saveReminder(value: IndependentReminder): Boolean = runCatching {
+        require(IndependentReminderPlanner.canSave(value.date))
+        reminderRepository.save(value)
+    }.isSuccess
+    fun deleteReminder(id: Long) = reminderRepository.delete(id)
+    fun setReminderEnabled(id: Long, enabled: Boolean) = reminderRepository.setReminderEnabled(id, enabled)
     companion object {
-        fun factory(
-            repository: GiftRecordRepository,
-            reminderRepository: ReminderRepository,
-        ) = object : ViewModelProvider.Factory {
+        fun factory(reminderRepository: ReminderRepository) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                NotificationsViewModel(repository, reminderRepository) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = NotificationsViewModel(reminderRepository) as T
         }
     }
 }
