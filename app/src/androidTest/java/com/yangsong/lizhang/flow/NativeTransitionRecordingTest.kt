@@ -166,6 +166,8 @@ class NativeTransitionRecordingTest {
             assertEquals("语言重建全过程没有实际空屏：$target", 0, blankFrames.get())
             println("语言连续画面检查：$target，采样 ${samples.get()} 帧，空屏 ${blankFrames.get()} 帧")
             assertSame(state, activity().appearanceState)
+            // 旧 Activity 的重复清理不得解除新宿主的监听或清空共享交接状态。
+            instrumentation.runOnMainSync { previous.appearanceHost.detach(preserveLanguage = false) }
             assertEquals("每次语言选择只实际重建一次", hosts + 1, state.hostCount)
             assertEquals(submissions + 1, state.languageSubmissions)
             if (android.animation.ValueAnimator.areAnimatorsEnabled()) assertEquals(handoffs + 1, state.languageHandoffs)
@@ -184,6 +186,40 @@ class NativeTransitionRecordingTest {
         device.waitForIdle()
         assertEquals("同语言不提交设置", sameSubmissions, sameLanguageState.languageSubmissions)
         assertEquals("同语言不重建", sameHosts, sameLanguageState.hostCount)
+        // 连续六次语言重建后，再次验证新宿主仍能双向完成真实圆形展开。
+        device.swipe(device.displayWidth / 2, device.displayHeight / 3,
+            device.displayWidth / 2, device.displayHeight * 3 / 4, 25)
+        text("深色模式")
+        device.waitForIdle()
+        awaitPage { activity().hasWindowFocus() && activity().appearanceHost.isNavigationReady }
+        awaitThemeFrame(dark = false)
+        val circularBefore = activity().appearanceState.circularHandoffs
+        for (dark in listOf(true, false)) {
+            var toggle = device.wait(Until.findObject(By.pkg(app.packageName).checkable(true)), 6000)!!
+            if (toggle.visibleBounds.bottom > device.displayHeight * 3 / 4) {
+                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                    device.displayWidth / 2, device.displayHeight / 2, 20)
+                device.waitForIdle()
+                toggle = device.findObject(By.pkg(app.packageName).checkable(true))!!
+            }
+            assertEquals("点击前实际开关状态与目标相反", !dark, toggle.isChecked)
+            frame("连续重建后开关点击前_$dark")
+            toggle.click()
+            try {
+                awaitPage { app.appContainer.themeRepository.themeMode.value ==
+                    if (dark) AppThemeMode.DARK else AppThemeMode.LIGHT }
+            } catch (failure: AssertionError) {
+                frame("连续重建后开关点击失败_$dark")
+                val folder = File(app.getExternalFilesDir(null), "transition-evidence")
+                device.dumpWindowHierarchy(File(folder, "连续重建后开关点击失败.xml"))
+                println("点击失败：目标深色 $dark，偏好 ${app.appContainer.themeRepository.themeMode.value}，控件 ${toggle.visibleBounds}")
+                throw failure
+            }
+            awaitPage { activity().appearanceState.snapshot == null }
+            awaitThemeFrame(dark)
+            frame("连续重建后圆形_${if (dark) "深色" else "浅色"}")
+        }
+        assertEquals(circularBefore + if (expectedMotion) 2 else 0, activity().appearanceState.circularHandoffs)
         text("语言")
         device.waitForIdle()
         text("首页").click()

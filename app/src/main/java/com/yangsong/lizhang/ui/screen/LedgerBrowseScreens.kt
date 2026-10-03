@@ -10,6 +10,7 @@ import androidx.compose.ui.semantics.Role
 import com.yangsong.lizhang.ui.component.GlassIconButton
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassDialog
+import com.yangsong.lizhang.ui.mapper.displayDate
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -33,8 +34,6 @@ import androidx.compose.ui.semantics.contentDescription
 import com.yangsong.lizhang.domain.reminder.IndependentReminder
 import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
 import com.yangsong.lizhang.domain.reminder.ReminderSettings
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -345,7 +344,6 @@ private fun IndependentReminderCard(reminder: IndependentReminder, state: Notifi
     onEnabled: (Long, Boolean) -> Unit) {
     val settings = ReminderSettings(state.remindersEnabled, state.reminderAdvanceDays, state.reminderHour, state.reminderMinute)
     val plan = IndependentReminderPlanner.next(reminder, settings)
-    val dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     val toggleDescription = stringResource(if (reminder.enabled) R.string.independent_disable else R.string.independent_enable)
     GlassCard(Modifier.testTag("独立提醒-${reminder.id}")) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -359,7 +357,7 @@ private fun IndependentReminderCard(reminder: IndependentReminder, state: Notifi
             Text(when {
                 !reminder.enabled -> stringResource(R.string.independent_disabled)
                 plan == null -> stringResource(R.string.independent_expired)
-                else -> stringResource(R.string.independent_next, plan.occurrence.format(dateFormat))
+                else -> stringResource(R.string.independent_next, displayDate(plan.occurrence))
             }, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 GlassTextButton({ onEdit(reminder) }, Modifier.testTag("独立提醒编辑-${reminder.id}")) { Text(stringResource(R.string.action_edit)) }

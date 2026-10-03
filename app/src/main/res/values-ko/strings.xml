@@ -304,6 +304,7 @@
     <string name="independent_date_value">날짜: %1$s</string>
     <string name="independent_annually">매년 반복</string>
     <string name="independent_date_rule">미래 날짜만 선택할 수 있습니다. 기본값은 한 번만 알립니다.</string>
+    <string name="independent_annual_edit_rule">매년 알림은 미래 날짜에 계속 반복되며 처음 날짜가 지나도 수정할 수 있습니다.</string>
     <string name="independent_save_failed">알림을 저장하지 못했습니다. 다시 시도하세요.</string>
     <string name="independent_notification_text">알림 날짜: %1$s</string>
     <string name="independent_once">한 번만</string>

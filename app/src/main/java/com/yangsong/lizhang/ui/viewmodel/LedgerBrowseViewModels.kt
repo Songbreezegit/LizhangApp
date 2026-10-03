@@ -179,7 +179,8 @@ class NotificationsViewModel(private val reminderRepository: ReminderRepository)
     fun retry() = reminderRepository.synchronize()
     fun updateReminderSchedule(advanceDays: Int, hour: Int, minute: Int) = reminderRepository.updateSchedule(advanceDays, hour, minute)
     fun saveReminder(value: IndependentReminder): Boolean = runCatching {
-        require(IndependentReminderPlanner.canSave(value.date))
+        require(IndependentReminderPlanner.canSave(value,
+            reminderRepository.reminders.value.firstOrNull { it.id == value.id }, reminderRepository.settings.value))
         reminderRepository.save(value)
     }.isSuccess
     fun deleteReminder(id: Long) = reminderRepository.delete(id)

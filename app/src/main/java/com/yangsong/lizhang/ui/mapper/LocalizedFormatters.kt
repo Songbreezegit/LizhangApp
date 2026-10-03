@@ -6,7 +6,6 @@ import com.yangsong.lizhang.core.util.CurrencyFormatter
 import com.yangsong.lizhang.core.util.DateFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -20,6 +19,9 @@ fun displayLocale(): Locale = LocalConfiguration.current.locales.let { locales -
 
 @Composable
 fun displayDate(epochMillis: Long): String = DateFormatter.format(epochMillis, locale = displayLocale())
+
+@Composable
+fun displayDate(date: LocalDate): String = DateFormatter.format(date, displayLocale())
 
 @Composable
 fun displayDateTime(epochMillis: Long): String = DateFormatter.dateTime(epochMillis, displayLocale())
@@ -39,4 +41,4 @@ fun displayYearMonth(year: Int, month: Int): String {
 
 @Composable
 fun displayCalendarDate(year: Int, month: Int, day: Int): String =
-    LocalDate.of(year, month, day).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(displayLocale()))
+    displayDate(LocalDate.of(year, month, day))

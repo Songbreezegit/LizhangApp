@@ -79,6 +79,7 @@ class AppearanceTransitionHost(
     private var pendingLanguage: AppLanguage? = null
     private var pendingId = 0L
     private var detached = false
+    private var attached = false
     private var drawScheduled = false
     private var drawnDark: Boolean? = null
     private var drawnLanguage = AppLanguage.SYSTEM
@@ -89,9 +90,16 @@ class AppearanceTransitionHost(
     private val drawListener = ViewTreeObserver.OnDrawListener {
         drawnDark?.let { pageDrawn(it, drawnLanguage, drawnResourceLanguage) }
     }
+    private val layoutChangeListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        state.snapshot?.let {
+            if (it.width != root.width || it.height != root.height) state.clear()
+        }
+    }
 
 
     fun attach() {
+        if (attached || detached) return
+        attached = true
         // 在首次绘制前接上 Activity ViewModel 中的语言快照。
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
         root.viewTreeObserver.addOnDrawListener(drawListener)
@@ -105,11 +113,7 @@ class AppearanceTransitionHost(
             else { overlay.visibility = View.VISIBLE; overlay.invalidate() }
         }
         overlay.visibility = if (state.snapshot == null) View.GONE else View.VISIBLE
-        root.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            state.snapshot?.let {
-                if (it.width != root.width || it.height != root.height) state.clear()
-            }
-        }
+        root.addOnLayoutChangeListener(layoutChangeListener)
     }
     fun updateDrawTarget(dark: Boolean, language: AppLanguage, resourceLanguage: String) {
         drawnDark = dark
@@ -329,6 +333,9 @@ class AppearanceTransitionHost(
         state.pendingDark = null
     }
     fun detach(preserveLanguage: Boolean) {
+        if (detached) return
+        root.removeOnLayoutChangeListener(layoutChangeListener)
+        attached = false
         val change = pendingApply
         pendingApply = null
         pendingLanguage = null

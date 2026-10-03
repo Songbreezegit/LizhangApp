@@ -9,6 +9,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.SnapshotOverlay
+import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
+import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.ui.viewmodel.AppearanceTransitionViewModel
 import org.junit.Assert.*
 import org.junit.Rule
@@ -17,6 +19,39 @@ import org.junit.Test
 /** 不创建隐私数据；实际 Canvas 像素和 Activity 页面均在模拟器验证。 */
 class AppearanceTransitionInstrumentedTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun 重复挂载幂等且解除的布局监听不清理后续宿主快照() {
+        compose.runOnIdle {
+            val root = compose.activity.findViewById<android.widget.FrameLayout>(android.R.id.content)
+            val state = AppearanceTransitionViewModel()
+            val host = AppearanceTransitionHost(compose.activity, state)
+            val initialChildren = root.childCount
+            val bounds = android.graphics.Rect(root.left, root.top, root.right, root.bottom)
+            host.attach()
+            host.attach()
+            assertEquals("重复挂载只增加一个覆盖层", initialChildren + 1, root.childCount)
+            val overlay = root.getChildAt(root.childCount - 1)
+            state.install(AppearanceTransitionViewModel.Snapshot(state.requestId,
+                Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888), root.width, root.height,
+                0f, 0f, null, AppLanguage.EN))
+            host.detach(preserveLanguage = true)
+            val retained = state.snapshot!!
+            root.layout(bounds.left, bounds.top, bounds.right - 1, bounds.bottom)
+            assertSame("旧监听器已经移除，不会消费复用窗口中的语言快照", retained, state.snapshot)
+            root.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
+            assertSame(retained, state.snapshot)
+            root.removeView(overlay)
+            val newHost = AppearanceTransitionHost(compose.activity, state)
+            newHost.attach()
+            host.detach(preserveLanguage = false)
+            assertSame("重复解除旧宿主不影响新宿主", retained, state.snapshot)
+            root.layout(bounds.left, bounds.top, bounds.right - 1, bounds.bottom)
+            assertNull("新宿主仍响应尺寸变化并恢复实时页面", state.snapshot)
+            root.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
+            newHost.detach(preserveLanguage = false)
+            assertEquals(initialChildren, root.childCount)
+        }
+    }
 
     @Test
     fun 圆形裁剪真实像素从中心展开并覆盖四角() {
@@ -50,9 +85,17 @@ class AppearanceTransitionInstrumentedTest {
     @Test
     fun 系统深色开关显示有效状态且圆心匹配控件并清理中断() {
         val app = compose.activity.application as com.yangsong.lizhang.LiZhangApplication
+        val activityBeforeLanguage = compose.activity
+        val languageWillChange = activityBeforeLanguage.resources.configuration.locales[0].language != "zh"
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
                 androidx.core.os.LocaleListCompat.forLanguageTags("zh-CN"))
+        }
+        // setApplicationLocales 的配置派发和重建异步完成，不能只依赖 Compose 空闲。
+        compose.waitUntil(5000) {
+            runCatching { (!languageWillChange || compose.activity !== activityBeforeLanguage) &&
+                compose.activity.resources.configuration.locales[0].language == "zh" &&
+                compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() }.getOrDefault(false)
         }
         compose.waitForIdle()
         compose.runOnIdle { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }

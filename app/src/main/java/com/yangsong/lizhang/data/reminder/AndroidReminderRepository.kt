@@ -18,6 +18,7 @@ import androidx.core.content.edit
 import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
+import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.reminder.*
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
@@ -62,10 +63,13 @@ class AndroidReminderRepository(private val context: Context) : ReminderReposito
     }
     @Synchronized override fun save(reminder: IndependentReminder) {
         require(reminder.title.trim().length in 1..80)
-        require(IndependentReminderPlanner.canSave(reminder.date))
+        val existing = reminders.value.firstOrNull { it.id == reminder.id }
+        require(reminder.id == 0L || existing != null)
+        require(IndependentReminderPlanner.canSave(reminder, existing, settings.value))
         val id = if (reminder.id > 0) reminder.id else preferences.getLong("next_id", 1)
-        require(reminder.id == 0L || reminders.value.any { it.id == reminder.id })
-        val value = reminder.copy(id = id, title = reminder.title.trim(), lastNotifiedDate = null)
+        // 改名称或启停不撤销已消费日期；修改日期或重复规则才开始新的安排。
+        val notified = existing?.takeIf { it.date == reminder.date && it.annually == reminder.annually }?.lastNotifiedDate
+        val value = reminder.copy(id = id, title = reminder.title.trim(), lastNotifiedDate = notified)
         persist(reminders.value.filterNot { it.id == id } + value, maxOf(id + 1, preferences.getLong("next_id", 1)))
     }
     @Synchronized override fun delete(id: Long) { persist(reminders.value.filterNot { it.id == id }) }
@@ -161,7 +165,8 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         val open = PendingIntent.getActivity(context, id.toInt(), ReminderNavigationContract.createOpenRemindersIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification_gift)
-            .setContentTitle(reminder.title).setContentText(localized.getString(R.string.independent_notification_text, occurrence.toString()))
+            .setContentTitle(reminder.title).setContentText(localized.getString(R.string.independent_notification_text,
+                DateFormatter.format(occurrence, localized.resources.configuration.locales[0])))
             .setContentIntent(open).setAutoCancel(true).setCategory(NotificationCompat.CATEGORY_REMINDER).build()
         runCatching { NotificationManagerCompat.from(context).notify(id.toInt(), notification) }
             .onSuccess { repository.markNotified(id, occurrence) }

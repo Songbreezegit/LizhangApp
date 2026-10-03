@@ -304,6 +304,7 @@
     <string name="independent_date_value">日付：%1$s</string>
     <string name="independent_annually">毎年繰り返す</string>
     <string name="independent_date_rule">未来の日付を選択してください。初期設定は一度だけ通知します。</string>
+    <string name="independent_annual_edit_rule">毎年のリマインダーは今後も繰り返され、元の日付を過ぎても編集できます。</string>
     <string name="independent_save_failed">保存できませんでした。もう一度お試しください。</string>
     <string name="independent_notification_text">リマインダーの日付：%1$s</string>
     <string name="independent_once">一度だけ</string>

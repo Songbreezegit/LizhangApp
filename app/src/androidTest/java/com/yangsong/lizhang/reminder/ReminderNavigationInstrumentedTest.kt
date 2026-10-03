@@ -2,12 +2,14 @@ package com.yangsong.lizhang.reminder
 
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
+import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.yangsong.lizhang.LiZhangApplication
+import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.domain.model.EventType
@@ -69,7 +71,8 @@ class ReminderNavigationInstrumentedTest {
         launchReminder(999)
 
         waitForText("该提醒对应的礼金记录已不存在")
-        assertNotNull(device.findObject(By.text("礼金记账")))
+        // 首页滚动位置会恢复，顶部品牌标题可能已经离开可见视口。
+        waitForText(ContextCompat.getContextForLanguage(application).getString(R.string.home_recent))
     }
 
     @Test

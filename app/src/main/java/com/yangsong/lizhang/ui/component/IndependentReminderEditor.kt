@@ -13,11 +13,10 @@ import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.reminder.IndependentReminder
 import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
+import com.yangsong.lizhang.ui.mapper.displayDate
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +28,9 @@ fun IndependentReminderEditor(reminder: IndependentReminder?, onDismiss: () -> U
     var showDate by remember { mutableStateOf(false) }
     var saveFailed by remember { mutableStateOf(false) }
     val date = LocalDate.parse(dateText)
-    val future = IndependentReminderPlanner.canSave(date)
+    val value = IndependentReminder(reminder?.id ?: 0, title.trim(), date, annually,
+        reminder?.enabled ?: true, reminder?.lastNotifiedDate)
+    val validDate = IndependentReminderPlanner.canSave(value, reminder)
     GlassDialog(onDismissRequest = onDismiss,
         title = { Text(stringResource(if (reminder == null) R.string.independent_add else R.string.independent_edit)) },
         text = {
@@ -38,21 +39,21 @@ fun IndependentReminderEditor(reminder: IndependentReminder?, onDismiss: () -> U
                     modifier = Modifier.fillMaxWidth().testTag("独立提醒名称"),
                     label = { Text(stringResource(R.string.independent_title)) }, singleLine = true)
                 GlassTextButton({ showDate = true }, Modifier.fillMaxWidth().testTag("独立提醒日期")) {
-                    Text(stringResource(R.string.independent_date_value, date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))))
+                    Text(stringResource(R.string.independent_date_value, displayDate(date)))
                 }
                 Row(Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.independent_annually), Modifier.weight(1f).padding(top = 12.dp))
                     Switch(annually, { annually = it }, colors = glassSwitchColors(), modifier = Modifier.testTag("独立提醒每年重复"))
                 }
-                Text(stringResource(R.string.independent_date_rule), style = MaterialTheme.typography.bodySmall,
-                    color = if (future) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
+                Text(stringResource(if (reminder?.annually == true && annually && validDate)
+                    R.string.independent_annual_edit_rule else R.string.independent_date_rule), style = MaterialTheme.typography.bodySmall,
+                    color = if (validDate) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error)
                 if (saveFailed) Text(stringResource(R.string.independent_save_failed), color = MaterialTheme.colorScheme.error)
             }
         }, confirmButton = {
             GlassButton(onClick = {
-                val value = IndependentReminder(reminder?.id ?: 0, title.trim(), date, annually, reminder?.enabled ?: true)
                 if (onSave(value)) onDismiss() else saveFailed = true
-            }, enabled = title.isNotBlank() && future, modifier = Modifier.testTag("独立提醒保存")) { Text(stringResource(R.string.independent_save)) }
+            }, enabled = title.isNotBlank() && validDate, modifier = Modifier.testTag("独立提醒保存")) { Text(stringResource(R.string.independent_save)) }
         }, dismissButton = { GlassTextButton(onDismiss) { Text(stringResource(R.string.action_cancel)) } })
     if (showDate) {
         val picker = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),

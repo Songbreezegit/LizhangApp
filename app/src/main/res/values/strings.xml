@@ -304,6 +304,7 @@
     <string name="independent_date_value">日期：%1$s</string>
     <string name="independent_annually">每年重复</string>
     <string name="independent_date_rule">仅能选择未来日期，默认只提醒一次。</string>
+    <string name="independent_annual_edit_rule">年度提醒会继续安排未来日期，原始日期已过仍可编辑。</string>
     <string name="independent_save_failed">提醒未保存，请重试。</string>
     <string name="independent_notification_text">提醒日期：%1$s</string>
     <string name="independent_once">仅一次</string>

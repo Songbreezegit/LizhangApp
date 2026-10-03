@@ -2,18 +2,27 @@ package com.yangsong.lizhang.reminder
 
 import android.Manifest
 import android.app.NotificationManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import com.yangsong.lizhang.LiZhangApplication
+import com.yangsong.lizhang.MainActivity
+import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.data.reminder.*
 import com.yangsong.lizhang.domain.reminder.IndependentReminder
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
+import java.util.Locale
 import org.junit.*
 import org.junit.Assert.*
 
@@ -22,7 +31,9 @@ class IndependentNotificationInstrumentedTest {
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val repository get() = app.appContainer.reminderRepository
     private val manager get() = app.getSystemService(NotificationManager::class.java)
+    private var previousLocales = LocaleListCompat.getEmptyLocaleList()
     @Before fun 准备私有合成提醒() {
+        previousLocales = AppCompatDelegate.getApplicationLocales()
         if (Build.VERSION.SDK_INT >= 33) instrumentation.uiAutomation.grantRuntimePermission(app.packageName, Manifest.permission.POST_NOTIFICATIONS)
         instrumentation.runOnMainSync {
             repository.reminders.value.forEach { repository.delete(it.id) }
@@ -36,6 +47,7 @@ class IndependentNotificationInstrumentedTest {
             repository.setEnabled(false)
             repository.reminders.value.forEach { repository.delete(it.id) }
             manager.cancelAll()
+            AppCompatDelegate.setApplicationLocales(previousLocales)
         }
     }
     private fun broadcast(id: Long, date: LocalDate): Intent {
@@ -91,6 +103,40 @@ class IndependentNotificationInstrumentedTest {
             assertNull(manager.activeNotifications.firstOrNull { it.id == value.id.toInt() })
         }
     }
+    @Test fun 系统通知正文日期跟随中英日韩应用语言() {
+        val date = LocalDate.now().plusDays(1)
+        // 使用实际 Activity 应用语言，覆盖旧系统的 AppCompat 官方存储流程。
+        ActivityScenario.launch(MainActivity::class.java).use {
+            for (tag in listOf("zh-CN", "en", "ja", "ko")) {
+                var id = 0L
+                var expected = ""
+                instrumentation.runOnMainSync {
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
+                }
+                // 系统配置派发及旧系统的官方语言持久化是异步的，等待实际 Context 生效。
+                val localeDeadline = android.os.SystemClock.uptimeMillis() + 5000
+                while (ContextCompat.getContextForLanguage(app).resources.configuration.locales[0].language != tag.substringBefore('-') &&
+                    android.os.SystemClock.uptimeMillis() < localeDeadline) android.os.SystemClock.sleep(30)
+                instrumentation.runOnMainSync {
+                    repository.save(IndependentReminder(title = "测试安排$tag", date = date))
+                    id = repository.reminders.value.last().id
+                    val localized = ContextCompat.getContextForLanguage(app)
+                    assertEquals(tag.substringBefore('-'), localized.resources.configuration.locales[0].language)
+                    expected = localized.getString(R.string.independent_notification_text,
+                        DateFormatter.format(date, Locale.forLanguageTag(tag)))
+                    ReminderNotificationReceiver().onReceive(app, broadcast(id, date))
+                }
+                val deadline = android.os.SystemClock.uptimeMillis() + 3000
+                while (manager.activeNotifications.none { it.id == id.toInt() } &&
+                    android.os.SystemClock.uptimeMillis() < deadline) android.os.SystemClock.sleep(30)
+                val notification = manager.activeNotifications.single { it.id == id.toInt() }.notification
+                assertEquals(tag, expected, notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+                assertFalse(tag, notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString().contains(date.toString()))
+                assertEquals(date, repository.reminders.value.single { it.id == id }.lastNotifiedDate)
+            }
+        }
+    }
+
     @Test fun 升级撤销旧礼金闹钟且不创建独立提醒() {
         instrumentation.runOnMainSync {
             val uri = Uri.parse("lizhang://reminder/998/123456")

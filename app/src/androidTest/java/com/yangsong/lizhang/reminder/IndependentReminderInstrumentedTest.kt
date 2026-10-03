@@ -11,6 +11,9 @@ import com.yangsong.lizhang.*
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.data.reminder.AndroidReminderRepository
 import com.yangsong.lizhang.domain.reminder.IndependentReminder
+import com.yangsong.lizhang.ui.viewmodel.NotificationsViewModel
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.LocalDate
 import java.io.File
 import org.junit.*
@@ -58,6 +61,59 @@ class IndependentReminderInstrumentedTest {
         compose.onNode(hasText("删除") and hasAnyAncestor(isDialog())).performClick()
         compose.onNodeWithTag("提醒空状态").performScrollTo().assertIsDisplayed()
     }
+    private fun 载入已过锚点的提醒(annually: Boolean): IndependentReminder {
+        val date = LocalDate.now().minusYears(1).minusDays(1)
+        val value = IndependentReminder(1, "历史测试安排", date, annually, lastNotifiedDate = date)
+        instrumentation.runOnMainSync {
+            // 模拟保存一年后再次打开应用，不修改设备时钟或任何用户数据。
+            val json = JSONObject().apply {
+                put("id", value.id); put("title", value.title); put("date", date.toString())
+                put("annually", annually); put("enabled", true); put("notified", date.toString())
+            }
+            compose.activity.getSharedPreferences("reminder_preferences", 0).edit()
+                .putString("independent_reminders", JSONArray().put(json).toString()).putLong("next_id", 2).commit()
+            (repository as AndroidReminderRepository).reminders.value = AndroidReminderRepository(compose.activity).reminders.value
+        }
+        compose.waitForIdle()
+        return value
+    }
+
+    @Test fun 年度历史锚点可修改名称且启停后可继续编辑并保留消费记录() {
+        val original = 载入已过锚点的提醒(true)
+        for ((index, enabled) in listOf(true, false, true).withIndex()) {
+            if (repository.reminders.value.single().enabled != enabled) {
+                compose.onNodeWithTag("独立提醒开关-${original.id}").performScrollTo().performClick()
+                compose.waitUntil(3000) { repository.reminders.value.single().enabled == enabled }
+            }
+            compose.onNodeWithTag("独立提醒编辑-${original.id}").performScrollTo().performClick()
+            compose.onNodeWithTag("独立提醒名称").performTextReplacement("修改测试安排$index")
+            compose.onNodeWithTag("独立提醒保存").assertIsEnabled().performClick()
+            compose.waitUntil(3000) { repository.reminders.value.single().title == "修改测试安排$index" }
+            val saved = AndroidReminderRepository(compose.activity).reminders.value.single()
+            assertEquals(original.date, saved.date)
+            assertEquals(original.lastNotifiedDate, saved.lastNotifiedDate)
+            assertEquals(enabled, saved.enabled)
+        }
+        compose.onNodeWithTag("独立提醒编辑-${original.id}").performScrollTo().performClick()
+        compose.onNodeWithTag("独立提醒每年重复").performClick()
+        compose.onNodeWithTag("独立提醒保存").assertIsNotEnabled()
+        compose.onNode(hasText("取消") and hasAnyAncestor(isDialog())).performClick()
+    }
+
+    @Test fun 过期一次提醒在编辑器和仓库及ViewModel均不能保存() {
+        val original = 载入已过锚点的提醒(false)
+        compose.onNodeWithTag("独立提醒编辑-${original.id}").performScrollTo().performClick()
+        compose.onNodeWithTag("独立提醒名称").performTextReplacement("修改测试安排")
+        compose.onNodeWithTag("独立提醒保存").assertIsNotEnabled()
+        instrumentation.runOnMainSync {
+            val edited = original.copy(title = "修改测试安排")
+            assertFalse(NotificationsViewModel(repository).saveReminder(edited))
+            assertTrue(runCatching { repository.save(edited) }.isFailure)
+            assertEquals(original, repository.reminders.value.single())
+        }
+        compose.onNode(hasText("取消") and hasAnyAncestor(isDialog())).performClick()
+    }
+
     @Test fun 私有存储重载保持状态且今天过去日期被拒绝() {
         instrumentation.runOnMainSync {
             val tomorrow = LocalDate.now().plusDays(1)
