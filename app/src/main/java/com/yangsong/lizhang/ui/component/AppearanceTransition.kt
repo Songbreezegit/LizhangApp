@@ -311,7 +311,7 @@ class AppearanceTransitionHost(
     private fun animate(shot: AppearanceTransitionViewModel.Snapshot) {
         if (shot.language == null) state.circularHandoffs++ else state.languageHandoffs++
         animator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = if (shot.language == null) 360L else 140L
+            duration = if (shot.language == null) 420L else 140L
             interpolator = android.animation.TimeInterpolator { FastOutSlowInEasing.transform(it) }
             addUpdateListener { shot.progress = it.animatedValue as Float; overlay.invalidate() }
             addListener(object : AnimatorListenerAdapter() {
