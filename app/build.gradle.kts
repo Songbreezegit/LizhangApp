@@ -16,8 +16,8 @@ android {
         applicationId = "com.yangsong.lizhang"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.9.2"
+        versionCode = 13
+        versionName = "0.9.3"
         resourceConfigurations += listOf("zh", "en", "ja", "ko")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

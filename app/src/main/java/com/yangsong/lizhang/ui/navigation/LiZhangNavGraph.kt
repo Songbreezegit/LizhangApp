@@ -38,6 +38,9 @@ import com.yangsong.lizhang.ui.screen.*
 import com.yangsong.lizhang.ui.component.BottomNavBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.viewmodel.*
+import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
+import com.yangsong.lizhang.domain.onboarding.OnboardingMode
+import com.yangsong.lizhang.domain.onboarding.ContextualHint
 
 private val mainTabs = listOf(AppDestination.Home, AppDestination.Contacts, AppDestination.AddGift, AppDestination.Settings)
 
@@ -58,6 +61,7 @@ fun LiZhangNavGraph(
     onReminderRequestConsumed: () -> Unit = {},
     openRemindersRequest: Long? = null,
     onOpenRemindersConsumed: () -> Unit = {},
+    onboardingViewModel: OnboardingViewModel = viewModel(factory = OnboardingViewModel.factory(appContainer.onboardingRepository)),
 ) {
     val nav = rememberNavController()
     val hazeState = rememberHazeState()
@@ -75,7 +79,10 @@ fun LiZhangNavGraph(
     // 导航条目恢复到可交互状态后才能消费语言交接，不按固定帧数估计。
     SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
-    val go: (AppDestination) -> Unit = { nav.open(it) }
+    val go: (AppDestination) -> Unit = {
+        if (it == AppDestination.AddGift) onboardingViewModel.markHintSeen(ContextualHint.HOME_RECORD)
+        nav.open(it)
+    }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
     LaunchedEffect(openRemindersRequest) {
         if (openRemindersRequest != null) {
@@ -108,7 +115,8 @@ fun LiZhangNavGraph(
     Box(Modifier.fillMaxSize()) {
     NavHost(nav, AppDestination.Home.route, Modifier.hazeSource(hazeState)) {
         composable(AppDestination.Home.route) {
-            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
+            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord,
+                onboardingViewModel = onboardingViewModel)
         }
         composable(AppDestination.Contacts.route) {
             ContactsScreen(
@@ -117,6 +125,7 @@ fun LiZhangNavGraph(
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
                 { nav.navigate(AppDestination.ContactImport.route) { launchSingleTop = true } },
                 onSelectionModeChange = { contactsSelectionMode = it },
+                onboardingViewModel = onboardingViewModel,
             )
         }
         composable(AppDestination.ContactImport.route) {
@@ -131,6 +140,7 @@ fun LiZhangNavGraph(
                         ))
                     }
                 },
+                onboardingViewModel = onboardingViewModel,
             )
         }
         composable(
@@ -227,6 +237,7 @@ fun LiZhangNavGraph(
                     ),
                 ),
                 nav::popBackStack,
+                onboardingViewModel = onboardingViewModel,
             )
         }
         composable(AppDestination.Search.route) {
@@ -247,7 +258,14 @@ fun LiZhangNavGraph(
                 onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
                 onAbout = { nav.navigate(AppDestination.About.route) },
                 onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
+                onOnboarding = { nav.navigate(AppDestination.Onboarding.route) { launchSingleTop = true } },
             )
+        }
+        composable(AppDestination.Onboarding.route) {
+            OnboardingScreen(OnboardingMode.REVIEW, onFinish = {
+                onboardingViewModel.finish(OnboardingMode.REVIEW)
+                nav.popBackStack()
+            }, onBack = { nav.popBackStack() })
         }
         composable(AppDestination.FontGuide.route) {
             FontGuideScreen(nav::popBackStack)

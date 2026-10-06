@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -44,6 +43,10 @@ import com.yangsong.lizhang.domain.model.ContactImportStatus
 import com.yangsong.lizhang.ui.component.AppTextField
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.viewmodel.*
+import com.yangsong.lizhang.domain.onboarding.ExplainedPermission
+import com.yangsong.lizhang.domain.onboarding.PermissionPolicy
+import com.yangsong.lizhang.domain.onboarding.PermissionAction
+import com.yangsong.lizhang.ui.onboarding.PermissionExplanationDialog
 
 private tailrec fun Context.activity(): Activity? = when (this) {
     is Activity -> this
@@ -56,17 +59,20 @@ fun ContactImportScreen(
     viewModel: ContactImportViewModel,
     onBack: () -> Unit,
     onImported: (ContactImportResult) -> Unit,
+    onboardingViewModel: OnboardingViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context.activity()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val preferences = remember { context.getSharedPreferences("contact_permission", Context.MODE_PRIVATE) }
+    val permission = ExplainedPermission.CONTACTS
     var launched by rememberSaveable { mutableStateOf(false) }
     var requesting by rememberSaveable { mutableStateOf(false) }
+    var showExplanation by rememberSaveable { mutableStateOf(false) }
+    var explanationBlocked by rememberSaveable { mutableStateOf(false) }
     fun granted() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
     fun deniedState() = if (activity != null &&
-        preferences.getBoolean("requested", false) &&
+        onboardingViewModel.permissionHistory(permission).requested &&
         !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_CONTACTS)
     ) ContactPermissionState.BLOCKED else ContactPermissionState.DENIED
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
@@ -75,9 +81,21 @@ fun ContactImportScreen(
     }
     val request: () -> Unit = {
         if (!requesting) {
-            preferences.edit { putBoolean("requested", true) }
+            onboardingViewModel.markPermissionRequested(permission)
             requesting = true
             launcher.launch(Manifest.permission.READ_CONTACTS)
+        }
+    }
+    val explainOrRequest: () -> Unit = {
+        val rationale = activity?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.READ_CONTACTS) } == true
+        when (PermissionPolicy.action(granted(), onboardingViewModel.permissionHistory(permission), rationale)) {
+            PermissionAction.USE_FEATURE -> viewModel.permissionChanged(ContactPermissionState.GRANTED)
+            PermissionAction.REQUEST -> request()
+            PermissionAction.EXPLAIN, PermissionAction.OPEN_SETTINGS -> {
+                explanationBlocked = deniedState() == ContactPermissionState.BLOCKED
+                onboardingViewModel.markExplanationSeen(permission)
+                showExplanation = true
+            }
         }
     }
     LaunchedEffect(Unit) {
@@ -85,7 +103,10 @@ fun ContactImportScreen(
             launched = true
             when {
                 granted() -> viewModel.permissionChanged(ContactPermissionState.GRANTED)
-                !preferences.getBoolean("requested", false) -> request()
+                !onboardingViewModel.permissionHistory(permission).requested -> {
+                    viewModel.permissionChanged(ContactPermissionState.DENIED)
+                    explainOrRequest()
+                }
                 else -> viewModel.permissionChanged(deniedState())
             }
         }
@@ -106,12 +127,15 @@ fun ContactImportScreen(
         state, onBack = onBack, onQuery = viewModel::updateQuery,
         onToggle = viewModel::toggle, onSelectAll = viewModel::selectAll,
         onImport = viewModel::importSelected, onRetry = viewModel::load,
-        onPermission = {
-            if (state.permissionState == ContactPermissionState.BLOCKED) {
-                context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri()))
-            } else request()
-        },
+        onPermission = explainOrRequest,
     )
+    if (showExplanation) PermissionExplanationDialog(permission, explanationBlocked,
+        onDismiss = { showExplanation = false },
+        onContinue = {
+            showExplanation = false
+            if (explanationBlocked) context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri()))
+            else if (granted()) viewModel.permissionChanged(ContactPermissionState.GRANTED) else request()
+        })
 }
 
 @Composable

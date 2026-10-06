@@ -100,6 +100,7 @@ fun SettingsScreen(
     onFontGuide: () -> Unit,
     onAbout: () -> Unit,
     onPrivacy: () -> Unit,
+    onOnboarding: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -216,6 +217,7 @@ fun SettingsScreen(
         onFontGuide = onFontGuide,
         onAbout = onAbout,
         onPrivacy = onPrivacy,
+        onOnboarding = onOnboarding,
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
 
@@ -479,6 +481,7 @@ fun SettingsContent(
     onAbout: () -> Unit = {},
     onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    onOnboarding: () -> Unit = {},
 ) {
     val transition = LocalAppearanceActions.current
     val effectiveDark = LocalPendingDark.current ?: LocalEffectiveDarkTheme.current
@@ -592,6 +595,13 @@ fun SettingsContent(
             }
             item {
                 SettingsGroup {
+                    SettingsRow(
+                        Icons.Outlined.Description,
+                        stringResource(R.string.settings_onboarding),
+                        stringResource(R.string.settings_onboarding_description),
+                        onClick = onOnboarding,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.Info,
                         stringResource(R.string.settings_about),
