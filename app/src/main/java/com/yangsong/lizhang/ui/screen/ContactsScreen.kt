@@ -73,6 +73,9 @@ import com.yangsong.lizhang.ui.component.PageIllustration
 import com.yangsong.lizhang.ui.viewmodel.ContactSort
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 import com.yangsong.lizhang.ui.viewmodel.ContactsViewModel
+import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
+import com.yangsong.lizhang.domain.onboarding.ContextualHint
+import com.yangsong.lizhang.ui.onboarding.*
 
 @Composable
 fun ContactsScreen(
@@ -81,8 +84,12 @@ fun ContactsScreen(
     onAddContact: () -> Unit,
     onImportContacts: () -> Unit = {},
     onSelectionModeChange: (Boolean) -> Unit = {},
+    onboardingViewModel: OnboardingViewModel? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var hintVisible by rememberContextualHint(onboardingViewModel, ContextualHint.CONTACTS,
+        loaded = !state.isLoading && !state.error && state.query.isBlank() && !state.isSelectionMode,
+        empty = state.contacts.isEmpty())
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     LaunchedEffect(state.isSelectionMode) { onSelectionModeChange(state.isSelectionMode) }
@@ -124,6 +131,8 @@ fun ContactsScreen(
         onConfirmDelete = viewModel::confirmDelete,
         onDismissDelete = viewModel::dismissDelete,
         onConfirmCascade = viewModel::confirmCascade,
+        showContactsHint = hintVisible,
+        onDismissHint = { hintVisible = false },
     )
     CenteredSnackbarHost(snackbar)
     }
@@ -148,6 +157,8 @@ fun ContactsContent(
     onDismissDelete: () -> Unit = {},
     onConfirmCascade: (Boolean) -> Unit = {},
     initiallyExpanded: Boolean = false,
+    showContactsHint: Boolean = false,
+    onDismissHint: () -> Unit = {},
 ) {
     val hazeState = rememberHazeState()
     val busy = state.isDeleting || state.isPreparingDelete
@@ -155,7 +166,7 @@ fun ContactsContent(
     var menuExpanded by remember { mutableStateOf(initiallyExpanded) }
     LaunchedEffect(state.isSelectionMode) { if (state.isSelectionMode) menuExpanded = false }
     BackHandler(menuExpanded && !state.isSelectionMode) { menuExpanded = false }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().dismissContextualHintOnTouch(showContactsHint, onDismissHint)) {
     AppScaffold(
         modifier = Modifier.hazeSource(hazeState),
         topBar = {
@@ -241,6 +252,8 @@ fun ContactsContent(
         ) { menuExpanded = false })
     }
     if (!state.isSelectionMode) {
+        if (showContactsHint && !menuExpanded) ContextualHintBubble(stringResource(R.string.contacts_first_hint), onDismissHint,
+            Modifier.align(Alignment.BottomEnd).padding(horizontal = 20.dp).padding(bottom = GlassTokens.BottomClearance + 72.dp))
         Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
                 listOf(GlassAction(stringResource(R.string.contact_import_menu), Icons.Outlined.Contacts, onImportContacts),

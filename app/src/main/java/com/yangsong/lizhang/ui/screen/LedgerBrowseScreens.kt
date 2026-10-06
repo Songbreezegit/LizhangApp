@@ -48,6 +48,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
+import android.app.Activity
+import android.content.Intent
+import android.provider.Settings
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.yangsong.lizhang.domain.onboarding.*
+import com.yangsong.lizhang.ui.onboarding.PermissionExplanationDialog
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.reminder.supportedReminderAdvanceDays
@@ -169,11 +180,17 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 
 @Composable
 @SuppressLint("InlinedApi")
-fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
+fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onboardingViewModel: OnboardingViewModel) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val permission = ExplainedPermission.NOTIFICATIONS
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var showExplanation by rememberSaveable { mutableStateOf(false) }
+    var explanationBlocked by rememberSaveable { mutableStateOf(false) }
+    var requestingPermission by rememberSaveable { mutableStateOf(false) }
+    var enablingFromSettings by rememberSaveable { mutableStateOf(false) }
     var showAdvanceDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
@@ -186,8 +203,40 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        requestingPermission = false
         if (granted) viewModel.setRemindersEnabled(true)
         else scope.launch { snackbar.showSnackbar(permissionDenied) }
+    }
+    val requestPermission: () -> Unit = {
+        if (!requestingPermission) {
+            onboardingViewModel.markPermissionRequested(permission)
+            requestingPermission = true
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    val enableReminders: () -> Unit = {
+        val rationale = (context as? Activity)?.let {
+            ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+        } == true
+        when (PermissionPolicy.action(hasNotificationPermission(), onboardingViewModel.permissionHistory(permission), rationale)) {
+            PermissionAction.USE_FEATURE -> viewModel.setRemindersEnabled(true)
+            PermissionAction.REQUEST -> requestPermission()
+            PermissionAction.EXPLAIN, PermissionAction.OPEN_SETTINGS -> {
+                explanationBlocked = onboardingViewModel.permissionHistory(permission).requested && !rationale
+                onboardingViewModel.markExplanationSeen(permission)
+                showExplanation = true
+            }
+        }
+    }
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && enablingFromSettings) {
+                enablingFromSettings = false
+                if (hasNotificationPermission()) viewModel.setRemindersEnabled(true)
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(state.remindersEnabled) {
@@ -200,8 +249,7 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
         onEnabledChange = { enabled ->
             when {
                 !enabled -> viewModel.setRemindersEnabled(false)
-                hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
-                else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else -> enableReminders()
             }
         },
         onAdvanceClick = { showAdvanceDialog = true },
@@ -211,6 +259,15 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
         onDelete = { deleting = it },
         onReminderEnabled = viewModel::setReminderEnabled,
     )
+    if (showExplanation) PermissionExplanationDialog(permission, explanationBlocked,
+        onDismiss = { showExplanation = false },
+        onContinue = {
+            showExplanation = false
+            if (explanationBlocked) {
+                enablingFromSettings = true
+                context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+            } else if (hasNotificationPermission()) viewModel.setRemindersEnabled(true) else requestPermission()
+        })
     if (showEditor) IndependentReminderEditor(editing, { showEditor = false }, viewModel::saveReminder)
     deleting?.let { value ->
         GlassDialog(onDismissRequest = { deleting = null },

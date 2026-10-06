@@ -6,6 +6,8 @@ import com.yangsong.lizhang.core.common.DatabaseConstants
 import com.yangsong.lizhang.data.local.LiZhangDatabase
 import com.yangsong.lizhang.data.contact.DeviceContactDataSource
 import com.yangsong.lizhang.data.preferences.SharedPreferencesThemeRepository
+import com.yangsong.lizhang.data.preferences.SharedPreferencesOnboardingRepository
+import com.yangsong.lizhang.domain.repository.OnboardingRepository
 import com.yangsong.lizhang.data.reminder.AndroidReminderRepository
 import com.yangsong.lizhang.data.reminder.ReminderCoordinator
 import com.yangsong.lizhang.data.repository.RoomBackupRepository
@@ -27,6 +29,8 @@ class AppContainer(
     val deviceContactRepository: DeviceContactRepository =
         DeviceContactDataSource(context.applicationContext.contentResolver),
 ) {
+    // 先捕获旧安装痕迹，再初始化可能创建本地文件的业务仓库。
+    val onboardingRepository: OnboardingRepository = SharedPreferencesOnboardingRepository(context.applicationContext)
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val database: LiZhangDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -37,12 +41,12 @@ class AppContainer(
     val contactRepository: ContactRepository = RoomContactRepository(database.contactDao())
     val giftRecordRepository: GiftRecordRepository = RoomGiftRecordRepository(database.giftRecordDao())
     val backupRepository: BackupRepository = RoomBackupRepository(database)
-    val reminderRepository: ReminderRepository = AndroidReminderRepository(context.applicationContext)
+    val reminderRepository: ReminderRepository by lazy { AndroidReminderRepository(context.applicationContext) }
     val themeRepository: ThemeRepository = SharedPreferencesThemeRepository(context.applicationContext)
-    private val reminderCoordinator = ReminderCoordinator(
+    private val reminderCoordinator by lazy { ReminderCoordinator(
         reminderRepository,
         applicationScope,
-    )
+    ) }
 
     fun startReminderCoordination() = reminderCoordinator.start()
     fun refreshReminderSchedules() = reminderCoordinator.refresh()

@@ -9,6 +9,6 @@ class LiZhangApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        appContainer.startReminderCoordination()
+        if (appContainer.onboardingRepository.state.value.completed) appContainer.startReminderCoordination()
     }
 }

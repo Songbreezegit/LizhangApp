@@ -12,6 +12,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import com.yangsong.lizhang.ui.component.LocalPendingDark
 import com.yangsong.lizhang.ui.component.LocalCurrentLanguage
@@ -20,6 +22,11 @@ import androidx.lifecycle.ViewModelProvider
 import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.viewmodel.AppearanceTransitionViewModel
+import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
+import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
+import com.yangsong.lizhang.domain.onboarding.OnboardingMode
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.ui.navigation.LiZhangNavGraph
@@ -44,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         if (!window.decorView.isAttachedToWindow) enableEdgeToEdge()
         handleReminderIntent(intent)
         val appContainer = (application as LiZhangApplication).appContainer
+        val onboardingViewModel = ViewModelProvider(this, OnboardingViewModel.factory(appContainer.onboardingRepository))[OnboardingViewModel::class.java]
         appearanceState = ViewModelProvider(this)[AppearanceTransitionViewModel::class.java]
         appearanceState.languagePreference = currentAppLanguage()
         appearanceHost = AppearanceTransitionHost(this, appearanceState)
@@ -54,6 +62,10 @@ class MainActivity : AppCompatActivity() {
         // 让 setContent 为新 Activity 安装正确的生命周期与保存状态所有者。
         findViewById<android.view.ViewGroup>(android.R.id.content).removeAllViews()
         setContent {
+            val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
+            LaunchedEffect(onboardingState.completed) {
+                if (onboardingState.completed) appContainer.startReminderCoordination()
+            }
             val themeMode by appContainer.themeRepository.themeMode.collectAsStateWithLifecycle()
             val pendingReminder by reminderLaunchRequest.collectAsStateWithLifecycle()
             val pendingOpenReminders by openRemindersRequest.collectAsStateWithLifecycle()
@@ -74,8 +86,21 @@ class MainActivity : AppCompatActivity() {
                     CompositionLocalProvider(LocalPendingDark provides appearanceState.pendingDark,
                         LocalCurrentLanguage provides appearanceState.languagePreference) {
                         Surface(color = MaterialTheme.colorScheme.background) {
-                            LiZhangNavGraph(
+                            if (!onboardingState.completed) {
+                                // 引导没有业务导航条目，直接随当前 Activity 生命周期同步就绪。
+                                // 复用窗口重建时不依赖 Compose 状态收集的恢复时机。
+                                DisposableEffect(lifecycle, appearanceHost) {
+                                    val observer = LifecycleEventObserver { owner, _ ->
+                                        appearanceHost.navigationReady(owner.lifecycle.currentState == Lifecycle.State.RESUMED)
+                                    }
+                                    lifecycle.addObserver(observer)
+                                    onDispose { lifecycle.removeObserver(observer) }
+                                }
+                                OnboardingScreen(OnboardingMode.FIRST_LAUNCH,
+                                    onFinish = { onboardingViewModel.finish(OnboardingMode.FIRST_LAUNCH) })
+                            } else LiZhangNavGraph(
                                 appContainer = appContainer,
+                                onboardingViewModel = onboardingViewModel,
                                 reminderLaunchRequest = pendingReminder,
                                 onReminderRequestConsumed = {
                                     if (reminderLaunchRequest.value == pendingReminder) {

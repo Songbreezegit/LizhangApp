@@ -50,11 +50,18 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
+import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
+import com.yangsong.lizhang.domain.onboarding.ContextualHint
+import com.yangsong.lizhang.ui.onboarding.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
+fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit,
+    onboardingViewModel: OnboardingViewModel? = null) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry)
+    var hintVisible by rememberContextualHint(onboardingViewModel, ContextualHint.HOME_RECORD,
+        loaded = !state.isLoading && !state.error, empty = state.recentRecords.isEmpty())
+    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry,
+        showRecordHint = hintVisible, onDismissHint = { hintVisible = false })
 }
 
 @Composable
@@ -65,6 +72,8 @@ fun HomeContent(
     onYearSelected: (Int) -> Unit = {},
     onRetry: () -> Unit = {},
     initiallyYearMenuExpanded: Boolean = false,
+    showRecordHint: Boolean = false,
+    onDismissHint: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     var yearMenuExpanded by remember { mutableStateOf(initiallyYearMenuExpanded) }
@@ -76,7 +85,8 @@ fun HomeContent(
         snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, listState.isScrollInProgress) }
             .drop(1).collect { yearMenuExpanded = false }
     }
-    Box(Modifier.fillMaxSize().onGloballyPositioned { pageBounds = it.boundsInRoot() }
+    Box(Modifier.fillMaxSize().dismissContextualHintOnTouch(showRecordHint, onDismissHint)
+        .onGloballyPositioned { pageBounds = it.boundsInRoot() }
         .pointerInput(yearMenuExpanded, yearButtonBounds, yearMenuBounds) {
             // 在子控件消费事件之前观察外部触摸；不消费事件，保留页面滚动与原有点击。
             awaitEachGesture {
@@ -136,6 +146,8 @@ fun HomeContent(
                 }
             }
         }
+        if (showRecordHint) ContextualHintBubble(stringResource(R.string.home_record_hint), onDismissHint,
+            Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = GlassTokens.BottomClearance))
     }
 }
 
