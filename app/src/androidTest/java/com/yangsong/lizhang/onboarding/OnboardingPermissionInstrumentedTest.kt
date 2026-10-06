@@ -86,6 +86,13 @@ class OnboardingPermissionInstrumentedTest {
 internal class TestOnboardingRepository(initial: OnboardingState = OnboardingState()) : OnboardingRepository {
     override val state = MutableStateFlow(initial)
     override fun complete() { state.value = state.value.copy(completed = true) }
+    override fun advanceFeatureGuide(expectedStep: FeatureGuideStep) {
+        if (state.value.featureGuideVisible && state.value.featureGuideStep == expectedStep)
+            state.value = state.value.copy(featureGuideStep = expectedStep.next())
+    }
+    override fun completeFeatureGuide() {
+        if (state.value.featureGuideVisible) state.value = state.value.copy(featureGuideStep = FeatureGuideStep.COMPLETED)
+    }
     override fun markHintSeen(hint: ContextualHint) {
         state.value = if (hint == ContextualHint.HOME_RECORD) state.value.copy(homeRecordHintSeen = true)
             else state.value.copy(contactsHintSeen = true)

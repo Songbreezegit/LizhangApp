@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.domain.onboarding
 
 enum class OnboardingMode { FIRST_LAUNCH, REVIEW }
+/** v0.9.3 旧偏好兼容，新的首次功能引导不再消费独立提示。 */
 enum class ContextualHint { HOME_RECORD, CONTACTS }
 enum class ExplainedPermission { CONTACTS, NOTIFICATIONS }
 
@@ -8,11 +9,14 @@ data class PermissionHistory(val explanationSeen: Boolean = false, val requested
 
 data class OnboardingState(
     val completed: Boolean = false,
+    val featureGuideStep: FeatureGuideStep = FeatureGuideStep.ADD_RECORD,
     val homeRecordHintSeen: Boolean = false,
     val contactsHintSeen: Boolean = false,
     val contactsPermission: PermissionHistory = PermissionHistory(),
     val notificationsPermission: PermissionHistory = PermissionHistory(),
 ) {
+    val featureGuideVisible get() = completed && featureGuideStep != FeatureGuideStep.COMPLETED
+
     fun hintSeen(hint: ContextualHint) = when (hint) {
         ContextualHint.HOME_RECORD -> homeRecordHintSeen
         ContextualHint.CONTACTS -> contactsHintSeen

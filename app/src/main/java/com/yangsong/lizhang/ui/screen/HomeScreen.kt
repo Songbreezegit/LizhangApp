@@ -50,18 +50,12 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import com.yangsong.lizhang.ui.viewmodel.HomeViewModel
-import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
-import com.yangsong.lizhang.domain.onboarding.ContextualHint
 import com.yangsong.lizhang.ui.onboarding.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit,
-    onboardingViewModel: OnboardingViewModel? = null) {
+fun HomeScreen(viewModel: HomeViewModel, onNavigate: (AppDestination) -> Unit, onRecordClick: (Long) -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var hintVisible by rememberContextualHint(onboardingViewModel, ContextualHint.HOME_RECORD,
-        loaded = !state.isLoading && !state.error, empty = state.recentRecords.isEmpty())
-    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry,
-        showRecordHint = hintVisible, onDismissHint = { hintVisible = false })
+    HomeContent(state, onNavigate, onRecordClick, viewModel::selectYear, viewModel::retry)
 }
 
 @Composable
@@ -72,8 +66,6 @@ fun HomeContent(
     onYearSelected: (Int) -> Unit = {},
     onRetry: () -> Unit = {},
     initiallyYearMenuExpanded: Boolean = false,
-    showRecordHint: Boolean = false,
-    onDismissHint: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     var yearMenuExpanded by remember { mutableStateOf(initiallyYearMenuExpanded) }
@@ -85,7 +77,7 @@ fun HomeContent(
         snapshotFlow { Triple(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, listState.isScrollInProgress) }
             .drop(1).collect { yearMenuExpanded = false }
     }
-    Box(Modifier.fillMaxSize().dismissContextualHintOnTouch(showRecordHint, onDismissHint)
+    Box(Modifier.fillMaxSize()
         .onGloballyPositioned { pageBounds = it.boundsInRoot() }
         .pointerInput(yearMenuExpanded, yearButtonBounds, yearMenuBounds) {
             // 在子控件消费事件之前观察外部触摸；不消费事件，保留页面滚动与原有点击。
@@ -146,8 +138,6 @@ fun HomeContent(
                 }
             }
         }
-        if (showRecordHint) ContextualHintBubble(stringResource(R.string.home_record_hint), onDismissHint,
-            Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = GlassTokens.BottomClearance))
     }
 }
 
@@ -160,7 +150,7 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
-            GlassIconButton(onNotice) {
+            GlassIconButton(onNotice, Modifier.featureGuideTarget(FeatureGuideTarget.REMINDERS)) {
                 Icon(Icons.Outlined.NotificationsNone, stringResource(R.string.nav_notifications), Modifier.size(28.dp))
             }
         }

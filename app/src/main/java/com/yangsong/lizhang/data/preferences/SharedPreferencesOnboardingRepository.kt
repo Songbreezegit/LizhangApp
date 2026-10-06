@@ -23,9 +23,15 @@ class SharedPreferencesOnboardingRepository(
             if (preferences.contains(COMPLETED)) preferences.getBoolean(COMPLETED, false) else null,
             evidence,
         )
-        if (!preferences.contains(COMPLETED)) preferences.edit { putBoolean(COMPLETED, completed) }
+        val guideStep = FeatureGuidePolicy.initialStep(preferences.getString(FEATURE_GUIDE_STEP, null), completed)
+        // 集中迁移，与首次完成标记一起保存；旧版本已完成用户不会突然开始四步引导。
+        preferences.edit {
+            if (!preferences.contains(COMPLETED)) putBoolean(COMPLETED, completed)
+            if (!preferences.contains(FEATURE_GUIDE_STEP)) putString(FEATURE_GUIDE_STEP, guideStep.storedValue)
+        }
         return OnboardingState(
             completed = completed,
+            featureGuideStep = guideStep,
             homeRecordHintSeen = preferences.getBoolean(HOME_HINT, false),
             contactsHintSeen = preferences.getBoolean(CONTACTS_HINT, false),
             contactsPermission = PermissionHistory(
@@ -43,6 +49,21 @@ class SharedPreferencesOnboardingRepository(
     @Synchronized override fun complete() {
         preferences.edit { putBoolean(COMPLETED, true) }
         _state.value = _state.value.copy(completed = true)
+    }
+
+    @Synchronized override fun advanceFeatureGuide(expectedStep: FeatureGuideStep) {
+        val current = _state.value
+        if (!current.featureGuideVisible || current.featureGuideStep != expectedStep) return
+        saveFeatureGuide(expectedStep.next())
+    }
+
+    @Synchronized override fun completeFeatureGuide() {
+        if (_state.value.featureGuideVisible) saveFeatureGuide(FeatureGuideStep.COMPLETED)
+    }
+
+    private fun saveFeatureGuide(step: FeatureGuideStep) {
+        preferences.edit { putString(FEATURE_GUIDE_STEP, step.storedValue) }
+        _state.value = _state.value.copy(featureGuideStep = step)
     }
 
     @Synchronized override fun markHintSeen(hint: ContextualHint) {
@@ -73,6 +94,7 @@ class SharedPreferencesOnboardingRepository(
     companion object {
         const val FILE_NAME = "onboarding_preferences"
         private const val COMPLETED = "onboarding_completed"
+        private const val FEATURE_GUIDE_STEP = "feature_guide_step"
         private const val HOME_HINT = "home_record_hint_seen"
         private const val CONTACTS_HINT = "contacts_hint_seen"
         private const val CONTACT_EXPLANATION = "contact_permission_explanation_seen"

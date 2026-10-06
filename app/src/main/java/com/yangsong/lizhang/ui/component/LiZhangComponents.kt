@@ -42,6 +42,7 @@ import com.yangsong.lizhang.core.util.*
 import com.yangsong.lizhang.domain.model.*
 import com.yangsong.lizhang.ui.mapper.labelRes
 import com.yangsong.lizhang.ui.navigation.AppDestination
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,7 +78,8 @@ private val navItems=listOf(NavItem(AppDestination.Home,R.string.nav_home,Icons.
                     label = "导航选中底色",
                 )
                 Column(
-                    Modifier.weight(1f).heightIn(min=60.dp).selectable(
+                    Modifier.weight(1f).heightIn(min=60.dp)
+                        .then(item.destination.featureGuideTarget()?.let { Modifier.featureGuideTarget(it) } ?: Modifier).selectable(
                         selected = selected,
                         interactionSource = interactionSource,
                         indication = null,

@@ -12,6 +12,11 @@ class OnboardingViewModel(private val repository: OnboardingRepository) : ViewMo
         if (mode == OnboardingMode.FIRST_LAUNCH) repository.complete()
     }
 
+    fun advanceFeatureGuide(step: FeatureGuideStep = state.value.featureGuideStep) = repository.advanceFeatureGuide(step)
+    fun targetInvoked(step: FeatureGuideStep) = repository.advanceFeatureGuide(step)
+    fun skipFeatureGuide() = repository.completeFeatureGuide()
+    fun completeFeatureGuide() = repository.completeFeatureGuide()
+
     fun claimHint(hint: ContextualHint, loaded: Boolean, empty: Boolean): Boolean {
         if (!OnboardingPolicy.shouldShowHint(state.value.hintSeen(hint), loaded, empty)) return false
         // 展示即持久化消费；离开页面、重建或进程重启都不会重复打扰。

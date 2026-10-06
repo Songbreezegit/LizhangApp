@@ -3,9 +3,11 @@ package com.yangsong.lizhang.ui.navigation
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import com.yangsong.lizhang.ui.component.LocalAppearanceActions
 import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
@@ -40,7 +42,10 @@ import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.viewmodel.*
 import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
 import com.yangsong.lizhang.domain.onboarding.OnboardingMode
-import com.yangsong.lizhang.domain.onboarding.ContextualHint
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideOverlay
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideTargetRegistry
+import com.yangsong.lizhang.ui.onboarding.LocalFeatureGuideTargetRegistry
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 
 private val mainTabs = listOf(AppDestination.Home, AppDestination.Contacts, AppDestination.AddGift, AppDestination.Settings)
 
@@ -65,6 +70,8 @@ fun LiZhangNavGraph(
 ) {
     val nav = rememberNavController()
     val hazeState = rememberHazeState()
+    val guideRegistry = remember { FeatureGuideTargetRegistry() }
+    val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
     val reminderLaunchViewModel: ReminderLaunchViewModel = viewModel(
         factory = ReminderLaunchViewModel.factory(appContainer.giftRecordRepository),
     )
@@ -80,7 +87,7 @@ fun LiZhangNavGraph(
     SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
     val go: (AppDestination) -> Unit = {
-        if (it == AppDestination.AddGift) onboardingViewModel.markHintSeen(ContextualHint.HOME_RECORD)
+        it.featureGuideTarget()?.let { target -> onboardingViewModel.targetInvoked(target.step) }
         nav.open(it)
     }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
@@ -112,11 +119,11 @@ fun LiZhangNavGraph(
             }
         }
     }
+    CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides guideRegistry) {
     Box(Modifier.fillMaxSize()) {
     NavHost(nav, AppDestination.Home.route, Modifier.hazeSource(hazeState)) {
         composable(AppDestination.Home.route) {
-            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord,
-                onboardingViewModel = onboardingViewModel)
+            HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
         }
         composable(AppDestination.Contacts.route) {
             ContactsScreen(
@@ -125,7 +132,6 @@ fun LiZhangNavGraph(
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
                 { nav.navigate(AppDestination.ContactImport.route) { launchSingleTop = true } },
                 onSelectionModeChange = { contactsSelectionMode = it },
-                onboardingViewModel = onboardingViewModel,
             )
         }
         composable(AppDestination.ContactImport.route) {
@@ -283,5 +289,13 @@ fun LiZhangNavGraph(
         BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter), hazeState)
     }
     CenteredSnackbarHost(snackbar)
+    FeatureGuideOverlay(
+        state = onboardingState,
+        isHome = currentMainTab == AppDestination.Home && navigationReady,
+        registry = guideRegistry,
+        onNext = { onboardingViewModel.advanceFeatureGuide(onboardingState.featureGuideStep) },
+        onSkip = onboardingViewModel::skipFeatureGuide,
+    )
+    }
     }
 }

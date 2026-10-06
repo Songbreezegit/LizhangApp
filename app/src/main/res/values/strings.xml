@@ -347,4 +347,16 @@
     <string name="permission_not_now">暂不</string>
     <string name="permission_continue">继续</string>
     <string name="permission_open_settings">前往设置</string>
+    <string name="feature_guide_add_title">从第一笔开始</string>
+    <string name="feature_guide_add_body">从这里记录第一笔收礼或随礼。</string>
+    <string name="feature_guide_contacts_title">管理联系人</string>
+    <string name="feature_guide_contacts_body">把常用联系人整理起来，之后记账会更方便。</string>
+    <string name="feature_guide_reminders_title">别忘了重要日子</string>
+    <string name="feature_guide_reminders_body">在这里设置提醒，重要日期可以提前知道。</string>
+    <string name="feature_guide_settings_title">更多都在这里</string>
+    <string name="feature_guide_settings_body">主题、语言、备份和使用引导都可以在这里找到。</string>
+    <string name="feature_guide_next">下一步</string>
+    <string name="feature_guide_skip">跳过引导</string>
+    <string name="feature_guide_finish">完成</string>
+    <string name="feature_guide_progress">%1$d / %2$d</string>
 </resources>

@@ -48,4 +48,58 @@ class OnboardingPreferencesInstrumentedTest {
         second.markExplanationSeen(ExplainedPermission.NOTIFICATIONS)
         assertFalse(second.state.value.notificationsPermission.requested)
     }
+
+    @Test fun 已完成093用户只迁移新步骤且保留旧key() {
+        preferences.edit().putBoolean("onboarding_completed", true)
+            .putBoolean("home_record_hint_seen", true).putBoolean("contacts_hint_seen", false).commit()
+        val state = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence()).state.value
+        assertEquals(FeatureGuideStep.COMPLETED, state.featureGuideStep)
+        assertFalse(state.featureGuideVisible)
+        assertEquals("completed", preferences.getString("feature_guide_step", null))
+        assertTrue(preferences.getBoolean("home_record_hint_seen", false))
+        assertTrue(preferences.contains("contacts_hint_seen"))
+        assertFalse(preferences.getBoolean("contacts_hint_seen", true))
+    }
+
+    @Test fun 未完成093用户即使有升级痕迹也等待三页完成() {
+        preferences.edit().putBoolean("onboarding_completed", false).commit()
+        val repository = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence(upgradedInstallation = true))
+        assertFalse(repository.state.value.featureGuideVisible)
+        assertEquals(FeatureGuideStep.ADD_RECORD, repository.state.value.featureGuideStep)
+        repository.complete()
+        assertTrue(repository.state.value.featureGuideVisible)
+        assertEquals(FeatureGuideStep.ADD_RECORD, repository.state.value.featureGuideStep)
+    }
+
+    @Test fun 每步都实际持久化并在仓库及ViewModel重建后恢复() {
+        var repository = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence())
+        repository.complete()
+        FeatureGuideStep.entries.forEach { step ->
+            assertEquals(step, repository.state.value.featureGuideStep)
+            repository = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence(upgradedInstallation = true, databaseExists = true))
+            val viewModel = com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel(repository)
+            assertEquals(step, viewModel.state.value.featureGuideStep)
+            assertEquals(step.storedValue, preferences.getString("feature_guide_step", null))
+            viewModel.advanceFeatureGuide(step)
+        }
+        assertFalse(repository.state.value.featureGuideVisible)
+    }
+
+    @Test fun 任一步跳过后新实例均保持完成() {
+        FeatureGuideStep.entries.filter { it != FeatureGuideStep.COMPLETED }.forEach { step ->
+            preferences.edit().putBoolean("onboarding_completed", true).putString("feature_guide_step", step.storedValue).commit()
+            val repository = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence())
+            repository.completeFeatureGuide()
+            assertEquals(FeatureGuideStep.COMPLETED, SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence()).state.value.featureGuideStep)
+        }
+    }
+
+    @Test fun 已有新步骤优先于未完成标记和旧安装痕迹() {
+        preferences.edit().putBoolean("onboarding_completed", false).putString("feature_guide_step", "reminders").commit()
+        val repository = SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence(upgradedInstallation = true))
+        assertEquals(FeatureGuideStep.REMINDERS, repository.state.value.featureGuideStep)
+        assertFalse(repository.state.value.featureGuideVisible)
+        repository.complete()
+        assertEquals(FeatureGuideStep.REMINDERS, repository.state.value.featureGuideStep)
+    }
 }

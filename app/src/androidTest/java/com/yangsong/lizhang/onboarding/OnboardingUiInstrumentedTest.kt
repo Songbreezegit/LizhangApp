@@ -102,30 +102,22 @@ class OnboardingUiInstrumentedTest {
         }
     }
 
-    @Test fun 空首页提示关闭后重新进入不重复出现() {
-        context.createDeviceProtectedStorageContext().getSharedPreferences(SharedPreferencesOnboardingRepository.FILE_NAME, 0).edit().clear().commit()
-        val viewModel = OnboardingViewModel(SharedPreferencesOnboardingRepository(context.createDeviceProtectedStorageContext(), ExistingInstallationEvidence()))
-        val screenKey = mutableIntStateOf(0)
-        setContent { key(screenKey.intValue) { LiZhangTheme {
-            var visible by rememberContextualHint(viewModel, ContextualHint.HOME_RECORD, true, true)
-            HomeContent(HomeUiState(isLoading = false), {}, showRecordHint = visible, onDismissHint = { visible = false })
-        } } }
-        compose.onNodeWithText(localizedContext.getString(R.string.home_record_hint)).assertIsDisplayed()
-        compose.onNodeWithContentDescription(localizedContext.getString(R.string.onboarding_hint_close)).performClick()
+    @Test fun 空首页不再生成独立提示且原记账入口保持可点击() {
+        var navigated = false
+        setContent { LiZhangTheme {
+            HomeContent(HomeUiState(isLoading = false), { navigated = true })
+        } }
         compose.onNodeWithText(localizedContext.getString(R.string.home_record_hint)).assertDoesNotExist()
-        compose.runOnIdle { screenKey.intValue++ }
-        compose.onNodeWithText(localizedContext.getString(R.string.home_record_hint)).assertDoesNotExist()
-        assertTrue(viewModel.state.value.homeRecordHintSeen)
+        compose.onNodeWithText(localizedContext.getString(R.string.action_add_gift)).performClick()
+        assertTrue(navigated)
     }
 
-    @Test fun 联系人提示不遮挡添加入口且触摸空白可关闭() {
-        var visible by mutableStateOf(true)
+    @Test fun 空联系人页没有第二条独立提示且原添加菜单保持可点击() {
         setContent { LiZhangTheme {
-            ContactsContent(ContactsUiState(isLoading = false), {}, {}, {}, {},
-                showContactsHint = visible, onDismissHint = { visible = false })
+            ContactsContent(ContactsUiState(isLoading = false), {}, {}, {}, {})
         } }
-        compose.onNodeWithText(localizedContext.getString(R.string.contacts_first_hint)).assertIsDisplayed()
-        compose.onNodeWithTag("联系人列表").performTouchInput { click(androidx.compose.ui.geometry.Offset(8f, 8f)) }
         compose.onNodeWithText(localizedContext.getString(R.string.contacts_first_hint)).assertDoesNotExist()
+        compose.onNodeWithTag("联系人添加菜单").performClick()
+        compose.onNodeWithText(localizedContext.getString(R.string.contact_add_manual)).assertIsDisplayed()
     }
 }
