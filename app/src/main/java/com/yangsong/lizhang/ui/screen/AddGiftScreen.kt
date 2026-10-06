@@ -1,7 +1,16 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.GlassButton
+import com.yangsong.lizhang.ui.component.GlassChip
+import com.yangsong.lizhang.ui.component.GlassIconButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
 
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -13,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -23,7 +33,10 @@ import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.domain.model.Contact
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.*
-import kotlinx.coroutines.delay
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,16 +52,16 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
     val operationFailed=stringResource(R.string.record_save_failed)
     val requestBack = {
         when {
-            state.isSaving -> Unit
+            state.isSaving || state.isSaved -> Unit
             state.hasUnsavedChanges -> showDiscardConfirmation = true
             else -> onBack()
         }
     }
-    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving) {
+    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving || state.isSaved) {
         requestBack()
     }
-    LaunchedEffect(state.isSaved){if(state.isSaved){snackbar.showSnackbar(savedMessage);delay(450);onBack()}}
-    LaunchedEffect(state.operationFailed){if(state.operationFailed)snackbar.showSnackbar(operationFailed)}
+    GiftSaveFeedbackEffects(state.isSaved, state.operationFailed, snackbar, savedMessage, operationFailed,
+        onFailureConsumed = viewModel::consumeOperationFailure, onBack = onBack)
     AddGiftContent(
         state = state,
         onBack = requestBack,
@@ -56,11 +69,12 @@ fun AddGiftScreen(viewModel:GiftEditorViewModel,onBack:()->Unit){
         onAmountChange = { value -> viewModel.update { it.copy(amount = value) } },
         onDateClick = { showDatePicker = true },
         onDirectionChange = { value -> viewModel.update { it.copy(direction = value) } },
-        onEventTypeChange = { value -> viewModel.update { it.copy(eventType = value) } },
+        onEventTypeChange = viewModel::selectEvent,
         onNotesChange = { value -> viewModel.update { it.copy(notes = value) } },
         onSave = viewModel::save,
         onRetry = viewModel::retryLoad,
-        snackbarHost = { CenteredSnackbarHost(snackbar) },
+        onCustomEventChange = viewModel::setCustomEvent,
+        snackbarHost = { GlassSnackbarHost(snackbar, Modifier.padding(horizontal = 24.dp)) },
     )
     if(showContacts)ContactPickerSheet(state.contacts,state.contactId,{contact->viewModel.update{it.copy(contactId=contact.id)};showContacts=false},{showCreateContact=true},onDismiss={showContacts=false})
     if(showCreateContact)QuickContactDialog(state.isCreatingContact,{name,phone,relationship->viewModel.createContact(name,phone,relationship);showCreateContact=false;showContacts=false},{showCreateContact=false})
@@ -86,23 +100,19 @@ fun AddGiftContent(
     onSave: () -> Unit,
     onRetry: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    onCustomEventChange: (String) -> Unit = {},
 ) {
-    Scaffold(
+    val hazeState = rememberHazeState()
+    var showCustomEvent by rememberSaveable { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
+    AppScaffold(
+        modifier = Modifier.hazeSource(hazeState),
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
-        snackbarHost=snackbarHost,
-        bottomBar = {
-            if (!state.isLoading && !state.loadFailed) {
-                GiftSaveBar(
-                    isSaving = state.isSaving,
-                    onSave = onSave,
-                )
-            }
-        },
     ){padding->
-        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).imePadding().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
             PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
-            Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){
-                Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            Column {
+                Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(18.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
                     SelectionRow(
                         text=state.contacts.firstOrNull{it.id==state.contactId}?.name?:stringResource(R.string.field_contact_hint),
@@ -111,7 +121,7 @@ fun AddGiftContent(
                     )
                     if(state.validationError==GiftRecordValidationError.CONTACT_REQUIRED)Text(stringResource(R.string.error_contact_required),color=MaterialTheme.colorScheme.error)
                     AmountTextField(state.amount,onAmountChange,if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
-                    SelectionRow(DateFormatter.format(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
+                    SelectionRow(com.yangsong.lizhang.ui.mapper.displayDate(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
                     if (state.validationError == GiftRecordValidationError.DATE_IN_FUTURE) {
                         Text(
                             stringResource(R.string.error_date_in_future),
@@ -119,7 +129,7 @@ fun AddGiftContent(
                         )
                     }
                     DirectionSelector(state.direction,onDirectionChange)
-                    EventTypeSelector(state.eventType,onEventTypeChange)
+                    EventTypeSelector(state.eventType, onEventTypeChange, state.customEventName) { showCustomEvent = true }
                     AppMultilineTextField(
                         state.notes,
                         onNotesChange,
@@ -128,44 +138,64 @@ fun AddGiftContent(
                     )
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(124.dp).testTag("记账底部留白"))
         }}
     }
+    if (!state.isLoading && !state.loadFailed) {
+        // 内容与反馈共用覆盖层，不改变 Scaffold 可用高度。
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().imePadding().navigationBarsPadding()) {
+            Box(Modifier.fillMaxWidth().padding(bottom = 6.dp)) { snackbarHost() }
+            GiftSaveBar(state.isSaving, onSave, enabled = !state.isSaved, hazeState = hazeState)
+        }
+    }
+    }
+    if (showCustomEvent) CustomEventDialog(state.customEventName.orEmpty(),
+        onConfirm = { onCustomEventChange(it); showCustomEvent = false },
+        onDismiss = { showCustomEvent = false })
 }
 
 @Composable
-private fun GiftSaveBar(
+fun GiftSaveBar(
     isSaving: Boolean,
     onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    hazeState: HazeState,
 ) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .imePadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        PrimaryButton(
-            text = stringResource(R.string.action_save_record),
-            onClick = onSave,
-            modifier = Modifier.fillMaxWidth(),
-            loading = isSaving,
-            icon = Icons.Outlined.Check,
-        )
+    val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
+    Column(modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().height(76.dp).frostedGlassFrame(hazeState, glassShape)
+                    .testTag("礼金保存栏")
+                    .clickable(enabled = enabled && !isSaving, role = Role.Button, onClick = onSave),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
+                        strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
     }
 }
-
 @Composable
 fun DiscardGiftChangesDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.record_discard_title)) },
         text = { Text(stringResource(R.string.record_discard_message)) },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
@@ -176,14 +206,14 @@ fun DiscardGiftChangesDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            GlassTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_continue_editing))
             }
         },
     )
 }
 
-@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.background){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,7 +231,7 @@ private fun ContactPickerSheet(
                 it.phone.orEmpty().contains(query)
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = glassColor().copy(alpha = GlassTokens.DialogAlpha)) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -241,9 +271,9 @@ private fun ContactPickerSheet(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
                             color = if (contact.id == selectedId) {
-                                MaterialTheme.colorScheme.primaryContainer
+                                MaterialTheme.colorScheme.primary.copy(alpha = .12f)
                             } else {
-                                MaterialTheme.colorScheme.surface
+                                androidx.compose.ui.graphics.Color.Transparent
                             },
                         ) {
                             Row(
@@ -282,7 +312,7 @@ private fun ContactPickerSheet(
     }
 }
 
-@Composable private fun QuickContactDialog(isSaving:Boolean,onConfirm:(String,String,String)->Unit,onDismiss:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var relationship by remember{mutableStateOf("")};var attempted by remember{mutableStateOf(false)};AlertDialog(onDismissRequest=onDismiss,title={Text(stringResource(R.string.contact_create_quick))},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){AppTextField(name,{name=it},stringResource(R.string.contact_name),error=if(attempted&&name.isBlank())stringResource(R.string.contact_name_required)else null);AppTextField(phone,{phone=it},stringResource(R.string.contact_phone));AppTextField(relationship,{relationship=it},stringResource(R.string.contact_relationship))}},confirmButton={Button({attempted=true;if(name.isNotBlank())onConfirm(name,phone,relationship)},enabled=!isSaving){Text(stringResource(R.string.action_confirm))}},dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}})}
+@Composable private fun QuickContactDialog(isSaving:Boolean,onConfirm:(String,String,String)->Unit,onDismiss:()->Unit){var name by remember{mutableStateOf("")};var phone by remember{mutableStateOf("")};var relationship by remember{mutableStateOf("")};var attempted by remember{mutableStateOf(false)};GlassDialog(onDismissRequest=onDismiss,title={Text(stringResource(R.string.contact_create_quick))},text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){AppTextField(name,{name=it},stringResource(R.string.contact_name),error=if(attempted&&name.isBlank())stringResource(R.string.contact_name_required)else null);AppTextField(phone,{phone=it},stringResource(R.string.contact_phone));AppTextField(relationship,{relationship=it},stringResource(R.string.contact_relationship))}},confirmButton={GlassButton({attempted=true;if(name.isNotBlank())onConfirm(name,phone,relationship)},enabled=!isSaving){Text(stringResource(R.string.action_confirm))}},dismissButton={GlassTextButton(onDismiss){Text(stringResource(R.string.action_cancel))}})}
 
 @Composable
 private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit){
@@ -312,20 +342,20 @@ private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Uni
     LaunchedEffect(maxDay) {
         if (day > maxDay) day = maxDay
     }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest=onDismiss,
         title={Text(stringResource(R.string.date_choose))},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                IconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
+                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
                 Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
-                IconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
+                GlassIconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
             }
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->FilterChip(value==month,{month=value},{Text(stringResource(R.string.month_format,value))})}}
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->FilterChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(com.yangsong.lizhang.ui.mapper.displayMonth(value))})}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->GlassChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}
         }},
-        confirmButton={TextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},
-        dismissButton={TextButton(onDismiss){Text(stringResource(R.string.action_cancel))}},
+        confirmButton={GlassTextButton({val date=Calendar.getInstance().apply{set(year,month-1,day,0,0,0);set(Calendar.MILLISECOND,0)};onConfirm(date.timeInMillis)}){Text(stringResource(R.string.action_done))}},
+        dismissButton={GlassTextButton(onDismiss){Text(stringResource(R.string.action_cancel))}},
     )
 }
 

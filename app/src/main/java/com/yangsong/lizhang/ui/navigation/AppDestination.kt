@@ -17,6 +17,7 @@ sealed class AppDestination(val route: String) {
         fun createRoute(recordId: Long) = "gift_record_editor/$recordId"
     }
     data object Contacts : AppDestination("contacts")
+    data object ContactImport : AppDestination("contact_import")
     data object ContactDetail : AppDestination("contact/{${NavigationConstants.CONTACT_ID_ARGUMENT}}") {
         fun createRoute(contactId: Long) = "contact/$contactId"
     }

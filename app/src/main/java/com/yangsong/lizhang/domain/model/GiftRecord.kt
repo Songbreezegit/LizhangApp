@@ -10,4 +10,5 @@ data class GiftRecord(
     val direction: GiftDirection,
     val notes: String? = null,
     val createdTime: Long = System.currentTimeMillis(),
+    val customEventName: String? = null,
 )

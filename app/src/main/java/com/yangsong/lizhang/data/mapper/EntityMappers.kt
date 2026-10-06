@@ -14,8 +14,8 @@ import com.yangsong.lizhang.domain.model.YearlyGiftSummary
 fun ContactEntity.toDomain() = Contact(id, name, phone, relationship, notes, createdTime)
 fun Contact.toEntity() = ContactEntity(id, name.trim(), phone?.trim()?.ifEmpty { null }, relationship?.trim()?.ifEmpty { null }, notes?.trim()?.ifEmpty { null }, createdTime)
 
-fun GiftRecordEntity.toDomain() = GiftRecord(id, contactId, amountInCents, eventType, eventDate, direction, notes, createdTime)
-fun GiftRecord.toEntity() = GiftRecordEntity(id, contactId, amountInCents, eventType, eventDate, direction, notes?.trim()?.ifEmpty { null }, createdTime)
+fun GiftRecordEntity.toDomain() = GiftRecord(id, contactId, amountInCents, eventType, eventDate, direction, notes, createdTime, customEventName)
+fun GiftRecord.toEntity() = GiftRecordEntity(id, contactId, amountInCents, eventType, eventDate, direction, notes?.trim()?.ifEmpty { null }, createdTime, customEventName)
 
 fun ContactSummaryRow.toDomain() = ContactLedgerSummary(
     contact = contact.toDomain(),

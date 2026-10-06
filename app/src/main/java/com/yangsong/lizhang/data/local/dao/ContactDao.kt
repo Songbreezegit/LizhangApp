@@ -6,8 +6,18 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
+import com.yangsong.lizhang.domain.contact.ContactImportRules
+import com.yangsong.lizhang.domain.model.ContactImportResult
+import com.yangsong.lizhang.domain.model.ContactImportSelection
+import com.yangsong.lizhang.domain.model.ContactImportStatus
+import com.yangsong.lizhang.data.mapper.toDomain
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.projection.ContactSummaryRow
+import com.yangsong.lizhang.data.local.projection.ContactDeleteImpactRow
+import com.yangsong.lizhang.domain.model.ContactDeletePreview
+import com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome
+import com.yangsong.lizhang.domain.model.BulkDeleteResult
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -18,11 +28,77 @@ interface ContactDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(contacts: List<ContactEntity>)
 
+    @Transaction
+    suspend fun importContacts(contacts: List<ContactEntity>): ContactImportResult {
+        val phones = getAllForBackup().mapNotNull { ContactImportRules.normalizePhone(it.phone) }.toMutableSet()
+        val additions = contacts.mapNotNull { contact ->
+            val phone = ContactImportRules.normalizePhone(contact.phone)
+            if (contact.name.isBlank() || phone == null || !phones.add(phone)) null
+            else contact.copy(id = 0, name = contact.name.trim(), phone = phone)
+        }
+        insertAll(additions)
+        return ContactImportResult(additions.size, contacts.size - additions.size)
+    }
+
     @Update
     suspend fun update(contact: ContactEntity)
 
+    @Transaction
+    suspend fun importDeviceContacts(selections: List<ContactImportSelection>): ContactImportResult {
+        val existing = getAllForBackup().map { it.toDomain() }
+        val index = ContactImportRules.DuplicateIndex(existing)
+        val seen = mutableSetOf<String>()
+        var skipped = 0
+        var possibleUnselected = 0
+        val additions = selections.mapNotNull { selection ->
+            val contact = selection.contact
+            val phone = ContactImportRules.normalizePhone(contact.phone)
+            if (contact.name.isBlank() || phone == null || !seen.add(phone)) return@mapNotNull null
+            when (index.status(contact)) {
+                ContactImportStatus.EXISTING -> { skipped++; null }
+                ContactImportStatus.POSSIBLE_DUPLICATE -> {
+                    if (selection.selected && selection.allowPossibleDuplicate) {
+                        ContactEntity(name = contact.name.trim(), phone = phone)
+                    } else { possibleUnselected++; null }
+                }
+                ContactImportStatus.NEW -> if (selection.selected) ContactEntity(name = contact.name.trim(), phone = phone) else null
+            }
+        }
+        insertAll(additions)
+        return ContactImportResult(additions.size, skipped, possibleUnselected)
+    }
+
     @Delete
     suspend fun delete(contact: ContactEntity)
+
+    @Query("""
+        SELECT contacts.id, COUNT(gift_records.id) AS giftRecordCount
+        FROM contacts LEFT JOIN gift_records ON gift_records.contactId = contacts.id
+        WHERE contacts.id IN (:ids) GROUP BY contacts.id
+    """)
+    suspend fun getDeleteImpact(ids: List<Long>): List<ContactDeleteImpactRow>
+
+    @Query("DELETE FROM contacts WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>): Int
+
+    @Transaction
+    suspend fun previewDelete(ids: Set<Long>): ContactDeletePreview {
+        // 分片避免大型通讯录超过 SQLite 绑定参数上限；各分片仍处于同一事务。
+        val counts = linkedMapOf<Long, Int>()
+        ids.filter { it > 0 }.chunked(900).forEach { batch ->
+            getDeleteImpact(batch).forEach { counts[it.id] = it.giftRecordCount }
+        }
+        return ContactDeletePreview(counts)
+    }
+
+    @Transaction
+    suspend fun deleteContacts(ids: Set<Long>, confirmed: ContactDeletePreview): ContactBulkDeleteOutcome {
+        val latest = previewDelete(ids)
+        if (latest != confirmed) return ContactBulkDeleteOutcome.Changed(latest)
+        val deleted = latest.recordsPerContact.keys.toList().chunked(900).sumOf { deleteByIds(it) }
+        // 礼金由既有外键 CASCADE 清理，不主动操作 gift_records。
+        return ContactBulkDeleteOutcome.Deleted(BulkDeleteResult(deleted, latest.giftRecordCount))
+    }
 
     @Query("SELECT * FROM contacts ORDER BY id")
     suspend fun getAllForBackup(): List<ContactEntity>

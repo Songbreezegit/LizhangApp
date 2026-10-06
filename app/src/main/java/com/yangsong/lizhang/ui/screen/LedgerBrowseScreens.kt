@@ -1,4 +1,16 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.glassSwitchColors
+import com.yangsong.lizhang.ui.component.AppScaffold
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
+import com.yangsong.lizhang.ui.component.GlassIconButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
+import com.yangsong.lizhang.ui.mapper.displayDate
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -14,14 +26,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.yangsong.lizhang.domain.reminder.IndependentReminder
+import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
+import com.yangsong.lizhang.domain.reminder.ReminderSettings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -46,7 +64,7 @@ fun DirectionRecordsScreen(
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val title = stringResource(if (direction == GiftDirection.RECEIVED) R.string.shortcut_received else R.string.shortcut_given)
-    Scaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
+    AppScaffold(topBar = { AppTopBar(title, onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState(viewModel::retry)
@@ -57,13 +75,13 @@ fun DirectionRecordsScreen(
             ) {
                 item { PageIllustration(R.drawable.page_add_cat, Modifier.fillMaxWidth().height(175.dp)) }
                 item {
-                    SectionHeader(stringResource(R.string.records_count, state.records.size))
+                    SectionHeader(androidx.compose.ui.res.pluralStringResource(R.plurals.records_count, state.records.size, state.records.size))
                 }
                 if (state.records.isEmpty()) {
                     item { EmptyState(stringResource(R.string.records_empty, title), image = R.drawable.page_add_cat) }
                 } else {
                     item {
-                        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
+                        GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
                             Column(Modifier.padding(horizontal = 16.dp)) {
                                 state.records.forEachIndexed { index, record ->
                                     GiftRecordListItem(record) { onRecordClick(record.record.id) }
@@ -81,7 +99,7 @@ fun DirectionRecordsScreen(
 @Composable
 fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
-    Scaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
+    AppScaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
         when {
             state.isLoading -> LoadingState()
             state.error -> ErrorState(viewModel::retry)
@@ -91,7 +109,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item { CalendarCard(state, viewModel::previousMonth, viewModel::nextMonth, viewModel::selectDay) }
-                item { SectionHeader(stringResource(R.string.calendar_day_records, state.month, state.selectedDay)) }
+                item { SectionHeader(stringResource(R.string.calendar_records_on, com.yangsong.lizhang.ui.mapper.displayCalendarDate(state.year, state.month, state.selectedDay))) }
                 if (state.selectedRecords.isEmpty()) {
                     item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
                 } else {
@@ -109,12 +127,12 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
 
 @Composable
 private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext: () -> Unit, onDay: (Int) -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(2.dp)) {
+    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
-                Text(stringResource(R.string.calendar_month_title, state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                IconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
+                GlassIconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
+                Text(com.yangsong.lizhang.ui.mapper.displayYearMonth(state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                GlassIconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf(R.string.week_monday, R.string.week_tuesday, R.string.week_wednesday, R.string.week_thursday, R.string.week_friday, R.string.week_saturday, R.string.week_sunday).forEach {
@@ -140,7 +158,7 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
         onClick = onClick,
         modifier = modifier.aspectRatio(1f).padding(2.dp),
         shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(day.toString(), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
@@ -151,13 +169,16 @@ private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: ()
 
 @Composable
 @SuppressLint("InlinedApi")
-fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
+fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showAdvanceDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
+    var showEditor by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<IndependentReminder?>(null) }
+    var deleting by remember { mutableStateOf<IndependentReminder?>(null) }
     val permissionDenied = stringResource(R.string.reminder_permission_denied)
     fun hasNotificationPermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -175,74 +196,29 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
         }
     }
 
-    Scaffold(
-        topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
-        snackbarHost = { CenteredSnackbarHost(snackbar) },
-    ) { padding ->
-        when {
-            state.isLoading -> LoadingState()
-            state.error -> ErrorState(viewModel::retry)
-            else -> LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp)) }
-                item {
-                    Card(
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(2.dp),
-                    ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    stringResource(R.string.reminder_switch_title),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    stringResource(R.string.reminder_switch_description_configurable),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                            Switch(
-                                checked = state.remindersEnabled,
-                                onCheckedChange = { enabled ->
-                                    when {
-                                        !enabled -> viewModel.setRemindersEnabled(false)
-                                        hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
-                                        else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                },
-                            )
-                        }
-                    }
-                }
-                item {
-                    ReminderScheduleCard(
-                        advanceDays = state.reminderAdvanceDays,
-                        hour = state.reminderHour,
-                        minute = state.reminderMinute,
-                        onAdvanceClick = { showAdvanceDialog = true },
-                        onTimeClick = { showTimeDialog = true },
-                    )
-                }
-                item { Text(stringResource(R.string.notifications_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                if (state.upcoming.isEmpty()) {
-                    item { EmptyState(stringResource(R.string.notifications_empty), description = stringResource(R.string.notifications_empty_desc), image = R.drawable.page_statistics_cat) }
-                } else {
-                    items(state.upcoming) { item -> GiftRecordListItem(item) { onRecordClick(item.record.id) } }
-                }
+    NotificationsContent(state, onBack, viewModel::retry, snackbar,
+        onEnabledChange = { enabled ->
+            when {
+                !enabled -> viewModel.setRemindersEnabled(false)
+                hasNotificationPermission() -> viewModel.setRemindersEnabled(true)
+                else -> permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-        }
+        },
+        onAdvanceClick = { showAdvanceDialog = true },
+        onTimeClick = { showTimeDialog = true },
+        onAdd = { editing = null; showEditor = true },
+        onEdit = { editing = it; showEditor = true },
+        onDelete = { deleting = it },
+        onReminderEnabled = viewModel::setReminderEnabled,
+    )
+    if (showEditor) IndependentReminderEditor(editing, { showEditor = false }, viewModel::saveReminder)
+    deleting?.let { value ->
+        GlassDialog(onDismissRequest = { deleting = null },
+            title = { Text(stringResource(R.string.independent_delete_title)) },
+            text = { Text(stringResource(R.string.independent_delete_desc)) },
+            confirmButton = { GlassTextButton({ viewModel.deleteReminder(value.id); deleting = null }) { Text(stringResource(R.string.action_delete)) } },
+            dismissButton = { GlassTextButton({ deleting = null }) { Text(stringResource(R.string.action_cancel)) } })
     }
-
     if (showAdvanceDialog) {
         ReminderAdvanceDialog(
             selectedDays = state.reminderAdvanceDays,
@@ -266,6 +242,131 @@ fun NotificationsScreen(viewModel: NotificationsViewModel, onBack: () -> Unit, o
     }
 }
 
+/** 无副作用的提醒页面视图，权限与调度仍由原页面和 ViewModel 处理。 */
+@Composable
+fun NotificationsContent(
+    state: com.yangsong.lizhang.ui.viewmodel.NotificationsUiState,
+    onBack: () -> Unit = {}, onRetry: () -> Unit = {},
+    snackbar: SnackbarHostState = remember { SnackbarHostState() },
+    onEnabledChange: (Boolean) -> Unit = {}, onAdvanceClick: () -> Unit = {}, onTimeClick: () -> Unit = {},
+    onAdd: () -> Unit = {}, onEdit: (IndependentReminder) -> Unit = {},
+    onDelete: (IndependentReminder) -> Unit = {}, onReminderEnabled: (Long, Boolean) -> Unit = { _, _ -> },
+) {
+    AppScaffold(
+        topBar = { AppTopBar(stringResource(R.string.nav_notifications), onBack) },
+        snackbarHost = { CenteredSnackbarHost(snackbar) },
+    ) { padding ->
+        when {
+            state.isLoading -> LoadingState()
+            state.error -> ErrorState(onRetry)
+            else -> LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp).testTag("提醒顶部插画")) }
+                item {
+                    GlassCard(
+                        shape = RoundedCornerShape(GlassTokens.Radius),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    stringResource(R.string.reminder_switch_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    stringResource(R.string.reminder_switch_description_configurable),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                            Switch(colors = glassSwitchColors(),
+                                checked = state.remindersEnabled,
+                                onCheckedChange = onEnabledChange,
+                            )
+                        }
+                    }
+                }
+                item {
+                    ReminderScheduleCard(
+                        advanceDays = state.reminderAdvanceDays,
+                        hour = state.reminderHour,
+                        minute = state.reminderMinute,
+                        onAdvanceClick = onAdvanceClick,
+                        onTimeClick = onTimeClick,
+                    )
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        GlassTextButton(onAdd, Modifier.testTag("新增独立提醒")) {
+                            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                            Text(stringResource(R.string.independent_add))
+                        }
+                    }
+                    Text(stringResource(R.string.notifications_desc), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.independent_storage_notice), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (state.reminders.isEmpty()) {
+                    item {
+                        GlassCard(Modifier.testTag("提醒空状态")) {
+                            Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Icon(Icons.Outlined.NotificationsNone, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.secondary)
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(stringResource(R.string.notifications_empty), style = MaterialTheme.typography.titleMedium)
+                                    Text(stringResource(R.string.notifications_empty_desc), style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    items(state.reminders, key = { it.id }) { reminder ->
+                        IndependentReminderCard(reminder, state, onEdit, onDelete, onReminderEnabled)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IndependentReminderCard(reminder: IndependentReminder, state: NotificationsUiState,
+    onEdit: (IndependentReminder) -> Unit, onDelete: (IndependentReminder) -> Unit,
+    onEnabled: (Long, Boolean) -> Unit) {
+    val settings = ReminderSettings(state.remindersEnabled, state.reminderAdvanceDays, state.reminderHour, state.reminderMinute)
+    val plan = IndependentReminderPlanner.next(reminder, settings)
+    val toggleDescription = stringResource(if (reminder.enabled) R.string.independent_disable else R.string.independent_enable)
+    GlassCard(Modifier.testTag("独立提醒-${reminder.id}")) {
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(reminder.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Switch(reminder.enabled, { onEnabled(reminder.id, it) }, colors = glassSwitchColors(),
+                    modifier = Modifier.testTag("独立提醒开关-${reminder.id}").semantics { contentDescription = toggleDescription })
+            }
+            Text(stringResource(if (reminder.annually) R.string.independent_annually else R.string.independent_once),
+                color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.bodySmall)
+            Text(when {
+                !reminder.enabled -> stringResource(R.string.independent_disabled)
+                plan == null -> stringResource(R.string.independent_expired)
+                else -> stringResource(R.string.independent_next, displayDate(plan.occurrence))
+            }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassTextButton({ onEdit(reminder) }, Modifier.testTag("独立提醒编辑-${reminder.id}")) { Text(stringResource(R.string.action_edit)) }
+                GlassTextButton({ onDelete(reminder) }, Modifier.testTag("独立提醒删除-${reminder.id}")) { Text(stringResource(R.string.action_delete)) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ReminderScheduleCard(
     advanceDays: Int,
@@ -274,10 +375,8 @@ private fun ReminderScheduleCard(
     onAdvanceClick: () -> Unit,
     onTimeClick: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp),
+    GlassCard(
+        shape = RoundedCornerShape(GlassTokens.Radius),
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             Text(
@@ -309,7 +408,7 @@ private fun ReminderScheduleCard(
 
 @Composable
 private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit) {
-    Surface(onClick = onClick, color = MaterialTheme.colorScheme.surface) {
+    Surface(onClick = onClick, color = androidx.compose.ui.graphics.Color.Transparent) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -322,28 +421,27 @@ private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit
 }
 
 @Composable
-private fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
-    AlertDialog(
+fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (Int) -> Unit) {
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_advance_title)) },
         text = {
-            Column {
+            Column(Modifier.selectableGroup()) {
                 supportedReminderAdvanceDays.forEach { days ->
-                    val label = reminderAdvanceLabel(days)
-                    Surface(onClick = { onSelect(days) }, color = MaterialTheme.colorScheme.surface) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = selectedDays == days, onClick = null)
-                            Text(label, Modifier.padding(start = 10.dp))
-                        }
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                            .selectable(selectedDays == days, role = Role.RadioButton, onClick = { onSelect(days) })
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = selectedDays == days, onClick = null)
+                        Text(reminderAdvanceLabel(days), Modifier.padding(start = 10.dp))
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { GlassTextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -370,15 +468,15 @@ private fun ReminderTimeDialog(
         initialMinute = initialMinute,
         is24Hour = true,
     )
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
         text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(timePickerState) } },
         confirmButton = {
-            TextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
+            GlassTextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
                 Text(stringResource(R.string.action_confirm))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { GlassTextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

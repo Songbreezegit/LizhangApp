@@ -1,4 +1,7 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassIconButton
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -26,13 +29,13 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
     var filter by remember{mutableStateOf<GiftDirection?>(null)}
     var showFilter by remember{mutableStateOf(false)}
     val visibleRecords=remember(state.records,filter){state.records.filter{filter==null||it.direction==filter}}
-    Scaffold(
+    AppScaffold(
         topBar={
             AppTopBar(
                 state.contact?.name?:stringResource(R.string.nav_contact_detail),
                 onBack,
                 if (state.contact != null) {
-                    { IconButton(onEdit){Icon(Icons.Outlined.Edit,stringResource(R.string.contact_edit))} }
+                    { GlassIconButton(onEdit){Icon(Icons.Outlined.Edit,stringResource(R.string.contact_edit))} }
                 } else null,
             )
         },
@@ -48,14 +51,14 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
             )
             else->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
                 item{PageIllustration(R.drawable.page_contacts_cat,Modifier.fillMaxWidth().height(135.dp))}
-                item{state.contact?.let{contact->Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){Column(Modifier.fillMaxWidth().padding(18.dp)){Text(contact.name,style=MaterialTheme.typography.titleLarge);Text(listOfNotNull(contact.relationship,contact.phone).joinToString(" · "),color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
-                item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){AmountSummaryCard(stringResource(R.string.contact_received),state.received,Modifier.weight(1f),CoralStrong);AmountSummaryCard(stringResource(R.string.contact_given),state.given,Modifier.weight(1f),MintPrimary)}}
+                item{state.contact?.let{contact->GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.fillMaxWidth().padding(18.dp)){Text(contact.name,style=MaterialTheme.typography.titleLarge);Text(listOfNotNull(contact.relationship,contact.phone).joinToString(" · "),color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
+                item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){AmountSummaryCard(stringResource(R.string.contact_received),state.received,Modifier.weight(1f),MaterialTheme.colorScheme.primary);AmountSummaryCard(stringResource(R.string.contact_given),state.given,Modifier.weight(1f),MaterialTheme.colorScheme.secondary)}}
                 item{PrimaryButton(stringResource(R.string.contact_add_history),onAdd,Modifier.fillMaxWidth())}
-                item{Card(shape=RoundedCornerShape(24.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),elevation=CardDefaults.cardElevation(2.dp)){Column(Modifier.padding(horizontal=16.dp)){SectionHeader(stringResource(R.string.contact_history),stringResource(R.string.contact_filter)){showFilter=true};if(visibleRecords.isEmpty())EmptyState(stringResource(R.string.home_empty_title),image=R.drawable.page_add_cat)else visibleRecords.forEachIndexed{index,record->GiftRecordListItem(GiftRecordWithContact(record,state.contact?.name.orEmpty())){onRecordClick(record.id)};if(index<visibleRecords.lastIndex)HorizontalDivider(color=MaterialTheme.colorScheme.outline)}}}}
+                item{GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.padding(horizontal=16.dp)){SectionHeader(stringResource(R.string.contact_history),stringResource(R.string.contact_filter)){showFilter=true};if(visibleRecords.isEmpty())EmptyState(stringResource(R.string.home_empty_title),image=R.drawable.page_add_cat)else visibleRecords.forEachIndexed{index,record->GiftRecordListItem(GiftRecordWithContact(record,state.contact?.name.orEmpty())){onRecordClick(record.id)};if(index<visibleRecords.lastIndex)HorizontalDivider(color=MaterialTheme.colorScheme.outline)}}}}
             }
         }
     }
-    if(showFilter)ModalBottomSheet(onDismissRequest={showFilter=false}){Column(Modifier.fillMaxWidth().padding(horizontal=18.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.contact_filter),style=MaterialTheme.typography.titleLarge);FilterOption(stringResource(R.string.action_all),filter==null){filter=null;showFilter=false};GiftDirection.entries.forEach{direction->FilterOption(stringResource(direction.labelRes()),filter==direction){filter=direction;showFilter=false}}}}
+    if(showFilter)ModalBottomSheet(onDismissRequest={showFilter=false},containerColor=glassColor().copy(alpha=GlassTokens.DialogAlpha)){Column(Modifier.fillMaxWidth().padding(horizontal=18.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.contact_filter),style=MaterialTheme.typography.titleLarge);FilterOption(stringResource(R.string.action_all),filter==null){filter=null;showFilter=false};GiftDirection.entries.forEach{direction->FilterOption(stringResource(direction.labelRes()),filter==direction){filter=direction;showFilter=false}}}}
 }
 
-@Composable private fun FilterOption(label:String,selected:Boolean,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=if(selected)MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface){Row(Modifier.padding(16.dp)){Text(label,Modifier.weight(1f));if(selected)Text("✓",color=MaterialTheme.colorScheme.primary)}}}
+@Composable private fun FilterOption(label:String,selected:Boolean,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(16.dp),color=if(selected)MaterialTheme.colorScheme.primary.copy(alpha=.12f) else androidx.compose.ui.graphics.Color.Transparent){Row(Modifier.padding(16.dp)){Text(label,Modifier.weight(1f));if(selected)Text("✓",color=MaterialTheme.colorScheme.primary)}}}

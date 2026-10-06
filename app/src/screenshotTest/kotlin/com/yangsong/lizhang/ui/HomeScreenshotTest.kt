@@ -2,6 +2,8 @@ package com.yangsong.lizhang.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +33,13 @@ import com.yangsong.lizhang.ui.viewmodel.SettingsUiState
 import com.yangsong.lizhang.ui.viewmodel.GiftEditorUiState
 
 @PreviewTest
-@Preview(name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "首页标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun HomeStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             HomeContent(
                 state = HomeUiState(
                     isLoading = false,
@@ -49,13 +53,14 @@ fun HomeStandardScreenshotTest() {
                 ),
                 onNavigate = {},
             )
-            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "首页空状态大字体",
     widthDp = 412,
     heightDp = 915,
@@ -65,22 +70,27 @@ fun HomeStandardScreenshotTest() {
 @Composable
 fun HomeEmptyLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             HomeContent(
                 state = HomeUiState(isLoading = false, year = 2026),
                 onNavigate = {},
             )
-            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(name = "联系人标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "联系人标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun ContactsStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             ContactsContent(
                 state = ContactsUiState(
                     contacts = listOf(
@@ -103,13 +113,14 @@ fun ContactsStandardScreenshotTest() {
                 onContactClick = {},
                 onAddContact = {},
             )
-            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "联系人空状态大字体",
     widthDp = 412,
     heightDp = 915,
@@ -119,7 +130,9 @@ fun ContactsStandardScreenshotTest() {
 @Composable
 fun ContactsEmptyLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             ContactsContent(
                 state = ContactsUiState(isLoading = false),
                 onQueryChange = {},
@@ -127,18 +140,20 @@ fun ContactsEmptyLargeTextScreenshotTest() {
                 onContactClick = {},
                 onAddContact = {},
             )
-            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Contacts, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(name = "记一笔标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "记一笔标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun AddGiftStandardScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
         AddGiftContent(
             state = GiftEditorUiState(
+                eventDate = 1790467200000L, // 固定测试日期，避免基线随运行日期漂移。
                 contactId = 1,
                 amount = "200",
                 contacts = listOf(Contact(id = 1, name = "王阿姨")),
@@ -158,7 +173,7 @@ fun AddGiftStandardScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "记一笔放弃填写确认", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "记一笔放弃填写确认", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun AddGiftDiscardConfirmationScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -170,7 +185,7 @@ fun AddGiftDiscardConfirmationScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "记一笔深色大字体",
     widthDp = 412,
     heightDp = 915,
@@ -182,6 +197,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
         AddGiftContent(
             state = GiftEditorUiState(
+                eventDate = 1790467200000L, // 固定测试日期，避免基线随运行日期漂移。
                 contactId = 1,
                 amount = "800",
                 contacts = listOf(Contact(id = 1, name = "王阿姨")),
@@ -199,7 +215,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "记一笔深色大字体空表单",
     widthDp = 412,
     heightDp = 915,
@@ -210,7 +226,7 @@ fun AddGiftDarkLargeTextScreenshotTest() {
 fun AddGiftDarkLargeEmptyScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
         AddGiftContent(
-            state = GiftEditorUiState(),
+            state = GiftEditorUiState(eventDate = 1790467200000L),
             onBack = {},
             onContactClick = {},
             onAmountChange = {},
@@ -224,11 +240,13 @@ fun AddGiftDarkLargeEmptyScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "我的标准状态", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun SettingsScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             SettingsContent(
                 SettingsUiState(),
                 onCsvExport = {},
@@ -236,17 +254,20 @@ fun SettingsScreenshotTest() {
                 onBackup = {},
                 onThemeModeChange = {},
             )
-            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(name = "我的深色模式", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "我的深色模式", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun SettingsDarkScreenshotTest() {
     LiZhangTheme(darkTheme = true) {
+        val hazeState = rememberHazeState()
         Box(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
             SettingsContent(
                 SettingsUiState(),
                 onCsvExport = {},
@@ -254,13 +275,14 @@ fun SettingsDarkScreenshotTest() {
                 onBackup = {},
                 onThemeModeChange = {},
             )
-            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter))
+            }
+            BottomNavBar(AppDestination.Settings, {}, Modifier.align(Alignment.BottomCenter), hazeState)
         }
     }
 }
 
 @PreviewTest
-@Preview(name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "创建加密备份密码", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun CreateEncryptedBackupScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -273,7 +295,7 @@ fun CreateEncryptedBackupScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
+@Preview(locale = "zh-rCN", name = "加密备份密码错误", widthDp = 412, heightDp = 915, showBackground = true)
 @Composable
 fun RestoreEncryptedBackupErrorScreenshotTest() {
     LiZhangTheme(darkTheme = false) {
@@ -288,7 +310,7 @@ fun RestoreEncryptedBackupErrorScreenshotTest() {
 }
 
 @PreviewTest
-@Preview(
+@Preview(locale = "zh-rCN",
     name = "隐私说明大字体",
     widthDp = 412,
     heightDp = 915,

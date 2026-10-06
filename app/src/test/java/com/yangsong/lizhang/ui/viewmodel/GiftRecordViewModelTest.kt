@@ -17,6 +17,52 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftRecordViewModelTest {
+    @Test fun `自定义事件新建编辑及标准事件清除`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val contacts = FakeContactRepository(sampleContact())
+        val editor = GiftEditorViewModel(repository, contacts, initialContactId = sampleContact().id)
+        editor.update { it.copy(amount = "100") }
+        editor.setCustomEvent("  升学宴  ")
+        assertEquals("升学宴", editor.uiState.value.customEventName)
+        assertEquals(EventType.OTHER, editor.uiState.value.eventType)
+        editor.save()
+        advanceUntilIdle()
+        assertEquals("升学宴", repository.createdRecord?.customEventName)
+        val existing = sampleRecord().copy(eventType = EventType.OTHER, customEventName = "升学宴")
+        val editRepository = FakeGiftRecordRepository(existing)
+        val edit = GiftEditorViewModel(editRepository, contacts, existing.id)
+        advanceUntilIdle()
+        assertEquals("升学宴", edit.uiState.value.customEventName)
+        edit.selectEvent(EventType.BIRTHDAY)
+        assertNull(edit.uiState.value.customEventName)
+        edit.setCustomEvent("开业")
+        edit.selectEvent(EventType.OTHER)
+        assertNull(edit.uiState.value.customEventName)
+        edit.setCustomEvent("百日宴")
+        edit.save()
+        advanceUntilIdle()
+        assertEquals("百日宴", editRepository.updatedRecord?.customEventName)
+    }
+
+    @Test fun `空白及超长自定义事件不改变选择`() = runTest(dispatcher) {
+        val editor = GiftEditorViewModel(FakeGiftRecordRepository(sampleRecord()), FakeContactRepository(sampleContact()))
+        editor.setCustomEvent("  ")
+        editor.setCustomEvent("长".repeat(21))
+        assertEquals(EventType.WEDDING, editor.uiState.value.eventType)
+        assertNull(editor.uiState.value.customEventName)
+        editor.setCustomEvent("毕业2026 ABC")
+        assertEquals("毕业2026 ABC", editor.uiState.value.customEventName)
+    }
+
+    @Test fun `最大长度按Unicode码点计算并保留首尾空格裁剪`() = runTest(dispatcher) {
+        val editor = GiftEditorViewModel(FakeGiftRecordRepository(sampleRecord()), FakeContactRepository(sampleContact()))
+        val accepted = "😀".repeat(20)
+        editor.setCustomEvent("  $accepted  ")
+        assertEquals(accepted, editor.uiState.value.customEventName)
+        editor.setCustomEvent("😀".repeat(21))
+        assertEquals("超长输入不可覆盖已接受名称", accepted, editor.uiState.value.customEventName)
+    }
+
     private val dispatcher = StandardTestDispatcher()
 
     @Before
@@ -114,6 +160,66 @@ class GiftRecordViewModelTest {
         assertNull(repository.createdRecord)
     }
 
+    @Test
+    fun `连续点击在调度前和成功后都只创建一次`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        viewModel.update { it.copy(amount = "100", eventDate = 1_753_200_000_000) }
+        viewModel.save()
+        assertTrue(viewModel.uiState.value.isSaving)
+        repeat(5) { viewModel.save() }
+        advanceUntilIdle()
+        assertEquals(1, repository.createCount)
+        assertTrue(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.isSaving)
+        viewModel.save()
+        advanceUntilIdle()
+        assertEquals(1, repository.createCount)
+    }
+
+    @Test
+    fun `失败保留全部字段消费反馈后可再次保存`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord()).apply { failCreate = true }
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        advanceUntilIdle()
+        viewModel.update { it.copy(amount = "288.88", eventDate = 1_753_200_000_000,
+            direction = GiftDirection.GIVEN, eventType = EventType.BIRTHDAY, notes = "测试备注") }
+        val before = viewModel.uiState.value
+        viewModel.save()
+        advanceUntilIdle()
+        val failed = viewModel.uiState.value
+        assertTrue(failed.operationFailed)
+        assertFalse(failed.isSaving)
+        assertFalse(failed.isSaved)
+        assertEquals(before, failed.copy(operationFailed = false))
+        viewModel.consumeOperationFailure()
+        assertFalse(viewModel.uiState.value.operationFailed)
+        repository.failCreate = false
+        viewModel.save()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.operationFailed)
+        assertEquals(2, repository.createCount)
+        assertEquals("测试备注", repository.createdRecord?.notes)
+    }
+
+    @Test
+    fun `保存等待期间不重复写入也不改变待保存内容`() = runTest(dispatcher) {
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val repository = FakeGiftRecordRepository(sampleRecord()).apply { beforeCreate = { gate.await() } }
+        val viewModel = GiftEditorViewModel(repository, FakeContactRepository(sampleContact()), initialContactId = 3)
+        viewModel.update { it.copy(amount = "100", eventDate = 1_753_200_000_000, notes = "保留内容") }
+        viewModel.save()
+        runCurrent()
+        viewModel.save()
+        viewModel.update { it.copy(amount = "200", notes = "误触修改") }
+        assertEquals("100", viewModel.uiState.value.amount)
+        assertEquals(1, repository.createCount)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(10000L, repository.createdRecord?.amountInCents)
+        assertEquals("保留内容", repository.createdRecord?.notes)
+    }
     private fun sampleContact() = Contact(id = 3, name = "测试联系人", phone = "13800000000")
 
     private fun sampleRecord() = GiftRecord(
@@ -131,6 +237,9 @@ class GiftRecordViewModelTest {
 private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordRepository {
     private val record = MutableStateFlow<GiftRecord?>(initial)
     private val item = MutableStateFlow<GiftRecordWithContact?>(GiftRecordWithContact(initial, "测试联系人"))
+    var createCount = 0
+    var failCreate = false
+    var beforeCreate: (suspend () -> Unit)? = null
     var updatedRecord: GiftRecord? = null
     var createdRecord: GiftRecord? = null
     var deletedRecord: GiftRecord? = null
@@ -144,6 +253,9 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
     override fun observeByContact(contactId: Long): Flow<List<GiftRecord>> = flowOf(record.value?.let(::listOf).orEmpty())
     override fun observeSearch(query: String): Flow<List<GiftRecordWithContact>> = flowOf(item.value?.let(::listOf).orEmpty())
     override suspend fun create(record: GiftRecord): Long {
+        createCount++
+        beforeCreate?.invoke()
+        if (failCreate) error("模拟保存失败")
         createdRecord = record
         return 1
     }
@@ -160,6 +272,10 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
 }
 
 private class FakeContactRepository(contact: Contact) : ContactRepository {
+    override suspend fun previewDelete(ids: Set<Long>): com.yangsong.lizhang.domain.model.ContactDeletePreview = error("此测试不执行批量删除")
+    override suspend fun deleteContacts(ids: Set<Long>, confirmed: com.yangsong.lizhang.domain.model.ContactDeletePreview): com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome = error("此测试不执行批量删除")
+    override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
+    override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     private val contacts = MutableStateFlow(listOf(contact))
     override fun observeContacts(query: String): Flow<List<Contact>> = contacts
     override fun observeContactSummaries(query: String): Flow<List<ContactLedgerSummary>> = flowOf(emptyList())

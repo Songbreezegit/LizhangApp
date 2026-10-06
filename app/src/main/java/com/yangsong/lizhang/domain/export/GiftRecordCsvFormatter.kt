@@ -1,7 +1,6 @@
 package com.yangsong.lizhang.domain.export
 
 import com.yangsong.lizhang.core.util.DateFormatter
-import com.yangsong.lizhang.domain.model.EventType
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import java.math.BigDecimal
@@ -10,18 +9,18 @@ import java.math.BigDecimal
 object GiftRecordCsvFormatter {
     private const val UTF8_BOM = "\uFEFF"
 
-    fun format(records: List<GiftRecordWithContact>): String = buildString {
+    fun format(labels: GiftExportLabels, records: List<GiftRecordWithContact>): String = buildString {
         append(UTF8_BOM)
-        appendLine("联系人,金额（元）,往来方向,事件类型,事件日期,备注,创建时间")
+        appendLine(labels.headers.joinToString(",", transform = ::escape))
         records.forEach { item ->
             val record = item.record
             appendLine(
                 listOf(
                     item.contactName,
                     BigDecimal.valueOf(record.amountInCents, 2).toPlainString(),
-                    record.direction.csvLabel(),
-                    record.eventType.csvLabel(),
-                    DateFormatter.format(record.eventDate),
+                    labels.directions.getValue(record.direction),
+                    record.eventExportLabel(labels),
+                    DateFormatter.format(record.eventDate, "yyyy-MM-dd"),
                     record.notes.orEmpty(),
                     DateFormatter.format(record.createdTime, "yyyy-MM-dd HH:mm:ss"),
                 ).joinToString(",", transform = ::escape),
@@ -34,17 +33,4 @@ object GiftRecordCsvFormatter {
         return if (requiresQuotes) "\"${value.replace("\"", "\"\"")}\"" else value
     }
 
-    private fun GiftDirection.csvLabel() = when (this) {
-        GiftDirection.RECEIVED -> "收到"
-        GiftDirection.GIVEN -> "送出"
-    }
-
-    private fun EventType.csvLabel() = when (this) {
-        EventType.WEDDING -> "婚礼"
-        EventType.FULL_MONTH -> "满月"
-        EventType.BIRTHDAY -> "生日"
-        EventType.HOUSEWARMING -> "乔迁"
-        EventType.FESTIVAL -> "节日"
-        EventType.OTHER -> "其他"
-    }
 }

@@ -1,4 +1,7 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.mapper.eventDisplayLabel
+import com.yangsong.lizhang.ui.component.AppScaffold
+import com.yangsong.lizhang.ui.component.GlassCard
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,12 +17,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
-import com.yangsong.lizhang.core.util.CurrencyFormatter
 import com.yangsong.lizhang.core.util.DateFormatter
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.mapper.labelRes
-import com.yangsong.lizhang.ui.theme.CoralStrong
-import com.yangsong.lizhang.ui.theme.MintPrimary
 import com.yangsong.lizhang.ui.viewmodel.GiftRecordDetailViewModel
 import com.yangsong.lizhang.domain.model.GiftDirection
 
@@ -37,7 +37,7 @@ fun GiftRecordDetailScreen(
     LaunchedEffect(state.isDeleted) { if (state.isDeleted) onBack() }
     LaunchedEffect(state.deleteFailed) { if (state.deleteFailed) snackbar.showSnackbar(deleteFailed) }
 
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.record_detail_title), onBack) },
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     ) { padding ->
@@ -55,19 +55,17 @@ fun GiftRecordDetailScreen(
                         label = stringResource(record.direction.labelRes()),
                         amount = record.amountInCents,
                         modifier = Modifier.fillMaxWidth(),
-                        tint = if (record.direction == GiftDirection.RECEIVED) CoralStrong else MintPrimary,
+                        tint = if (record.direction == GiftDirection.RECEIVED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                     )
-                    Card(
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(2.dp),
+                    GlassCard(
+                        shape = RoundedCornerShape(GlassTokens.Radius),
                     ) {
                         Column(Modifier.padding(horizontal = 18.dp)) {
                             DetailRow(stringResource(R.string.field_contact), item.contactName)
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            DetailRow(stringResource(R.string.field_event), stringResource(record.eventType.labelRes()))
+                            DetailRow(stringResource(R.string.field_event), record.eventDisplayLabel())
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                            DetailRow(stringResource(R.string.field_date), DateFormatter.format(record.eventDate))
+                            DetailRow(stringResource(R.string.field_date), com.yangsong.lizhang.ui.mapper.displayDate(record.eventDate))
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             DetailRow(stringResource(R.string.field_direction), stringResource(record.direction.labelRes()))
                             if (!record.notes.isNullOrBlank()) {

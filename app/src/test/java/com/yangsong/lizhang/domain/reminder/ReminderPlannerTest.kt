@@ -1,149 +1,109 @@
 package com.yangsong.lizhang.domain.reminder
 
-import com.yangsong.lizhang.domain.model.EventType
-import com.yangsong.lizhang.domain.model.GiftDirection
-import com.yangsong.lizhang.domain.model.GiftRecord
-import com.yangsong.lizhang.domain.model.GiftRecordWithContact
-import java.util.Calendar
-import java.util.TimeZone
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import java.time.*
+import org.junit.Assert.*
 import org.junit.Test
 
 class ReminderPlannerTest {
-    private val utc = TimeZone.getTimeZone("UTC")
+    private val utc = ZoneId.of("UTC")
+    private fun time(value: String) = Instant.parse(value).toEpochMilli()
+    private val now = time("2026-10-03T10:00:00Z")
+    private fun reminder(date: String, annually: Boolean = false) = IndependentReminder(1, "测试安排", LocalDate.parse(date), annually)
+    private fun next(value: IndependentReminder, settings: ReminderSettings = ReminderSettings(), at: Long = now, zone: ZoneId = utc) =
+        IndependentReminderPlanner.next(value, settings, at, zone)
 
-    @Test
-    fun `历史记录按月日生成今年上午九点提醒`() {
-        val now = time(2026, 7, 21, 10)
-        val record = item(1, time(2024, 7, 25, 0))
-
-        val planned = ReminderPlanner.plan(listOf(record), now, timeZone = utc)
-
-        assertEquals(1, planned.size)
-        assertEquals(time(2026, 7, 25, 9), planned.single().triggerAt)
+    @Test fun 今天及过去日期不能保存且未来日期默认一次() {
+        assertFalse(IndependentReminderPlanner.canSave(LocalDate.parse("2026-10-03"), now, utc))
+        assertFalse(IndependentReminderPlanner.canSave(LocalDate.parse("2026-10-02"), now, utc))
+        assertTrue(IndependentReminderPlanner.canSave(LocalDate.parse("2026-10-04"), now, utc))
+        assertFalse(reminder("2026-10-04").annually)
+        assertEquals(time("2026-10-04T09:00:00Z"), next(reminder("2026-10-04"))!!.triggerAt)
+    }
+    @Test fun 错过当天时间不补发且一次提醒不自动变年度() {
+        assertNull(next(reminder("2026-10-03")))
+        assertNull(next(reminder("2024-10-04")))
+        assertNull(next(reminder("2026-10-04"), ReminderSettings(advanceDays = 1)))
+    }
+    @Test fun 已通知及停用的提醒不再发送() {
+        val value = reminder("2026-10-04")
+        assertNull(next(value.copy(lastNotifiedDate = value.date)))
+        assertNull(next(value.copy(enabled = false)))
+        assertEquals(LocalDate.parse("2027-10-04"), next(value.copy(annually = true, lastNotifiedDate = value.date))!!.occurrence)
+    }
+    @Test fun 年度重复错过提前时刻后安排下一年() {
+        assertEquals(LocalDate.parse("2027-10-04"), next(reminder("2026-10-04", true), ReminderSettings(advanceDays = 1))!!.occurrence)
+    }
+    @Test fun 未来年份不能提前按今年同月日发送() {
+        assertEquals(LocalDate.parse("2028-10-04"), next(reminder("2028-10-04", true))!!.occurrence)
+    }
+    @Test fun 闰日年度提醒使用非闰年二月最后一天() {
+        val value = reminder("2024-02-29", true)
+        assertEquals(LocalDate.parse("2027-02-28"), next(value)!!.occurrence)
+        assertEquals(LocalDate.parse("2028-02-29"), next(value, at = time("2028-02-01T00:00:00Z"))!!.occurrence)
+    }
+    @Test fun 提前提醒跨月跨年并使用指定时分() {
+        assertEquals(time("2026-12-27T08:30:00Z"), next(reminder("2027-01-03"), ReminderSettings(advanceDays = 7, hour = 8, minute = 30))!!.triggerAt)
+        assertEquals(time("2026-10-30T09:00:00Z"), next(reminder("2026-11-02"), ReminderSettings(advanceDays = 3))!!.triggerAt)
+    }
+    @Test fun 系统时区与夏令时使用本地日期时间() {
+        val zone = ZoneId.of("America/New_York")
+        val plan = next(reminder("2027-03-14"), ReminderSettings(hour = 2, minute = 30), zone = zone)!!
+        assertEquals(time("2027-03-14T07:30:00Z"), plan.triggerAt)
+        assertFalse(IndependentReminderPlanner.canSave(LocalDate.parse("2026-10-03"), time("2026-10-03T23:00:00Z"), ZoneId.of("Asia/Shanghai")))
+    }
+    @Test fun 不支持的天数和时分被拒绝() {
+        assertTrue(runCatching { ReminderSettings(advanceDays = 2) }.isFailure)
+        assertTrue(runCatching { ReminderSettings(hour = 24) }.isFailure)
+        assertTrue(runCatching { ReminderSettings(minute = 60) }.isFailure)
     }
 
-    @Test
-    fun `今天的历史日期在九点后开启时一分钟后提醒`() {
-        val now = time(2026, 7, 21, 10)
-        val record = item(2, time(2024, 7, 21, 0))
-
-        val planned = ReminderPlanner.plan(listOf(record), now, timeZone = utc)
-
-        assertEquals(now + 60_000, planned.single().triggerAt)
-    }
-
-    @Test
-    fun `闰日记录在非闰年调整为二月最后一天`() {
-        val now = time(2025, 2, 1, 8)
-        val record = item(3, time(2024, 2, 29, 0))
-
-        val planned = ReminderPlanner.plan(listOf(record), now, timeZone = utc)
-
-        assertEquals(time(2025, 2, 28, 9), planned.single().triggerAt)
-    }
-
-    @Test
-    fun `尚未发生的未来记录不会提前按年度日期提醒`() {
-        val now = time(2026, 7, 21, 10)
-        val record = item(4, time(2027, 7, 25, 0))
-
-        val planned = ReminderPlanner.plan(listOf(record), now, timeZone = utc)
-
-        assertTrue(planned.isEmpty())
-    }
-
-    @Test
-    fun `提前一天提醒会在事件前一天触发`() {
-        val now = time(2026, 7, 21, 10)
-        val record = item(5, time(2024, 7, 25, 0))
-
-        val planned = ReminderPlanner.plan(
-            listOf(record),
-            now,
-            timeZone = utc,
-            advanceDays = 1,
-            reminderHour = 8,
-            reminderMinute = 30,
-        )
-
-        assertEquals(time(2026, 7, 24, 8, 30), planned.single().triggerAt)
-        assertEquals(1, planned.single().advanceDays)
-    }
-
-    @Test
-    fun `跨年事件的提前提醒落在上一年`() {
-        val now = time(2026, 12, 1, 10)
-        val record = item(6, time(2024, 1, 1, 0))
-
-        val planned = ReminderPlanner.plan(
-            listOf(record),
-            now,
-            timeZone = utc,
-            advanceDays = 1,
-        )
-
-        assertEquals(time(2026, 12, 31, 9), planned.single().triggerAt)
-    }
-
-    @Test
-    fun `提前三天提醒可以跨月计算`() {
-        val now = time(2026, 7, 20, 10)
-        val record = item(7, time(2024, 8, 2, 0))
-
-        val planned = ReminderPlanner.plan(
-            listOf(record),
-            now,
-            timeZone = utc,
-            advanceDays = 3,
-            reminderHour = 8,
-        )
-
-        assertEquals(time(2026, 7, 30, 8), planned.single().triggerAt)
-        assertEquals(3, planned.single().advanceDays)
-    }
-
-    @Test
-    fun `提前七天提醒可以跨年计算`() {
-        val now = time(2026, 12, 1, 10)
-        val record = item(8, time(2024, 1, 3, 0))
-
-        val planned = ReminderPlanner.plan(
-            listOf(record),
-            now,
-            timeZone = utc,
-            advanceDays = 7,
-        )
-
-        assertEquals(time(2026, 12, 27, 9), planned.single().triggerAt)
-        assertEquals(7, planned.single().advanceDays)
-    }
-
-    @Test
-    fun `不支持的提前天数会被拒绝`() {
-        val result = runCatching {
-            ReminderSettings(advanceDays = 2)
+    @Test fun 原始日期已过的年度提醒仍可编辑名称与启停() {
+        val existing = reminder("2026-12-20", true).copy(lastNotifiedDate = LocalDate.parse("2027-12-20"))
+        val at = time("2027-12-21T10:00:00Z")
+        for (enabled in listOf(true, false, true)) {
+            val edited = existing.copy(title = "修改后的安排", enabled = enabled)
+            assertTrue(IndependentReminderPlanner.canSave(edited, existing, now = at, zone = utc))
+            assertEquals(LocalDate.parse("2028-12-20"), next(edited.copy(enabled = true), at = at)!!.occurrence)
         }
-
-        assertTrue(result.isFailure)
     }
 
-    private fun item(id: Long, eventDate: Long) = GiftRecordWithContact(
-        record = GiftRecord(
-            id = id,
-            contactId = id,
-            amountInCents = 20_000,
-            eventType = EventType.BIRTHDAY,
-            eventDate = eventDate,
-            direction = GiftDirection.RECEIVED,
-        ),
-        contactName = "王阿姨",
-    )
+    @Test fun 新建年度及过期一次提醒不能绕过未来日期校验() {
+        val expired = reminder("2026-10-02")
+        assertFalse(IndependentReminderPlanner.canSave(expired, expired, now = now, zone = utc))
+        assertFalse(IndependentReminderPlanner.canSave(expired.copy(annually = true), expired, now = now, zone = utc))
+        assertFalse(IndependentReminderPlanner.canSave(expired.copy(id = 0, annually = true), now = now, zone = utc))
+        val annual = expired.copy(annually = true)
+        assertFalse(IndependentReminderPlanner.canSave(annual.copy(annually = false), annual, now = now, zone = utc))
+        assertFalse(IndependentReminderPlanner.canSave(annual.copy(id = 2), annual, now = now, zone = utc))
+        assertTrue(IndependentReminderPlanner.canSave(reminder("2026-10-04", true).copy(id = 0), now = now, zone = utc))
+    }
 
-    private fun time(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0): Long =
-        Calendar.getInstance(utc).apply {
-            clear()
-            set(year, month - 1, day, hour, minute, 0)
-        }.timeInMillis
+    @Test fun 元旦提前七天在年底寻找后年有效时刻() {
+        val plan = next(reminder("2026-01-01", true), ReminderSettings(advanceDays = 7), time("2026-12-31T10:00:00Z"))!!
+        assertEquals(LocalDate.parse("2028-01-01"), plan.occurrence)
+        assertEquals(time("2027-12-25T09:00:00Z"), plan.triggerAt)
+    }
+
+    @Test fun 一月二日提前三天及跨年后均寻找未来通知() {
+        val value = reminder("2026-01-02", true)
+        for (at in listOf("2026-12-31T10:00:00Z", "2027-01-01T10:00:00Z")) {
+            val plan = next(value, ReminderSettings(advanceDays = 3), time(at))!!
+            assertEquals(LocalDate.parse("2028-01-02"), plan.occurrence)
+            assertEquals(time("2027-12-30T09:00:00Z"), plan.triggerAt)
+        }
+    }
+
+    @Test fun 跨年年度提醒不会重复已通知的日期() {
+        val value = reminder("2026-01-01", true).copy(lastNotifiedDate = LocalDate.parse("2028-01-01"))
+        val plan = next(value, ReminderSettings(advanceDays = 7), time("2027-12-25T09:00:00Z"))!!
+        assertEquals(LocalDate.parse("2029-01-01"), plan.occurrence)
+        assertEquals(time("2028-12-25T09:00:00Z"), plan.triggerAt)
+    }
+
+    @Test fun 闰日错过提前时刻后仍保持月末规则() {
+        val value = reminder("2024-02-29", true)
+        val plan = next(value, ReminderSettings(advanceDays = 7), time("2028-02-28T10:00:00Z"))!!
+        assertEquals(LocalDate.parse("2029-02-28"), plan.occurrence)
+        assertEquals(time("2029-02-21T09:00:00Z"), plan.triggerAt)
+    }
 }

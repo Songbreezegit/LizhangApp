@@ -8,7 +8,7 @@ import com.yangsong.lizhang.data.local.dao.GiftRecordDao
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.local.entity.GiftRecordEntity
 
-const val LIZHANG_DATABASE_VERSION = 1
+const val LIZHANG_DATABASE_VERSION = 2
 
 @Database(
     entities = [ContactEntity::class, GiftRecordEntity::class],
@@ -19,4 +19,11 @@ const val LIZHANG_DATABASE_VERSION = 1
 abstract class LiZhangDatabase : RoomDatabase() {
     abstract fun contactDao(): ContactDao
     abstract fun giftRecordDao(): GiftRecordDao
+}
+
+/** 仅增加可空字段，保留所有联系人和礼金记录。 */
+val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE gift_records ADD COLUMN customEventName TEXT DEFAULT NULL")
+    }
 }

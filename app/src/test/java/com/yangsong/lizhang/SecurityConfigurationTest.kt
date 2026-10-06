@@ -7,6 +7,14 @@ import org.junit.Test
 
 class SecurityConfigurationTest {
     @Test
+    fun `通讯录仅声明读取权限且仍禁用联网权限`() {
+        val manifest = File(projectRoot(), "app/src/main/AndroidManifest.xml").readText()
+        assertTrue(manifest.contains("android.permission.READ_CONTACTS"))
+        assertFalse(manifest.contains("android.permission.WRITE_CONTACTS"))
+        assertFalse(manifest.contains("android.permission.INTERNET"))
+    }
+
+    @Test
     fun `源码资源文档中不存在疑似明文令牌`() {
         val project = projectRoot()
         val roots = listOf(File(project, "app/src"), File(project, "docs"), File(project, "README.md"))

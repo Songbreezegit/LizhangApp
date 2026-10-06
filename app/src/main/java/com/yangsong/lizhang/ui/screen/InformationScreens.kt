@@ -1,4 +1,7 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.AppScaffold
+import com.yangsong.lizhang.ui.component.GlassTokens
+import com.yangsong.lizhang.ui.component.GlassCard
 
 import android.content.Intent
 import android.provider.Settings
@@ -13,8 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -102,7 +103,7 @@ private fun InformationPage(
     introduction: String? = null,
     footer: (@Composable () -> Unit)? = null,
 ) {
-    Scaffold(
+    AppScaffold(
         topBar = { AppTopBar(title, onBack) },
     ) { padding ->
         LazyColumn(
@@ -133,11 +134,10 @@ private fun InformationPage(
 
 @Composable
 private fun InformationCard(section: InformationSection) {
-    Card(
+    GlassCard(
         Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(GlassTokens.Radius),
+
     ) {
         Column(
             Modifier.padding(18.dp),
@@ -149,7 +149,9 @@ private fun InformationCard(section: InformationSection) {
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                stringResource(section.body),
+                if (section.body == R.string.settings_version) {
+                    stringResource(section.body, com.yangsong.lizhang.BuildConfig.VERSION_NAME)
+                } else stringResource(section.body),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -10,6 +10,8 @@ import com.yangsong.lizhang.domain.repository.ContactRepository
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import com.yangsong.lizhang.domain.reminder.ReminderSettings
+import com.yangsong.lizhang.domain.reminder.IndependentReminder
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.TimeZone
 import kotlinx.coroutines.Dispatchers
@@ -113,27 +115,14 @@ class HomeAndContactsViewModelTest {
     }
 
     @Test
-    fun `提醒页展示未来三十天年度日期并同步开关状态`() = runTest(dispatcher) {
-        val utc = TimeZone.getTimeZone("UTC")
-        val now = Calendar.getInstance(utc).apply {
-            clear()
-            set(2026, Calendar.JULY, 21, 10, 0, 0)
-        }.timeInMillis
-        val eventDate = Calendar.getInstance(utc).apply {
-            clear()
-            set(2024, Calendar.JULY, 25, 0, 0, 0)
-        }.timeInMillis
+    fun `提醒页展示独立提醒并同步开关状态`() = runTest(dispatcher) {
         val reminders = TestReminderRepository()
-        val viewModel = NotificationsViewModel(
-            TestGiftRepository(listOf(record(20, 20_000, GiftDirection.RECEIVED, eventDate))),
-            reminders,
-            now = { now },
-            timeZone = utc,
-        )
+        reminders.reminders.value = listOf(IndependentReminder(20, "测试安排", LocalDate.now().plusDays(3)))
+        val viewModel = NotificationsViewModel(reminders)
         val collection = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
 
         advanceUntilIdle()
-        assertEquals(listOf(20L), viewModel.uiState.value.upcoming.map { it.record.id })
+        assertEquals(listOf(20L), viewModel.uiState.value.reminders.map { it.id })
         assertFalse(viewModel.uiState.value.remindersEnabled)
 
         viewModel.setRemindersEnabled(true)
@@ -191,14 +180,23 @@ class HomeAndContactsViewModelTest {
 
 private class TestReminderRepository : ReminderRepository {
     override val settings = MutableStateFlow(ReminderSettings())
+    override val reminders = MutableStateFlow<List<IndependentReminder>>(emptyList())
     override fun setEnabled(enabled: Boolean) { settings.value = settings.value.copy(enabled = enabled) }
     override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) {
         settings.value = settings.value.copy(advanceDays = advanceDays, hour = hour, minute = minute)
     }
-    override fun synchronize(records: List<GiftRecordWithContact>) = Unit
+    override fun save(reminder: IndependentReminder) { reminders.value = reminders.value + reminder }
+    override fun delete(id: Long) { reminders.value = reminders.value.filterNot { it.id == id } }
+    override fun setReminderEnabled(id: Long, enabled: Boolean) = Unit
+    override fun markNotified(id: Long, occurrence: LocalDate) = Unit
+    override fun synchronize() = Unit
 }
 
 private class TestContactRepository(private val summaries: List<ContactLedgerSummary>) : ContactRepository {
+    override suspend fun previewDelete(ids: Set<Long>): com.yangsong.lizhang.domain.model.ContactDeletePreview = error("此测试不执行批量删除")
+    override suspend fun deleteContacts(ids: Set<Long>, confirmed: com.yangsong.lizhang.domain.model.ContactDeletePreview): com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome = error("此测试不执行批量删除")
+    override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
+    override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override fun observeContacts(query: String): Flow<List<Contact>> =
         flowOf(summaries.map { it.contact }.filter { it.name.contains(query, ignoreCase = true) })
 

@@ -1,4 +1,27 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.LanguagePicker
+import com.yangsong.lizhang.ui.component.LocalAppearanceActions
+import com.yangsong.lizhang.ui.component.LocalPendingDark
+import com.yangsong.lizhang.ui.component.LocalCurrentLanguage
+import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.runtime.DisposableEffect
+import com.yangsong.lizhang.ui.mapper.giftExportLabels
+import com.yangsong.lizhang.ui.component.currentAppLanguage
+import com.yangsong.lizhang.ui.component.displayName
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.ChevronRight
+import com.yangsong.lizhang.ui.component.glassSwitchColors
+import com.yangsong.lizhang.ui.component.AppScaffold
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.yangsong.lizhang.ui.component.GlassTokens
+import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.GlassButton
+import com.yangsong.lizhang.ui.component.GlassCard
+import com.yangsong.lizhang.ui.component.GlassDialog
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,9 +34,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.yangsong.lizhang.ui.component.AppearanceListRestoration
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
@@ -24,27 +53,21 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.TableView
 import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,7 +82,6 @@ import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.PageIllustration
-import com.yangsong.lizhang.ui.component.SectionHeader
 import com.yangsong.lizhang.ui.component.SettingsRow
 import com.yangsong.lizhang.ui.viewmodel.ExportDocument
 import com.yangsong.lizhang.ui.viewmodel.ExportFormat
@@ -87,6 +109,18 @@ fun SettingsScreen(
     var showBackupActions by remember { mutableStateOf(false) }
     var showCreateBackupPassword by remember { mutableStateOf(false) }
     var showThemeOptions by remember { mutableStateOf(false) }
+    val transition = LocalAppearanceActions.current
+    val changeTheme: (AppThemeMode) -> Unit = { mode ->
+        if (mode != state.themeMode) {
+            if (transition != null) transition.colors { viewModel.setThemeMode(mode) }
+            else viewModel.setThemeMode(mode)
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            if ((context as? android.app.Activity)?.isChangingConfigurations != true) transition?.cancel()
+        }
+    }
 
     fun saveDocument(uri: android.net.Uri?, format: ExportFormat) {
         val document = documentToSave?.takeIf { it.format == format }
@@ -174,8 +208,8 @@ fun SettingsScreen(
 
     SettingsContent(
         state = state,
-        onCsvExport = viewModel::prepareCsvExport,
-        onExcelExport = viewModel::prepareExcelExport,
+        onCsvExport = { viewModel.prepareCsvExport(context.giftExportLabels()) },
+        onExcelExport = { viewModel.prepareExcelExport(context.giftExportLabels()) },
         onBackup = { showBackupActions = true },
         onThemeModeChange = viewModel::setThemeMode,
         onThemeOptions = { showThemeOptions = true },
@@ -186,13 +220,13 @@ fun SettingsScreen(
     )
 
     if (showBackupActions) {
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { showBackupActions = false },
             title = { Text(stringResource(R.string.settings_backup)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.settings_backup_description))
-                    Button(
+                    GlassButton(
                         onClick = {
                             showBackupActions = false
                             showCreateBackupPassword = true
@@ -201,7 +235,7 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.settings_backup_create_encrypted))
                     }
-                    TextButton(
+                    GlassTextButton(
                         onClick = {
                             showBackupActions = false
                             viewModel.prepareBackupExport()
@@ -210,7 +244,7 @@ fun SettingsScreen(
                     ) {
                         Text(stringResource(R.string.settings_backup_create_plain))
                     }
-                    TextButton(
+                    GlassTextButton(
                         onClick = {
                             showBackupActions = false
                             openBackup.launch(arrayOf(BackupArchiveCodec.MIME_TYPE))
@@ -223,7 +257,7 @@ fun SettingsScreen(
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showBackupActions = false }) {
+                GlassTextButton(onClick = { showBackupActions = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -252,18 +286,18 @@ fun SettingsScreen(
     }
 
     if (showThemeOptions) {
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { showThemeOptions = false },
             title = { Text(stringResource(R.string.settings_theme)) },
             text = {
-                Column {
-                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, viewModel::setThemeMode)
-                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, viewModel::setThemeMode)
-                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, viewModel::setThemeMode)
+                Column(Modifier.selectableGroup()) {
+                    ThemeModeOption(AppThemeMode.SYSTEM, state.themeMode, changeTheme)
+                    ThemeModeOption(AppThemeMode.LIGHT, state.themeMode, changeTheme)
+                    ThemeModeOption(AppThemeMode.DARK, state.themeMode, changeTheme)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showThemeOptions = false }) {
+                GlassTextButton(onClick = { showThemeOptions = false }) {
                     Text(stringResource(R.string.action_done))
                 }
             },
@@ -271,14 +305,14 @@ fun SettingsScreen(
     }
 
     state.pendingRestore?.let { pending ->
-        AlertDialog(
+        GlassDialog(
             onDismissRequest = { if (!state.isRestoringBackup) viewModel.cancelRestore() },
             title = { Text(stringResource(R.string.settings_backup_restore_title)) },
             text = {
                 Text(
                     stringResource(
                         R.string.settings_backup_restore_message,
-                        DateFormatter.format(pending.summary.createdTime, "yyyy-MM-dd HH:mm"),
+                        com.yangsong.lizhang.ui.mapper.displayDateTime(pending.summary.createdTime),
                         pending.summary.contactCount,
                         pending.summary.giftRecordCount,
                         pending.summary.sourceDatabaseVersion,
@@ -286,7 +320,7 @@ fun SettingsScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = viewModel::confirmRestore, enabled = !state.isRestoringBackup) {
+                GlassButton(onClick = viewModel::confirmRestore, enabled = !state.isRestoringBackup) {
                     if (state.isRestoringBackup) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
@@ -295,7 +329,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::cancelRestore, enabled = !state.isRestoringBackup) {
+                GlassTextButton(onClick = viewModel::cancelRestore, enabled = !state.isRestoringBackup) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -315,7 +349,7 @@ fun CreateEncryptedBackupDialog(
     val passwordTooShort = attempted && password.length < BackupEncryptionCodec.MIN_PASSWORD_LENGTH
     val confirmationMismatch = attempted && password != confirmation
 
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = { if (!isPreparing) onDismiss() },
         title = { Text(stringResource(R.string.settings_backup_password_create_title)) },
         text = {
@@ -327,9 +361,7 @@ fun CreateEncryptedBackupDialog(
                     label = stringResource(R.string.settings_backup_password),
                     isError = passwordTooShort,
                     supportingText = if (passwordTooShort) {
-                        stringResource(
-                            R.string.settings_backup_password_too_short,
-                            BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
+                        androidx.compose.ui.res.pluralStringResource(R.plurals.settings_backup_password_too_short, BackupEncryptionCodec.MIN_PASSWORD_LENGTH, BackupEncryptionCodec.MIN_PASSWORD_LENGTH,
                         )
                     } else null,
                 )
@@ -345,7 +377,7 @@ fun CreateEncryptedBackupDialog(
             }
         },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = {
                     attempted = true
                     if (password.length >= BackupEncryptionCodec.MIN_PASSWORD_LENGTH &&
@@ -360,7 +392,7 @@ fun CreateEncryptedBackupDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isPreparing) {
+            GlassTextButton(onClick = onDismiss, enabled = !isPreparing) {
                 Text(stringResource(R.string.action_cancel))
             }
         },
@@ -376,7 +408,7 @@ fun RestoreBackupPasswordDialog(
     onDismiss: () -> Unit,
 ) {
     var password by remember(fileIdentity) { mutableStateOf("") }
-    AlertDialog(
+    GlassDialog(
         onDismissRequest = { if (!isReading) onDismiss() },
         title = { Text(stringResource(R.string.settings_backup_password_restore_title)) },
         text = {
@@ -394,7 +426,7 @@ fun RestoreBackupPasswordDialog(
             }
         },
         confirmButton = {
-            Button(
+            GlassButton(
                 onClick = { if (password.isNotEmpty()) onConfirm(password) },
                 enabled = password.isNotEmpty() && !isReading,
             ) {
@@ -406,7 +438,7 @@ fun RestoreBackupPasswordDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isReading) {
+            GlassTextButton(onClick = onDismiss, enabled = !isReading) {
                 Text(stringResource(R.string.action_cancel))
             }
         },
@@ -448,40 +480,58 @@ fun SettingsContent(
     onPrivacy: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
-    Scaffold(
+    val transition = LocalAppearanceActions.current
+    val effectiveDark = LocalPendingDark.current ?: LocalEffectiveDarkTheme.current
+    var switchCenter by remember { mutableStateOf(Offset.Zero) }
+    val toggleDark: () -> Unit = {
+        val target = !effectiveDark
+        val change = { onThemeModeChange(if (target) AppThemeMode.DARK else AppThemeMode.LIGHT) }
+        if (transition != null) transition.circular(switchCenter, target, change) else change()
+    }
+    var showLanguagePicker by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    AppearanceListRestoration(listState)
+    if (showLanguagePicker) LanguagePicker { showLanguagePicker = false }
+    AppScaffold(
         topBar = { AppTopBar(stringResource(R.string.nav_settings)) },
         snackbarHost = snackbarHost,
     ) { padding ->
         LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
+            Modifier.fillMaxSize().padding(padding).testTag("设置列表"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 124.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            state = listState,
         ) {
             item { PageIllustration(R.drawable.page_settings_cat, Modifier.fillMaxWidth().height(190.dp)) }
             item {
-                SettingsGroup(stringResource(R.string.settings_data)) {
+                SettingsGroup {
                     SettingsRow(
                         Icons.Outlined.Backup,
                         stringResource(R.string.settings_backup),
                         onClick = onBackup,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (
                             state.isPreparingBackup || state.isReadingBackup || state.isRestoringBackup
                         ) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.TableView,
                         stringResource(R.string.settings_excel),
                         onClick = onExcelExport,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (state.isPreparingExcel) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.Description,
                         stringResource(R.string.settings_csv),
                         onClick = onCsvExport,
+                        accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (state.isPreparingCsv) {
                             { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
                         } else null,
@@ -489,7 +539,21 @@ fun SettingsContent(
                 }
             }
             item {
-                SettingsGroup(stringResource(R.string.settings_display)) {
+                SettingsGroup {
+                    SettingsRow(
+                        Icons.Outlined.Language,
+                        stringResource(R.string.language),
+                        onClick = { showLanguagePicker = true },
+                        trailing = {
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text((LocalCurrentLanguage.current ?: currentAppLanguage()).displayName(), Modifier.widthIn(max = 80.dp),
+                                    style = MaterialTheme.typography.bodyMedium)
+                                androidx.compose.material3.Icon(Icons.Outlined.ChevronRight, null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     val themeDescription = when (state.themeMode) {
                         AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
                         AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
@@ -501,24 +565,23 @@ fun SettingsContent(
                         themeDescription,
                         onClick = onThemeOptions,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
                         themeDescription,
-                        onClick = {
-                            onThemeModeChange(
-                                if (state.themeMode == AppThemeMode.DARK) AppThemeMode.LIGHT else AppThemeMode.DARK,
-                            )
-                        },
+                        onClick = toggleDark,
                         trailing = {
-                            Switch(
-                                checked = state.themeMode == AppThemeMode.DARK,
-                                onCheckedChange = {
-                                    onThemeModeChange(if (it) AppThemeMode.DARK else AppThemeMode.LIGHT)
+                            Switch(colors = glassSwitchColors(),
+                                modifier = Modifier.onGloballyPositioned {
+                                    switchCenter = it.positionInWindow() + Offset(it.size.width / 2f, it.size.height / 2f)
                                 },
+                                checked = effectiveDark,
+                                onCheckedChange = { toggleDark() },
                             )
                         },
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.TextFields,
                         stringResource(R.string.settings_font),
@@ -528,13 +591,14 @@ fun SettingsContent(
                 }
             }
             item {
-                SettingsGroup(stringResource(R.string.settings_about_group)) {
+                SettingsGroup {
                     SettingsRow(
                         Icons.Outlined.Info,
                         stringResource(R.string.settings_about),
-                        stringResource(R.string.settings_version),
+                        stringResource(R.string.settings_version, com.yangsong.lizhang.BuildConfig.VERSION_NAME),
                         onClick = onAbout,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         Icons.Outlined.PrivacyTip,
                         stringResource(R.string.settings_privacy),
@@ -559,9 +623,10 @@ private fun ThemeModeOption(
         AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
     }
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().selectable(selected = selected == mode, role = Role.RadioButton,
+            onClick = { onSelect(mode) }).padding(vertical = 4.dp),
     ) {
-        RadioButton(selected = selected == mode, onClick = { onSelect(mode) })
+        RadioButton(selected = selected == mode, onClick = null, modifier = Modifier.size(48.dp))
         Text(label, Modifier.padding(top = 12.dp))
     }
 }
@@ -581,15 +646,11 @@ private fun InputStream.readBackupBytes(): ByteArray {
 }
 
 @Composable
-private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column {
-        SectionHeader(title)
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp),
-        ) {
-            Column(Modifier.padding(horizontal = 16.dp), content = content)
-        }
+private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    GlassCard(
+        modifier = Modifier.testTag("设置功能分组"),
+        shape = RoundedCornerShape(GlassTokens.Radius),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp), content = content)
     }
 }

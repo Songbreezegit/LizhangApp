@@ -1,0 +1,36 @@
+package com.yangsong.lizhang.domain.backup
+import com.yangsong.lizhang.fixtures.chineseExportLabels
+
+import com.yangsong.lizhang.domain.model.*
+import com.yangsong.lizhang.domain.export.*
+import org.junit.Assert.*
+import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
+
+class CustomEventDisplayTest {
+    private val record = GiftRecord(contactId = 1, amountInCents = 10000, eventType = EventType.OTHER,
+        eventDate = 1000, direction = GiftDirection.GIVEN, customEventName = "升学宴")
+    @Test fun 自定义与预设名称统一且统计枚举稳定() {
+        assertEquals("升学宴", eventDisplayText(record.eventType, record.customEventName) { error("不应读取标准名称") })
+        assertEquals("标签-OTHER", eventDisplayText(EventType.OTHER, " ") { "标签-$it" })
+        assertEquals("标签-BIRTHDAY", eventDisplayText(EventType.BIRTHDAY, "升学宴") { "标签-$it" })
+        assertEquals(EventType.OTHER, record.eventType)
+    }
+    @Test fun CSV与Excel导出真实自定义名称() {
+        val items = listOf(GiftRecordWithContact(record, "示例联系人"))
+        assertTrue(GiftRecordCsvFormatter.format(chineseExportLabels, items).contains("升学宴"))
+        val bytes = GiftRecordXlsxFormatter.format(chineseExportLabels, items)
+        ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+            var found = false
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                if (entry.name == "xl/worksheets/sheet1.xml") {
+                    assertTrue(zip.readBytes().toString(Charsets.UTF_8).contains("升学宴"))
+                    found = true
+                }
+            }
+            assertTrue(found)
+        }
+    }
+}

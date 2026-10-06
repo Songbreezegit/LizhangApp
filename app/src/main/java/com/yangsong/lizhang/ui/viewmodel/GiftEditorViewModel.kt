@@ -24,6 +24,7 @@ data class GiftEditorUiState(
     val contactId: Long? = null,
     val amount: String = "",
     val eventType: EventType = EventType.WEDDING,
+    val customEventName: String? = null,
     val eventDate: Long = Calendar.getInstance().startOfDay(),
     val direction: GiftDirection = GiftDirection.RECEIVED,
     val notes: String = "",
@@ -84,6 +85,7 @@ class GiftEditorViewModel(
     }
 
     fun update(transform: (GiftEditorUiState) -> GiftEditorUiState) {
+        if (mutableUiState.value.isSaving || mutableUiState.value.isSaved) return
         mutableUiState.update {
             transform(it).copy(
                 validationError = null,
@@ -92,6 +94,14 @@ class GiftEditorViewModel(
                 hasUnsavedChanges = true,
             )
         }
+    }
+
+    fun selectEvent(type: EventType) = update { it.copy(eventType = type, customEventName = null) }
+
+    fun setCustomEvent(name: String) {
+        val normalized = name.trim()
+        if (normalized.isEmpty() || normalized.codePointCount(0, normalized.length) > MAX_CUSTOM_EVENT_NAME_LENGTH) return
+        update { it.copy(eventType = EventType.OTHER, customEventName = normalized) }
     }
 
     fun createContact(name: String, phone: String, relationship: String) {
@@ -121,8 +131,13 @@ class GiftEditorViewModel(
         }
     }
 
+    fun consumeOperationFailure() {
+        mutableUiState.update { it.copy(operationFailed = false) }
+    }
+
     fun save() {
         val state = mutableUiState.value
+        if (state.isSaving || state.isSaved) return
         val contactId = state.contactId
         val amountInCents = state.amount.toCentsOrNull()
         when {
@@ -130,42 +145,39 @@ class GiftEditorViewModel(
             amountInCents == null || amountInCents <= 0 -> mutableUiState.update { it.copy(validationError = GiftRecordValidationError.AMOUNT_INVALID) }
             state.eventDate > now().startOfDay() ->
                 mutableUiState.update { it.copy(validationError = GiftRecordValidationError.DATE_IN_FUTURE) }
-            state.isSaving -> Unit
-            else -> viewModelScope.launch {
+            else -> {
+                // 同步锁定保存状态，协程尚未调度时的连续点击也只会提交一次。
                 mutableUiState.update { it.copy(isSaving = true, operationFailed = false) }
-                val record = GiftRecord(
-                    id = state.recordId,
-                    contactId = contactId,
-                    amountInCents = amountInCents,
-                    eventType = state.eventType,
-                    eventDate = state.eventDate,
-                    direction = state.direction,
-                    notes = state.notes.trim().ifBlank { null },
-                    createdTime = state.createdTime,
-                )
-                runCatching {
-                    if (record.id == NavigationConstants.NEW_RECORD_ID) repository.create(record)
-                    else repository.update(record)
-                }.onSuccess {
-                    mutableUiState.update {
-                        it.copy(
-                            isSaved = true,
-                            isSaving = false,
-                            hasUnsavedChanges = false,
-                        )
+                viewModelScope.launch {
+                    val record = GiftRecord(
+                        id = state.recordId,
+                        contactId = contactId,
+                        amountInCents = amountInCents,
+                        eventType = state.eventType,
+                        customEventName = state.customEventName,
+                        eventDate = state.eventDate,
+                        direction = state.direction,
+                        notes = state.notes.trim().ifBlank { null },
+                        createdTime = state.createdTime,
+                    )
+                    runCatching {
+                        if (record.id == NavigationConstants.NEW_RECORD_ID) repository.create(record)
+                        else repository.update(record)
+                    }.onSuccess {
+                        mutableUiState.update { it.copy(isSaved = true, isSaving = false, hasUnsavedChanges = false) }
+                    }.onFailure {
+                        mutableUiState.update { it.copy(isSaving = false, isSaved = false, operationFailed = true) }
                     }
-                }.onFailure {
-                    mutableUiState.update { it.copy(isSaving = false, operationFailed = true) }
                 }
             }
         }
     }
-
     private fun GiftEditorUiState.fromRecord(record: GiftRecord) = copy(
         recordId = record.id,
         contactId = record.contactId,
         amount = BigDecimal.valueOf(record.amountInCents, 2).stripTrailingZeros().toPlainString(),
         eventType = record.eventType,
+        customEventName = record.customEventName,
         eventDate = record.eventDate,
         direction = record.direction,
         notes = record.notes.orEmpty(),

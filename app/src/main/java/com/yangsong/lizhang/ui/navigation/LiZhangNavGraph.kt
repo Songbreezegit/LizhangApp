@@ -1,9 +1,21 @@
 package com.yangsong.lizhang.ui.navigation
 
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.Lifecycle
+import com.yangsong.lizhang.ui.component.LocalAppearanceActions
+import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
@@ -44,17 +56,33 @@ fun LiZhangNavGraph(
     appContainer: AppContainer,
     reminderLaunchRequest: ReminderLaunchRequest? = null,
     onReminderRequestConsumed: () -> Unit = {},
+    openRemindersRequest: Long? = null,
+    onOpenRemindersConsumed: () -> Unit = {},
 ) {
     val nav = rememberNavController()
+    val hazeState = rememberHazeState()
     val reminderLaunchViewModel: ReminderLaunchViewModel = viewModel(
         factory = ReminderLaunchViewModel.factory(appContainer.giftRecordRepository),
     )
     val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var contactsSelectionMode by remember { mutableStateOf(false) }
     val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
+    val transition = LocalAppearanceActions.current as? AppearanceTransitionHost
+    val navigationReady = backStackEntry?.lifecycle?.currentStateAsState()?.value == Lifecycle.State.RESUMED
+    // 导航条目恢复到可交互状态后才能消费语言交接，不按固定帧数估计。
+    SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
     val go: (AppDestination) -> Unit = { nav.open(it) }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
+    LaunchedEffect(openRemindersRequest) {
+        if (openRemindersRequest != null) {
+            nav.navigate(AppDestination.Notifications.route) { launchSingleTop = true }
+            onOpenRemindersConsumed()
+        }
+    }
 
     LaunchedEffect(reminderLaunchRequest?.requestKey) {
         reminderLaunchRequest?.let { request ->
@@ -78,7 +106,7 @@ fun LiZhangNavGraph(
         }
     }
     Box(Modifier.fillMaxSize()) {
-    NavHost(nav, AppDestination.Home.route) {
+    NavHost(nav, AppDestination.Home.route, Modifier.hazeSource(hazeState)) {
         composable(AppDestination.Home.route) {
             HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
         }
@@ -87,6 +115,22 @@ fun LiZhangNavGraph(
                 viewModel(factory = ContactsViewModel.factory(appContainer.contactRepository)),
                 { nav.navigate(AppDestination.ContactDetail.createRoute(it)) },
                 { nav.navigate(AppDestination.ContactEditor.createRoute()) },
+                { nav.navigate(AppDestination.ContactImport.route) { launchSingleTop = true } },
+                onSelectionModeChange = { contactsSelectionMode = it },
+            )
+        }
+        composable(AppDestination.ContactImport.route) {
+            ContactImportScreen(
+                viewModel(factory = ContactImportViewModel.factory(appContainer.deviceContactRepository, appContainer.contactRepository)),
+                onBack = { nav.popBackStack() },
+                onImported = { result ->
+                    nav.popBackStack()
+                    scope.launch {
+                        snackbar.showSnackbar(context.getString(
+                            R.string.contact_import_summary, result.imported, result.skipped, result.possibleDuplicatesUnselected,
+                        ))
+                    }
+                },
             )
         }
         composable(
@@ -179,12 +223,10 @@ fun LiZhangNavGraph(
             NotificationsScreen(
                 viewModel(
                     factory = NotificationsViewModel.factory(
-                        appContainer.giftRecordRepository,
                         appContainer.reminderRepository,
                     ),
                 ),
                 nav::popBackStack,
-                openRecord,
             )
         }
         composable(AppDestination.Search.route) {
@@ -218,9 +260,9 @@ fun LiZhangNavGraph(
         }
     }
     currentMainTab
-        ?.takeUnless { it == AppDestination.AddGift }
+        ?.takeUnless { it == AppDestination.AddGift || (it == AppDestination.Contacts && contactsSelectionMode) }
         ?.let { tab ->
-        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter))
+        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter), hazeState)
     }
     CenteredSnackbarHost(snackbar)
     }

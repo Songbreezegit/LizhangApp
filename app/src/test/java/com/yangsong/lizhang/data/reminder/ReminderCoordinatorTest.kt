@@ -1,17 +1,9 @@
 package com.yangsong.lizhang.data.reminder
 
-import com.yangsong.lizhang.domain.model.GiftDirection
-import com.yangsong.lizhang.domain.model.EventType
-import com.yangsong.lizhang.domain.model.GiftRecord
-import com.yangsong.lizhang.domain.model.GiftRecordWithContact
-import com.yangsong.lizhang.domain.reminder.ReminderSettings
-import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import com.yangsong.lizhang.domain.reminder.*
 import com.yangsong.lizhang.domain.repository.ReminderRepository
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,97 +11,35 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ReminderCoordinatorTest {
-    @Test
-    fun `提醒关闭时启动和刷新都不读取礼金表`() = runTest {
-        val gifts = CountingGiftRecordRepository()
-        val reminders = FakeReminderRepository()
-        val coordinator = ReminderCoordinator(gifts, reminders, backgroundScope)
-
+    @Test fun 启动幂等且设置和独立提醒变化才触发同步() = runTest {
+        val repository = FakeReminderRepository()
+        val coordinator = ReminderCoordinator(repository, backgroundScope)
+        coordinator.start()
         coordinator.start()
         runCurrent()
+        assertEquals(1, repository.calls)
+        repository.setEnabled(true)
+        runCurrent()
+        assertEquals(2, repository.calls)
+        repository.save(IndependentReminder(1, "测试安排", LocalDate.now().plusDays(1)))
+        runCurrent()
+        assertEquals(3, repository.calls)
+        repository.delete(1)
+        runCurrent()
+        assertEquals(4, repository.calls)
         coordinator.refresh()
-        runCurrent()
-
-        assertEquals(0, gifts.observeAllSubscriptions)
-        assertEquals(0, reminders.synchronizedRecords.size)
-    }
-
-    @Test
-    fun `提醒开启后订阅礼金变化并执行同步`() = runTest {
-        val gifts = CountingGiftRecordRepository(
-            listOf(
-                GiftRecordWithContact(
-                    GiftRecord(
-                        id = 1,
-                        contactId = 1,
-                        amountInCents = 10_000,
-                        eventType = EventType.OTHER,
-                        eventDate = 1,
-                        direction = GiftDirection.RECEIVED,
-                    ),
-                    "测试联系人",
-                ),
-            ),
-        )
-        val reminders = FakeReminderRepository()
-        val coordinator = ReminderCoordinator(gifts, reminders, backgroundScope)
-
-        coordinator.start()
-        reminders.setEnabled(true)
-        runCurrent()
-
-        assertEquals(1, gifts.observeAllSubscriptions)
-        assertEquals(listOf(1L), reminders.synchronizedRecords.single().map { it.record.id })
+        assertEquals(5, repository.calls)
     }
 }
-
-private class CountingGiftRecordRepository(
-    private val records: List<GiftRecordWithContact> = emptyList(),
-) : GiftRecordRepository {
-    var observeAllSubscriptions = 0
-
-    override fun observeAll(): Flow<List<GiftRecordWithContact>> = flow {
-        observeAllSubscriptions += 1
-        emit(records)
-        awaitCancellation()
-    }
-
-    override fun observeRecent(limit: Int) = flowOf(records.take(limit))
-    override fun observeByDirection(direction: GiftDirection) = flowOf(
-        records.filter { it.record.direction == direction },
-    )
-    override fun observeRecord(recordId: Long) = flowOf(
-        records.firstOrNull { it.record.id == recordId }?.record,
-    )
-    override fun observeRecordWithContact(recordId: Long) = flowOf(
-        records.firstOrNull { it.record.id == recordId },
-    )
-    override fun observeByContact(contactId: Long) = flowOf(
-        records.filter { it.record.contactId == contactId }.map(GiftRecordWithContact::record),
-    )
-    override fun observeSearch(query: String) = flowOf(records)
-    override suspend fun create(record: GiftRecord) = record.id
-    override suspend fun update(record: GiftRecord) = Unit
-    override suspend fun delete(record: GiftRecord) = Unit
-}
-
 private class FakeReminderRepository : ReminderRepository {
     override val settings = MutableStateFlow(ReminderSettings())
-    val synchronizedRecords = mutableListOf<List<GiftRecordWithContact>>()
-
-    override fun setEnabled(enabled: Boolean) {
-        settings.value = settings.value.copy(enabled = enabled)
-    }
-
-    override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) {
-        settings.value = settings.value.copy(
-            advanceDays = advanceDays,
-            hour = hour,
-            minute = minute,
-        )
-    }
-
-    override fun synchronize(records: List<GiftRecordWithContact>) {
-        synchronizedRecords += records
-    }
+    override val reminders = MutableStateFlow<List<IndependentReminder>>(emptyList())
+    var calls = 0
+    override fun setEnabled(enabled: Boolean) { settings.value = settings.value.copy(enabled = enabled) }
+    override fun updateSchedule(advanceDays: Int, hour: Int, minute: Int) { settings.value = settings.value.copy(advanceDays = advanceDays, hour = hour, minute = minute) }
+    override fun save(reminder: IndependentReminder) { reminders.value = reminders.value + reminder }
+    override fun delete(id: Long) { reminders.value = reminders.value.filterNot { it.id == id } }
+    override fun setReminderEnabled(id: Long, enabled: Boolean) = Unit
+    override fun markNotified(id: Long, occurrence: LocalDate) = Unit
+    override fun synchronize() { calls++ }
 }
