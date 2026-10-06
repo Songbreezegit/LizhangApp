@@ -72,7 +72,6 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
                 Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                PageIllustration(R.drawable.page_contacts_cat, Modifier.fillMaxWidth().height(145.dp))
                 GlassCard(
                     shape = RoundedCornerShape(GlassTokens.Radius),
                 ) {

@@ -44,14 +44,14 @@ import kotlin.math.abs
 /** 只使用程序生成的图案和虚构联系人，不采集用户数据。 */
 class FrostedGlassInstrumentedTest {
     @get:Rule val compose = createComposeRule()
-    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+    private val context get() = localizedChineseContext(InstrumentationRegistry.getInstrumentation().targetContext)
     private val directory get() = File(context.getExternalFilesDir(null), "frosted-v080").apply { mkdirs() }
 
     @Test fun 模糊削弱背景高频边缘且前景保持锐利并随背景刷新() {
         val dark = mutableStateOf(false)
         val blue = mutableStateOf(false)
         var density = 1f
-        compose.setContent {
+        compose.setChineseContent {
             density = LocalDensity.current.density
             LiZhangTheme(dark.value) {
                 val haze = rememberHazeState()
@@ -105,7 +105,7 @@ class FrostedGlassInstrumentedTest {
 
     @Test fun 禁用模糊时仍保持低透明度回退() {
         val background = mutableStateOf(Color.Red)
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             val haze = rememberHazeState(blurEnabled = false)
             Box(Modifier.size(200.dp).testTag("回退画布")) {
                 Canvas(Modifier.fillMaxSize().hazeSource(haze)) { drawRect(background.value) }
@@ -126,7 +126,7 @@ class FrostedGlassInstrumentedTest {
     @Test fun 四类浮层图案背景深浅色与大字体截图() {
         val dark = mutableStateOf(false)
         val font = mutableFloatStateOf(1f)
-        compose.setContent {
+        compose.setChineseContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, font.floatValue)) {
                 LiZhangTheme(dark.value) {
@@ -168,7 +168,7 @@ class FrostedGlassInstrumentedTest {
         val dark = mutableStateOf(false)
         val font = mutableFloatStateOf(1f)
         var density = 1f
-        compose.setContent {
+        compose.setChineseContent {
             density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, font.floatValue)) {
                 LiZhangTheme(dark.value) {
@@ -194,7 +194,7 @@ class FrostedGlassInstrumentedTest {
         val contacts = (1L..200L).map { ContactLedgerSummary(Contact(it, "示例联系人$it", relationship = "朋友"), 20000, 10000) }
         val records = (1L..4L).map { GiftRecordWithContact(
             GiftRecord(it, it, 10000, EventType.OTHER, 1789862400000L, GiftDirection.RECEIVED, customEventName = "升学宴"), "示例联系人$it") }
-        compose.setContent { LiZhangTheme(dark.value) {
+        compose.setChineseContent { LiZhangTheme(dark.value) {
             val haze = rememberHazeState()
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.fillMaxSize().hazeSource(haze)) {

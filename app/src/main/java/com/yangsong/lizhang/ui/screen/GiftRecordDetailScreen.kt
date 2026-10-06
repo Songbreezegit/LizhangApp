@@ -50,7 +50,6 @@ fun GiftRecordDetailScreen(
                     Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    PageIllustration(R.drawable.page_add_cat, Modifier.fillMaxWidth().height(175.dp))
                     AmountSummaryCard(
                         label = stringResource(record.direction.labelRes()),
                         amount = record.amountInCents,

@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.drop
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,15 +38,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
-import com.yangsong.lizhang.core.util.CurrencyFormatter
 import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
@@ -116,20 +120,23 @@ fun HomeContent(
                     }
                     item {
                         GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
-                            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                SectionHeader(stringResource(R.string.home_recent), stringResource(R.string.action_all)) { onNavigate(AppDestination.Search) }
+                            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(stringResource(R.string.home_recent), Modifier.weight(1f),
+                                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                    GlassTextButton({ onNavigate(AppDestination.Search) }) {
+                                        Text(stringResource(R.string.action_all), style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                                 if (state.recentRecords.isEmpty()) {
-                                    EmptyState(
-                                        stringResource(R.string.home_empty_title),
-                                        stringResource(R.string.home_empty_desc),
-                                        stringResource(R.string.action_add_gift),
-                                        { onNavigate(AppDestination.AddGift) },
-                                        R.drawable.page_add_cat,
-                                    )
+                                    RecentRecordsEmptyState { onNavigate(AppDestination.AddGift) }
                                 } else {
                                     state.recentRecords.take(4).forEachIndexed { index, item ->
                                         GiftRecordListItem(item) { onRecordClick(item.record.id) }
-                                        if (index < state.recentRecords.take(4).lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                                        if (index < state.recentRecords.take(4).lastIndex) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))
+                                        }
                                     }
                                 }
                             }
@@ -158,6 +165,7 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun HeroSummaryCard(
     state: HomeUiState,
     onYearSelected: (Int) -> Unit,
@@ -171,10 +179,11 @@ private fun HeroSummaryCard(
     val anchor = remember { YearMenuAnchor() }
     Layout(modifier = Modifier.fillMaxWidth(), content = {
         GlassCard(Modifier.fillMaxWidth().hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
-            Box(Modifier.fillMaxWidth()) {
-                Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.matchParentSize().padding(start = 64.dp, bottom = 12.dp), contentScale = ContentScale.Fit, alignment = Alignment.BottomEnd)
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Box {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                // 年份入口保持顶部对齐，菜单仍由 20dp 内边距和本帧入口高度定位。
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.weight(1f)) {
                         Surface(
                             onClick = { onExpandedChange(!yearMenuExpanded) },
                             modifier = Modifier.testTag("年份入口")
@@ -188,26 +197,38 @@ private fun HeroSummaryCard(
                                     onButtonBounds(it.boundsInRoot())
                                 },
                             shape = RoundedCornerShape(14.dp),
-                            color = glassColor(),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = .07f),
                         ) {
                             Row(
                                 Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(stringResource(R.string.year_format, state.year), fontWeight = FontWeight.Bold)
-                                Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year))
+                                Text(stringResource(R.string.year_format, state.year), Modifier.weight(1f, fill = false),
+                                    fontWeight = FontWeight.Bold)
+                                Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
                             }
                         }
                     }
-                    Spacer(Modifier.height(18.dp))
-                    Text(stringResource(R.string.home_year_received), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(com.yangsong.lizhang.ui.mapper.displayAmount(state.received), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(10.dp))
-                    Text(stringResource(R.string.home_year_given), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(com.yangsong.lizhang.ui.mapper.displayAmount(state.given), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.contact_net_amount, stringResource(R.string.home_net), com.yangsong.lizhang.ui.mapper.displayAmount(state.net)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.size(80.dp),
+                        contentScale = ContentScale.Fit)
                 }
+                Spacer(Modifier.height(12.dp))
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val amountWidth = Modifier.widthIn(min = minOf(128.dp, maxWidth), max = maxWidth)
+                    // 先按金额实际宽度排版；长金额和大字体放到下一行，不压缩或省略数字。
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp), maxItemsInEachRow = 2) {
+                        AnnualAmount(R.string.home_year_received, state.received, MaterialTheme.colorScheme.primary, amountWidth)
+                        AnnualAmount(R.string.home_year_given, state.given, MaterialTheme.colorScheme.secondary, amountWidth)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.contact_net_amount, stringResource(R.string.home_net),
+                    com.yangsong.lizhang.ui.mapper.displayAmount(state.net)),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium)
             }
         }
         AnimatedVisibility(
@@ -249,25 +270,64 @@ private class YearMenuAnchor {
 }
 
 @Composable
+private fun AnnualAmount(label: Int, amount: Long, tint: Color, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(label), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium)
+        Text(com.yangsong.lizhang.ui.mapper.displayAmount(amount), color = tint,
+            style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun RecentRecordsEmptyState(onAddGift: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Image(illustrationPainter(R.drawable.page_add_cat), null, Modifier.size(88.dp), contentScale = ContentScale.Fit)
+        Text(stringResource(R.string.home_empty_title), style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.home_empty_desc), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        PrimaryButton(stringResource(R.string.action_add_gift), onAddGift)
+    }
+}
+
+@Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar: () -> Unit, onStats: () -> Unit) {
-    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
-        FlowRow(Modifier.fillMaxWidth().padding(vertical = 18.dp), maxItemsInEachRow = if (LocalDensity.current.fontScale >= 1.2f) 2 else 4, horizontalArrangement = Arrangement.SpaceEvenly, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, glassColor(), MaterialTheme.colorScheme.primary, onReceived)
-            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, glassColor(), MaterialTheme.colorScheme.secondary, onGiven)
-            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, glassColor(), MaterialTheme.colorScheme.primary, onCalendar)
-            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, glassColor(), MaterialTheme.colorScheme.secondary, onStats)
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+        val density = LocalDensity.current
+        val columns = if (density.fontScale >= 1.2f || maxWidth < 304.dp) 2 else 4
+        val gap = 12.dp
+        // 先按实际像素扣除间距并向下取整，避免各列分别取整后把最后一项挤到下一行。
+        val itemWidth = with(density) {
+            ((constraints.maxWidth - gap.roundToPx() * (columns - 1)).coerceAtLeast(0) / columns).toDp()
+        }
+        FlowRow(Modifier.fillMaxWidth(), maxItemsInEachRow = columns,
+            horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, MaterialTheme.colorScheme.primary,
+                onReceived, Modifier.width(itemWidth))
+            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MaterialTheme.colorScheme.secondary,
+                onGiven, Modifier.width(itemWidth))
+            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, MaterialTheme.colorScheme.primary,
+                onCalendar, Modifier.width(itemWidth))
+            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, MaterialTheme.colorScheme.secondary,
+                onStats, Modifier.width(itemWidth))
         }
     }
 }
 
 @Composable
-private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, background: Color, tint: Color, onClick: () -> Unit) {
-    Column(Modifier.width(if (LocalDensity.current.fontScale >= 1.2f) 140.dp else 76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = background) {
-            Icon(icon, null, Modifier.padding(14.dp).size(28.dp), tint = tint)
+private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
+    onClick: () -> Unit, modifier: Modifier) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(52.dp).background(tint.copy(alpha = .09f), RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(26.dp), tint = tint)
         }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(label), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+        Text(stringResource(label), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center)
     }
 }

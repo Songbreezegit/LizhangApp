@@ -29,7 +29,7 @@ class SettingsAndYearMenuInstrumentedTest {
     @Test fun 设置页删除大类标题且保留三张卡片与16dp间隔() {
         val dark = mutableStateOf(false)
         var density = 1f
-        compose.setContent {
+        compose.setChineseContent {
             density = LocalDensity.current.density
             LiZhangTheme(dark.value) { SettingsContent(SettingsUiState(), {}, {}, {}, {}) }
         }
@@ -48,7 +48,7 @@ class SettingsAndYearMenuInstrumentedTest {
     @Test fun 设置页八个功能入口与深色开关保持行为() {
         val calls = mutableListOf<String>()
         val mode = mutableStateOf(AppThemeMode.LIGHT)
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme(darkTheme = mode.value == AppThemeMode.DARK) {
             SettingsContent(SettingsUiState(themeMode = mode.value),
                 onCsvExport = { calls += "CSV" }, onExcelExport = { calls += "Excel" },
                 onBackup = { calls += "备份" }, onThemeModeChange = { mode.value = it },
@@ -68,7 +68,7 @@ class SettingsAndYearMenuInstrumentedTest {
     @Test fun 年份选择回调选中状态与再次点击和外部关闭() {
         val state = mutableStateOf(HomeUiState(isLoading = false, year = 2026, availableYears = listOf(2026, 2025)))
         val selected = mutableListOf<Int>()
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             HomeContent(state.value, {}, onYearSelected = { selected += it; state.value = state.value.copy(year = it) })
         } }
         compose.onNodeWithTag("年份菜单").assertDoesNotExist()
@@ -88,7 +88,7 @@ class SettingsAndYearMenuInstrumentedTest {
 
     @Test fun 返回键优先关闭菜单且页面滚动关闭菜单() {
         var backCalls = 0
-        compose.setContent {
+        compose.setChineseContent {
             BackHandler { backCalls++ }
             LiZhangTheme { HomeContent(HomeUiState(isLoading = false, availableYears = listOf(2026, 2025)), {}) }
         }
@@ -108,12 +108,16 @@ class SettingsAndYearMenuInstrumentedTest {
 
     @Test fun 多年份菜单限高且独立滚动不关闭() {
         var selected: Int? = null
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             HomeContent(HomeUiState(isLoading = false, year = 2026, availableYears = (2026 downTo 1900).toList()),
                 {}, onYearSelected = { selected = it })
         } }
         compose.onNodeWithTag("年份入口").performClick()
         compose.onNodeWithTag("年份菜单").performScrollToNode(hasTestTag("年份选项-1900"))
+        compose.onNodeWithTag("年份菜单").assertIsDisplayed()
+        // 到达末端后的真实手势也不能把剩余滚动传给首页并关闭浮层。
+        compose.onNodeWithTag("年份菜单").performTouchInput { swipeUp() }
+        compose.waitForIdle()
         compose.onNodeWithTag("年份菜单").assertIsDisplayed()
         compose.onNodeWithTag("年份选项-1900").performClick()
         compose.runOnIdle { assertEquals(1900, selected) }
@@ -124,7 +128,7 @@ class SettingsAndYearMenuInstrumentedTest {
         val dark = mutableStateOf(false)
         val font = mutableFloatStateOf(1f)
         var density = 1f
-        compose.setContent {
+        compose.setChineseContent {
             density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, font.floatValue)) {
                 LiZhangTheme(dark.value) {

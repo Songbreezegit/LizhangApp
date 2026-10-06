@@ -84,7 +84,6 @@ fun DirectionRecordsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item { PageIllustration(R.drawable.page_add_cat, Modifier.fillMaxWidth().height(175.dp)) }
                 item {
                     SectionHeader(androidx.compose.ui.res.pluralStringResource(R.plurals.records_count, state.records.size, state.records.size))
                 }
@@ -321,7 +320,7 @@ fun NotificationsContent(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(175.dp).testTag("提醒顶部插画")) }
+                item { PageIllustration(R.drawable.page_statistics_cat, Modifier.fillMaxWidth().height(64.dp).testTag("提醒顶部插画")) }
                 item {
                     GlassCard(
                         shape = RoundedCornerShape(GlassTokens.Radius),

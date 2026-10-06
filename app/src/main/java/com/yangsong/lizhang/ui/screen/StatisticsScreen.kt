@@ -35,7 +35,6 @@ fun StatisticsScreen(viewModel:StatisticsViewModel,onBack:()->Unit){
                 contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),
                 verticalArrangement=Arrangement.spacedBy(14.dp),
             ){
-                item{PageIllustration(R.drawable.page_statistics_cat,Modifier.fillMaxWidth().height(145.dp))}
                 item{LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(state.years){year->GlassChip(year==state.year,{viewModel.selectYear(year)},{Text(stringResource(R.string.year_format,year))})}}}
                 item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){AmountSummaryCard(stringResource(R.string.home_year_received),state.received,Modifier.weight(1f),MaterialTheme.colorScheme.primary);AmountSummaryCard(stringResource(R.string.home_year_given),state.given,Modifier.weight(1f),MaterialTheme.colorScheme.secondary)}}
                 item{AmountSummaryCard(stringResource(R.string.home_net),state.net,Modifier.fillMaxWidth(),if(state.net>=0)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}

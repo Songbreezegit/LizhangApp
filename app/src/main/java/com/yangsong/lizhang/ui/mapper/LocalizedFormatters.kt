@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import com.yangsong.lizhang.core.util.CurrencyFormatter
 import com.yangsong.lizhang.core.util.DateFormatter
+import com.yangsong.lizhang.domain.model.AppLanguage
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -12,10 +13,12 @@ import java.util.Locale
 /** 跟随当前页面 Configuration，语言重建及预览均使用同一套格式化规则。 */
 @Composable
 fun displayLocale(): Locale = LocalConfiguration.current.locales.let { locales ->
-    (0 until locales.size()).asSequence().map { locales[it] }
-        .firstOrNull { it.language in setOf("zh", "en", "ja", "ko") }
-        ?: Locale.SIMPLIFIED_CHINESE
+    resolveDisplayLocale((0 until locales.size()).asSequence().map { locales[it] })
 }
+
+internal fun resolveDisplayLocale(locales: Sequence<Locale>): Locale =
+    locales.firstOrNull { AppLanguage.fromLanguageTag(it.toLanguageTag()) != AppLanguage.SYSTEM }
+        ?: Locale.SIMPLIFIED_CHINESE
 
 @Composable
 fun displayDate(epochMillis: Long): String = DateFormatter.format(epochMillis, locale = displayLocale())

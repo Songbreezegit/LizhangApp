@@ -38,11 +38,13 @@ private fun GuidePreview(step: FeatureGuideStep) {
 @Preview(name = "记一笔浅色", locale = "zh-rCN", widthDp = 360, heightDp = 800)
 @Preview(name = "记一笔英文", locale = "en", widthDp = 360, heightDp = 800)
 @Preview(name = "记一笔日文大字体", locale = "ja", widthDp = 320, heightDp = 640, fontScale = 1.5f)
+@Preview(name = "记一笔西语大字体", locale = "es", widthDp = 320, heightDp = 640, fontScale = 1.5f)
 @Composable
 fun FeatureGuideStep1Preview() = GuidePreview(FeatureGuideStep.ADD_RECORD)
 
 @PreviewTest
 @Preview(name = "提醒深色", locale = "zh-rCN", widthDp = 360, heightDp = 800, uiMode = 0x20)
 @Preview(name = "提醒韩文深色大字体", locale = "ko", widthDp = 320, heightDp = 640, uiMode = 0x20, fontScale = 1.5f)
+@Preview(name = "提醒法语深色大字体", locale = "fr", widthDp = 320, heightDp = 640, uiMode = 0x20, fontScale = 1.5f)
 @Composable
 fun FeatureGuideStep3Preview() = GuidePreview(FeatureGuideStep.REMINDERS)

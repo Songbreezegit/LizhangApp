@@ -50,7 +50,6 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
                 image=R.drawable.page_contacts_cat,
             )
             else->LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding=PaddingValues(horizontal=16.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-                item{PageIllustration(R.drawable.page_contacts_cat,Modifier.fillMaxWidth().height(135.dp))}
                 item{state.contact?.let{contact->GlassCard(shape=RoundedCornerShape(GlassTokens.Radius)){Column(Modifier.fillMaxWidth().padding(18.dp)){Text(contact.name,style=MaterialTheme.typography.titleLarge);Text(listOfNotNull(contact.relationship,contact.phone).joinToString(" · "),color=MaterialTheme.colorScheme.onSurfaceVariant)}}}}
                 item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){AmountSummaryCard(stringResource(R.string.contact_received),state.received,Modifier.weight(1f),MaterialTheme.colorScheme.primary);AmountSummaryCard(stringResource(R.string.contact_given),state.given,Modifier.weight(1f),MaterialTheme.colorScheme.secondary)}}
                 item{PrimaryButton(stringResource(R.string.contact_add_history),onAdd,Modifier.fillMaxWidth())}

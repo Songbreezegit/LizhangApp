@@ -148,7 +148,7 @@ class FeatureGuideUiInstrumentedTest {
         assertStep(FeatureGuideStep.REMINDERS)
     }
 
-    @Test fun 四语言深浅色大字体气泡和操作均在安全区域且不覆盖目标() {
+    @Test fun 七语言深浅色大字体气泡和操作均在安全区域且不覆盖目标() {
         val variant = mutableStateOf("zh" to false)
         compose.setContent {
             val localized = remember(variant.value.first) { app.createConfigurationContext(Configuration(app.resources.configuration).apply {
@@ -163,7 +163,7 @@ class FeatureGuideUiInstrumentedTest {
         }
         assertStep(FeatureGuideStep.ADD_RECORD)
         for (step in listOf(FeatureGuideStep.ADD_RECORD, FeatureGuideStep.CONTACTS, FeatureGuideStep.REMINDERS, FeatureGuideStep.SETTINGS)) {
-            for (tag in listOf("zh", "en", "ja", "ko")) for (dark in listOf(false, true)) {
+            for (tag in listOf("zh", "zh-Hant", "en", "ja", "ko", "es", "fr")) for (dark in listOf(false, true)) {
                 compose.runOnIdle { variant.value = tag to dark }
                 assertStep(step)
                 val bubble = compose.onNodeWithTag("功能引导气泡").fetchSemanticsNode().boundsInRoot

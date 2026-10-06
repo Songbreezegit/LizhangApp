@@ -1,9 +1,6 @@
 package com.yangsong.lizhang.flow
 
 import android.content.Context
-import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
-
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,6 +15,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
+import com.yangsong.lizhang.GiftSaveTestActivity
 import com.yangsong.lizhang.data.local.LiZhangDatabase
 import com.yangsong.lizhang.data.repository.RoomContactRepository
 import com.yangsong.lizhang.data.repository.RoomGiftRecordRepository
@@ -36,7 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 class GiftSaveFlowInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<GiftSaveTestActivity>()
     private lateinit var database: LiZhangDatabase
     private lateinit var contacts: RoomContactRepository
     private lateinit var records: RoomGiftRecordRepository
@@ -60,13 +58,11 @@ class GiftSaveFlowInstrumentedTest {
 
     private fun start(dark: Boolean = false) {
         compose.runOnUiThread {
-            compose.activity.enableEdgeToEdge()
-            compose.activity.window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             viewModel = GiftEditorViewModel(repository, contacts, initialContactId = contactId)
             viewModel.update { it.copy(amount = "100", eventDate = 1789862400000L,
                 direction = GiftDirection.GIVEN, eventType = EventType.BIRTHDAY, notes = "保存测试备注") }
         }
-        restore.setContent { LiZhangTheme(dark) {
+        restore.setChineseContent { LiZhangTheme(dark) {
             val bottom = WindowInsets.ime.getBottom(LocalDensity.current)
             SideEffect { imeBottom.set(bottom) }
             AddGiftScreen(viewModel) { returnedAt.set(SystemClock.uptimeMillis()); returns.incrementAndGet() }
@@ -148,19 +144,18 @@ class GiftSaveFlowInstrumentedTest {
     @Test fun 创建自定义事件并重新编辑仍显示真实名称() {
         val editor = androidx.compose.runtime.mutableStateOf<GiftEditorViewModel?>(null)
         compose.runOnUiThread {
-            compose.activity.enableEdgeToEdge()
             editor.value = GiftEditorViewModel(repository, contacts, initialContactId = contactId).apply {
                 update { it.copy(amount = "100", eventDate = 1789862400000L) }
             }
         }
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             androidx.compose.runtime.key(editor.value) { AddGiftScreen(requireNotNull(editor.value)) { returns.incrementAndGet() } }
         } }
         compose.onNodeWithText("+ 自定义").performScrollTo().performClick()
         compose.onNodeWithText("添加").performClick()
         compose.onNodeWithText("请输入事件名称").assertIsDisplayed()
         compose.onNodeWithTag("自定义事件名称").performTextInput("长".repeat(21))
-        compose.onNodeWithText(compose.activity.resources.getQuantityString(com.yangsong.lizhang.R.plurals.event_custom_too_long, com.yangsong.lizhang.domain.model.MAX_CUSTOM_EVENT_NAME_LENGTH, com.yangsong.lizhang.domain.model.MAX_CUSTOM_EVENT_NAME_LENGTH)).assertIsDisplayed()
+        compose.onNodeWithText(localizedChineseContext(compose.activity).resources.getQuantityString(com.yangsong.lizhang.R.plurals.event_custom_too_long, com.yangsong.lizhang.domain.model.MAX_CUSTOM_EVENT_NAME_LENGTH, com.yangsong.lizhang.domain.model.MAX_CUSTOM_EVENT_NAME_LENGTH)).assertIsDisplayed()
         compose.onNodeWithTag("自定义事件名称").performTextReplacement("  升学宴  ")
         compose.onNodeWithText("添加").performClick()
         compose.onNodeWithText("升学宴").assertIsSelected()

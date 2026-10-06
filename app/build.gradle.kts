@@ -16,9 +16,9 @@ android {
         applicationId = "com.yangsong.lizhang"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.9.4"
-        resourceConfigurations += listOf("zh", "en", "ja", "ko")
+        versionCode = 15
+        versionName = "0.9.5"
+        resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,7 +34,7 @@ android {
 }
 
 // 显式中文资源防止「中文 + 英文系统语言」的资源匹配跳过默认中文。
-// 中文只有 values/strings.xml 一份维护源，构建时自动生成语言限定副本。
+// 简体中文只有 values/strings.xml 一份维护源，构建时自动生成语言限定副本；繁体单独维护。
 val generateChineseResources by tasks.registering(Copy::class) {
     from("src/main/res/values/strings.xml")
     into(layout.buildDirectory.dir("generated/chineseResources/values-zh"))

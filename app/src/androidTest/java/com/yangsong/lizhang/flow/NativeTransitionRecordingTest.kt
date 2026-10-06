@@ -9,7 +9,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
 import com.yangsong.lizhang.*
+import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.domain.model.AppThemeMode
+import com.yangsong.lizhang.ui.component.currentAppLanguage
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -28,13 +30,15 @@ class NativeTransitionRecordingTest {
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private fun text(value: String) = device.wait(Until.findObject(By.text(value)), 6000) ?: error("未显示：$value")
     private fun chooseLanguage(value: String) {
-        val choices = listOf("跟随系统", "简体中文", "English", "日本語", "한국어")
+        val choices = listOf("跟随系统", "简体中文", "繁體中文", "English", "日本語", "한국어", "Español", "Français")
         // 同语言文字也在下方设置行中；必须等弹窗选项出现后点击对应单选项。
         device.wait(Until.findObjects(By.clazz("android.widget.RadioButton")), 6000) ?: error("语言弹窗未显示")
         device.waitForIdle()
         val options = device.findObjects(By.clazz("android.widget.RadioButton"))
         assertEquals("语言弹窗具有完整选项", choices.size, options.size)
-        options[choices.indexOf(value)].click()
+        val choiceIndex = choices.indexOf(value)
+        assertTrue("目标语言属于现有选项：$value", choiceIndex >= 0)
+        options[choiceIndex].click()
     }
     private fun frame(name: String) {
         val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: error("没有实际绘制帧")
@@ -63,33 +67,67 @@ class NativeTransitionRecordingTest {
         while (!ready() && SystemClock.uptimeMillis() < end) SystemClock.sleep(30)
         assertTrue("目标页面和覆盖层完成交接", ready())
     }
+    private fun launchFreshActivity(intent: Intent = Intent(app, MainActivity::class.java)) {
+        val previous = runCatching { activity() }.getOrNull()
+        app.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        // startActivity 异步提交；旧 Activity 的焦点不能作为新任务启动完成的依据。
+        awaitPage {
+            val current = activity()
+            current !== previous && current.hasWindowFocus() && current.appearanceHost.isNavigationReady &&
+                current.appearanceState.snapshot == null && current.appearanceState.pendingDark == null
+        }
+    }
+    private fun awaitChinese(previous: MainActivity, needsRecreation: Boolean) {
+        awaitPage {
+            val current = activity()
+            (!needsRecreation || current !== previous) &&
+                AppLanguage.fromLanguageTag(current.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.ZH_CN &&
+                currentAppLanguage() == AppLanguage.ZH_CN && current.appearanceHost.isNavigationReady &&
+                current.hasWindowFocus() && current.appearanceState.snapshot == null
+        }
+    }
+    private fun awaitThemeMode(mode: AppThemeMode, dark: Boolean) {
+        awaitPage {
+            val current = activity()
+            app.appContainer.themeRepository.themeMode.value == mode && current.hasWindowFocus() &&
+                current.appearanceHost.isNavigationReady && current.appearanceState.snapshot == null &&
+                current.appearanceState.pendingDark == null
+        }
+        awaitThemeFrame(dark)
+        device.waitForIdle()
+    }
+    private fun themeSwitch() = device.wait(Until.findObject(By.pkg(app.packageName).checkable(true)), 6000)
+        ?: error("应用内深色模式开关未显示")
     @Test fun 正常渲染下圆形弹窗语言和提醒页面走查() {
-        app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-        awaitPage { activity().hasWindowFocus() }
+        launchFreshActivity()
+        val chinesePrevious = activity()
+        val needsChineseRecreation = currentAppLanguage() != AppLanguage.ZH_CN
         instrumentation.runOnMainSync {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
             app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT)
         }
-        awaitPage { activity().resources.configuration.locales[0].language == "zh" }
+        awaitChinese(chinesePrevious, needsChineseRecreation)
+        awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         val expectedMotion = InstrumentationRegistry.getArguments().getString("motion", "enabled") == "enabled"
         assertEquals("本次检查使用指定的实际动画比例", expectedMotion, android.animation.ValueAnimator.areAnimatorsEnabled())
         text("我的").click()
         text("主题设置")
-        device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4, device.displayWidth / 2, device.displayHeight / 2, 20)
         text("深色模式")
+        if (themeSwitch().visibleBounds.bottom > device.displayHeight * 3 / 4) {
+            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                device.displayWidth / 2, device.displayHeight / 2, 20)
+        }
         device.waitForIdle()
+        awaitThemeMode(AppThemeMode.LIGHT, dark = false)
+        awaitPage { !themeSwitch().isChecked }
         frame("正常渲染_浅色设置")
-        device.wait(Until.findObject(By.checkable(true)), 6000)!!.click()
-        awaitPage { app.appContainer.themeRepository.themeMode.value == AppThemeMode.DARK }
-        awaitPage { activity().appearanceState.snapshot == null }
-        awaitThemeFrame(dark = true)
-        device.waitForIdle()
+        themeSwitch().click()
+        awaitThemeMode(AppThemeMode.DARK, dark = true)
+        awaitPage { themeSwitch().isChecked }
         frame("正常渲染_深色设置")
-        device.wait(Until.findObject(By.checkable(true)), 6000)!!.click()
-        awaitPage { app.appContainer.themeRepository.themeMode.value == AppThemeMode.LIGHT }
-        awaitPage { activity().appearanceState.snapshot == null }
-        awaitThemeFrame(dark = false)
-        device.waitForIdle()
+        themeSwitch().click()
+        awaitThemeMode(AppThemeMode.LIGHT, dark = false)
+        awaitPage { !themeSwitch().isChecked }
         text("主题设置").click()
         val options = device.wait(Until.findObjects(By.clazz("android.widget.RadioButton")), 6000)!!
         assertEquals(3, options.size)
@@ -129,14 +167,7 @@ class NativeTransitionRecordingTest {
             val observer = Thread {
                 while (sampling.get()) {
                     val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: continue
-                    var lit = 0
-                    val colors = mutableSetOf<Int>()
-                    for (y in 1..20) for (x in 1..12) {
-                        val color = bitmap.getPixel(bitmap.width * x / 13, bitmap.height * y / 21)
-                        colors.add(color and 0x00f8f8f8)
-                        if (android.graphics.Color.red(color) + android.graphics.Color.green(color) + android.graphics.Color.blue(color) > 45) lit++
-                    }
-                    if (lit < 12 || colors.size < 8) {
+                    if (!hasRenderedContent(bitmap)) {
                         val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
                         File(folder, "语言空屏_${target}_${blankFrames.incrementAndGet()}.png").outputStream().use {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
@@ -251,8 +282,7 @@ class NativeTransitionRecordingTest {
             error("返回首页失败")
         }
         // 新通知冷启动只消费一次，配置重建后返回不重新打开提醒列表。
-        app.startActivity(com.yangsong.lizhang.core.common.ReminderNavigationContract.createOpenRemindersIntent(app)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+        launchFreshActivity(com.yangsong.lizhang.core.common.ReminderNavigationContract.createOpenRemindersIntent(app))
         text("我的提醒")
         val notified = activity()
         instrumentation.runOnMainSync { notified.recreate() }
@@ -267,13 +297,38 @@ class NativeTransitionRecordingTest {
         device.wait(Until.findObject(By.text("最近往来")), 6000) ?: error("通知入口被重建重复消费")
     }
 
-    @Test fun 跟随系统的深浅色开关按实际外观反向切换() {
-        val mode = app.getSystemService(android.app.UiModeManager::class.java).nightMode
+    @Test fun 空屏检测区分纯色渐变和中性文字内容() {
+        val bitmap = Bitmap.createBitmap(240, 400, Bitmap.Config.ARGB_8888)
         try {
-            app.startActivity(Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-            awaitPage { activity().hasWindowFocus() }
+            for (color in listOf(android.graphics.Color.BLACK, android.graphics.Color.WHITE, 0xff252629.toInt())) {
+                bitmap.eraseColor(color)
+                assertFalse("纯色画面不能当作页面内容", hasRenderedContent(bitmap))
+            }
+            val canvas = android.graphics.Canvas(bitmap)
+            val paint = android.graphics.Paint().apply {
+                shader = android.graphics.LinearGradient(0f, 0f, 0f, 400f, 0xfff1f4f5.toInt(), 0xfff7f4ef.toInt(), android.graphics.Shader.TileMode.CLAMP)
+            }
+            canvas.drawRect(0f, 0f, 240f, 400f, paint)
+            assertFalse("平滑背景渐变仍是空画面", hasRenderedContent(bitmap))
+            paint.shader = null
+            paint.isAntiAlias = true
+            paint.color = 0xff292e35.toInt()
+            paint.textSize = 24f
+            canvas.drawText("Language", 20f, 180f, paint)
+            assertTrue("中性背景的实际文字必须被识别", hasRenderedContent(bitmap))
+        } finally { bitmap.recycle() }
+    }
+
+    @Test fun 跟随系统的深浅色开关按实际外观反向切换() {
+        val uiModeManager = app.getSystemService(android.app.UiModeManager::class.java)
+        val mode = uiModeManager.nightMode
+        val originalNight = app.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+        try {
+            launchFreshActivity()
+            val chinesePrevious = activity()
+            val needsChineseRecreation = currentAppLanguage() != AppLanguage.ZH_CN
             instrumentation.runOnMainSync { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN")) }
-            awaitPage { activity().resources.configuration.locales[0].language == "zh" }
+            awaitChinese(chinesePrevious, needsChineseRecreation)
             for ((night, target) in listOf("yes" to AppThemeMode.LIGHT, "no" to AppThemeMode.DARK)) {
                 instrumentation.runOnMainSync { app.appContainer.themeRepository.setThemeMode(AppThemeMode.SYSTEM) }
                 device.executeShellCommand("cmd uimode night $night")
@@ -282,25 +337,53 @@ class NativeTransitionRecordingTest {
                 text("我的").click()
                 text("主题设置")
                 text("深色模式")
-                val visibleToggle = device.wait(Until.findObject(By.pkg("com.yangsong.lizhang").checkable(true)), 6000)!!
+                val visibleToggle = themeSwitch()
                 // 配置重建会恢复设置列表，不能再次盲目拖动已经可见的开关。
                 if (visibleToggle.visibleBounds.bottom > device.displayHeight * 3 / 4) {
                     device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4, device.displayWidth / 2, device.displayHeight / 2, 20)
                 }
                 device.waitForIdle()
-                awaitPage { activity().hasWindowFocus() && activity().appearanceHost.isNavigationReady }
-                awaitThemeFrame(dark = night == "yes")
-                val toggle = device.wait(Until.findObject(By.pkg("com.yangsong.lizhang").checkable(true)), 6000)!!
+                awaitThemeMode(AppThemeMode.SYSTEM, dark = night == "yes")
+                val toggle = themeSwitch()
                 assertEquals("SYSTEM 开关显示实际外观", night == "yes", toggle.isChecked)
                 toggle.click()
-                awaitPage { app.appContainer.themeRepository.themeMode.value == target && activity().appearanceState.snapshot == null }
-                device.waitForIdle()
-                assertEquals("点击后切换为实际外观的相反模式", night != "yes", device.findObject(By.checkable(true)).isChecked)
+                awaitThemeMode(target, dark = target == AppThemeMode.DARK)
+                assertEquals("点击后切换为实际外观的相反模式", night != "yes", themeSwitch().isChecked)
                 frame("系统${night}_开关反向切换")
             }
         } finally {
             device.executeShellCommand("cmd uimode night ${if (mode == android.app.UiModeManager.MODE_NIGHT_YES) "yes" else if (mode == android.app.UiModeManager.MODE_NIGHT_NO) "no" else "auto"}")
+            // 恢复系统配置也可能重建 Activity；待恢复窗口就绪后再初始化下一条测试的浅色偏好。
+            awaitPage {
+                val current = activity()
+                uiModeManager.nightMode == mode &&
+                    app.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == originalNight &&
+                    current.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == originalNight &&
+                    current.hasWindowFocus() && current.appearanceHost.isNavigationReady &&
+                    current.appearanceState.snapshot == null && current.appearanceState.pendingDark == null
+            }
             instrumentation.runOnMainSync { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
+            awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         }
     }
+}
+
+/** 检查正文区域的真实高对比笔画；排除系统栏和底部导航，平滑渐变不算内容。 */
+private fun hasRenderedContent(bitmap: Bitmap): Boolean {
+    val step = (bitmap.width / 240).coerceAtLeast(2)
+    fun contrast(a: Int, b: Int) = maxOf(
+        kotlin.math.abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)),
+        kotlin.math.abs(android.graphics.Color.green(a) - android.graphics.Color.green(b)),
+        kotlin.math.abs(android.graphics.Color.blue(a) - android.graphics.Color.blue(b)),
+    )
+    var edges = 0
+    for (y in bitmap.height * 15 / 100 until bitmap.height * 78 / 100 step step) {
+        for (x in bitmap.width * 6 / 100 until bitmap.width * 94 / 100 step step) {
+            val pixel = bitmap.getPixel(x, y)
+            if (maxOf(contrast(pixel, bitmap.getPixel(x + step, y)), contrast(pixel, bitmap.getPixel(x, y + step))) >= 24) {
+                if (++edges >= 40) return true
+            }
+        }
+    }
+    return false
 }

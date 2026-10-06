@@ -10,13 +10,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import com.yangsong.lizhang.ui.theme.*
 
-/** 所有页面共用连续的低饱和背景，滚动内容不会重启渐变。 */
+/** 所有页面共用柔和中性背景，滚动时保持连续，内容卡片承担主要层级。 */
 @Composable
 fun AppGradientBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val fraction = LocalThemeDarkFraction.current
-    val colors = listOf(lerp(GradientTop, DarkGradientTop, fraction),
-        lerp(CreamBackground, DarkBackground, fraction), lerp(GradientBottom, DarkGradientBottom, fraction))
-    Box(modifier.fillMaxSize().background(Brush.verticalGradient(colors)), content = content)
+    val top = lerp(GradientTop, DarkGradientTop, fraction)
+    val middle = lerp(CreamBackground, DarkBackground, fraction)
+    val bottom = lerp(GradientBottom, DarkGradientBottom, fraction)
+    Box(modifier.fillMaxSize().background(Brush.verticalGradient(
+        0f to top, .42f to middle, 1f to bottom,
+    )), content = content)
 }
 
 @Composable

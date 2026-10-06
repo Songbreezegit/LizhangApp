@@ -30,11 +30,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -505,7 +508,18 @@ fun SettingsContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             state = listState,
         ) {
-            item { PageIllustration(R.drawable.page_settings_cat, Modifier.fillMaxWidth().height(190.dp)) }
+            item {
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    PageIllustration(R.drawable.page_settings_cat, Modifier.size(64.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             item {
                 SettingsGroup {
                     SettingsRow(

@@ -29,9 +29,12 @@ fun currentAppLanguage(): AppLanguage =
 fun AppLanguage.displayName(): String = stringResource(when (this) {
     AppLanguage.SYSTEM -> R.string.language_system
     AppLanguage.ZH_CN -> R.string.language_chinese
+    AppLanguage.ZH_HANT -> R.string.language_chinese_traditional
     AppLanguage.EN -> R.string.language_english
     AppLanguage.JA -> R.string.language_japanese
     AppLanguage.KO -> R.string.language_korean
+    AppLanguage.ES -> R.string.language_spanish
+    AppLanguage.FR -> R.string.language_french
 })
 
 @Composable

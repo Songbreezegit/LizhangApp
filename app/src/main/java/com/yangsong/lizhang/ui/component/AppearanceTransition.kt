@@ -290,7 +290,7 @@ class AppearanceTransitionHost(
         if (shot.targetDark != null && shot.targetDark != dark) return
         if (shot.language != null && (shot.language != language ||
                 (shot.language != AppLanguage.SYSTEM &&
-                    resourceLanguage != shot.language.localeTag.substringBefore('-')))) return
+                    AppLanguage.fromLanguageTag(resourceLanguage) != shot.language))) return
         drawScheduled = true
         val committed = Runnable {
             drawScheduled = false

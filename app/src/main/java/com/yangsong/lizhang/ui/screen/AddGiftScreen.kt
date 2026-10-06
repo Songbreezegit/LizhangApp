@@ -110,9 +110,8 @@ fun AddGiftContent(
         topBar={AppTopBar(stringResource(if(state.isEditing)R.string.record_edit else R.string.nav_add_gift),onBack)},
     ){padding->
         when{state.isLoading->Box(Modifier.fillMaxSize().padding(padding)){LoadingState()};state.loadFailed->Box(Modifier.fillMaxSize().padding(padding)){ErrorState(onRetry)};else->Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
-            PageIllustration(R.drawable.page_add_cat,Modifier.fillMaxWidth().height(136.dp))
-            Column {
-                Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(18.dp)){
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
                     Text(stringResource(R.string.field_contact),style=MaterialTheme.typography.titleMedium)
                     SelectionRow(
                         text=state.contacts.firstOrNull{it.id==state.contactId}?.name?:stringResource(R.string.field_contact_hint),

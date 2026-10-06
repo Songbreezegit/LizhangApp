@@ -28,7 +28,7 @@ class GlassUiInstrumentedTest {
     private var imported = 0
 
     private fun start() {
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             ContactsContent(state.value, {}, {}, {}, { manual++ },
                 onImportContacts = { imported++ },
                 onEnterSelection = { state.value = state.value.copy(isSelectionMode = true) })
@@ -82,18 +82,18 @@ class GlassUiInstrumentedTest {
     @Test fun 千条联系人懒加载且最后一条可见可点击() {
         var clicked = 0L
         val contacts = (1L..1000L).map { ContactLedgerSummary(Contact(it, "虚构测试$it"), 0, 0) }
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             ContactsContent(ContactsUiState(contacts = contacts, isLoading = false), {}, {}, { clicked = it }, {})
         } }
         compose.onNodeWithText("虚构测试1000").assertDoesNotExist()
-        compose.onNodeWithTag("联系人列表").performScrollToIndex(1002)
+        compose.onNodeWithTag("联系人列表").performScrollToNode(hasText("虚构测试1000"))
         compose.onNodeWithText("虚构测试1000").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(1000L, clicked) }
     }
 
     @Test fun 提醒日期四项仍返回原天数() {
         val selected = mutableStateOf(0)
-        compose.setContent { LiZhangTheme {
+        compose.setChineseContent { LiZhangTheme {
             ReminderAdvanceDialog(selected.value, {}, { selected.value = it })
         } }
         listOf("当天提醒" to 0, "提前 1 天" to 1, "提前 3 天" to 3, "提前 7 天" to 7).forEach { (label, days) ->
@@ -105,7 +105,7 @@ class GlassUiInstrumentedTest {
     @Test fun 底部四个入口选中状态及重复点击不重复导航() {
         val destination = mutableStateOf<AppDestination>(AppDestination.Home)
         var clicks = 0
-        compose.setContent { LiZhangTheme { BottomNavBar(destination.value, { destination.value = it; clicks++ }, hazeState = dev.chrisbanes.haze.rememberHazeState(blurEnabled = false)) } }
+        compose.setChineseContent { LiZhangTheme { BottomNavBar(destination.value, { destination.value = it; clicks++ }, hazeState = dev.chrisbanes.haze.rememberHazeState(blurEnabled = false)) } }
         listOf("联系人" to AppDestination.Contacts, "记一笔" to AppDestination.AddGift,
             "我的" to AppDestination.Settings, "首页" to AppDestination.Home).forEach { (label, route) ->
             compose.onNodeWithText(label).performClick().assertIsSelected()

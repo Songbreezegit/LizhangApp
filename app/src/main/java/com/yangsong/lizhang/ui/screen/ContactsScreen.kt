@@ -69,7 +69,6 @@ import com.yangsong.lizhang.ui.component.ContactListItem
 import com.yangsong.lizhang.ui.component.EmptyState
 import com.yangsong.lizhang.ui.component.ErrorState
 import com.yangsong.lizhang.ui.component.LoadingState
-import com.yangsong.lizhang.ui.component.PageIllustration
 import com.yangsong.lizhang.ui.viewmodel.ContactSort
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 import com.yangsong.lizhang.ui.viewmodel.ContactsViewModel
@@ -198,9 +197,6 @@ fun ContactsContent(
                 bottom = if (state.isSelectionMode) 24.dp else GlassTokens.ListBottomClearance),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (!state.isSelectionMode) item {
-                PageIllustration(R.drawable.page_contacts_cat, Modifier.fillMaxWidth().height(88.dp))
-            }
             item { GlassSearchBar(state.query, onQueryChange, stringResource(R.string.contact_search_hint)) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -241,7 +237,8 @@ fun ContactsContent(
         ) { menuExpanded = false })
     }
     if (!state.isSelectionMode) {
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
+        Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding()
+            .padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
                 listOf(GlassAction(stringResource(R.string.contact_import_menu), Icons.Outlined.Contacts, onImportContacts),
                     GlassAction(stringResource(R.string.contact_add_manual), Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)

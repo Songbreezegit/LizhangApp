@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
             }
             LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors) {
                 AppearanceTransition(appearanceHost, darkTheme, appearanceState.languagePreference,
-                    resources.configuration.locales[0].language) {
+                    resources.configuration.locales[0].toLanguageTag()) {
                     CompositionLocalProvider(LocalPendingDark provides appearanceState.pendingDark,
                         LocalCurrentLanguage provides appearanceState.languagePreference) {
                         Surface(color = MaterialTheme.colorScheme.background) {

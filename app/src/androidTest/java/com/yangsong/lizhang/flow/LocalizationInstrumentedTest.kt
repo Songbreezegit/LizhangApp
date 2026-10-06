@@ -9,6 +9,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import org.junit.After
 import org.junit.Assert.*
@@ -28,8 +29,18 @@ class LocalizationInstrumentedTest {
 
     @Test
     fun 主题开关与弹窗切换后保留设置页() {
+        val previous = compose.activity
+        val needsRecreation = AppLanguage.fromLanguageTag(previous.resources.configuration.locales[0].toLanguageTag()) != AppLanguage.ZH_CN
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
+        }
+        compose.waitUntil(8000) {
+            runCatching {
+                (!needsRecreation || compose.activity !== previous) &&
+                    AppLanguage.fromLanguageTag(compose.activity.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.ZH_CN &&
+                    compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() &&
+                    compose.activity.appearanceState.snapshot == null
+            }.getOrDefault(false)
         }
         compose.waitForIdle()
         compose.onNodeWithText("我的").performClick()
@@ -56,16 +67,21 @@ class LocalizationInstrumentedTest {
     }
 
     @Test
-    fun 四语言资源复数和默认回退() {
+    fun 七语言资源复数和默认回退() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        for ((tag, title) in listOf("zh-CN" to "语言", "en" to "Language", "ja" to "言語", "ko" to "언어", "fr" to "语言")) {
+        for ((tag, title) in listOf("zh-CN" to "语言", "zh-Hant" to "語言", "zh-TW" to "語言",
+            "zh-HK" to "語言", "zh-MO" to "語言", "en" to "Language", "ja" to "言語",
+            "ko" to "언어", "es" to "Idioma", "fr" to "Langue", "de" to "语言")) {
             val config = Configuration(context.resources.configuration).apply { setLocales(LocaleList.forLanguageTags(tag)) }
             val localized = context.createConfigurationContext(config)
             assertEquals(tag, title, localized.getString(R.string.language))
             assertEquals("简体中文", localized.getString(R.string.language_chinese))
+            assertEquals("繁體中文", localized.getString(R.string.language_chinese_traditional))
             assertEquals("English", localized.getString(R.string.language_english))
             assertEquals("日本語", localized.getString(R.string.language_japanese))
             assertEquals("한국어", localized.getString(R.string.language_korean))
+            assertEquals("Español", localized.getString(R.string.language_spanish))
+            assertEquals("Français", localized.getString(R.string.language_french))
             if (tag == "en") {
                 assertEquals("Amount (CNY)", localized.giftExportLabels().headers[1])
                 assertEquals("Gift Records", localized.giftExportLabels().sheetName)
