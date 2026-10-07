@@ -76,7 +76,7 @@ class NotchedBottomNavInstrumentedTest {
     private var density = 1f
     private var iconTints = emptyList<Color>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
-    private val directory get() = File(context.getExternalFilesDir(null), "navigation-v095").apply { mkdirs() }
+    private val directory get() = File(context.getExternalFilesDir(null), "navigation-v096").apply { mkdirs() }
     private val tabRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
     private val items = listOf(
         AppDestination.Home to R.string.nav_home,
@@ -155,7 +155,10 @@ class NotchedBottomNavInstrumentedTest {
         compose.mainClock.advanceTimeByFrame()
         val samples = (1..5).map { index ->
             compose.mainClock.advanceTimeBy(64)
-            frame("切换中间$index").also(::assertNotch)
+            frame("切换中间$index").also {
+                assertNotch(it)
+                assertFloatingForeground(it)
+            }
         }
         settle()
         val end = frame("切换终点")
@@ -235,6 +238,42 @@ class NotchedBottomNavInstrumentedTest {
         assertEquals(item(AppDestination.Settings).center.x, bubble().center.x, density)
         assertNotch(frame("RTL我的"))
         compose.runOnIdle { assertEquals(AppDestination.Settings, destination.value) }
+    }
+
+    @Test fun 快速反向时浮钮保留连续速度且所有中间帧携带图标() {
+        start()
+        compose.mainClock.autoAdvance = false
+        val homeX = item(AppDestination.Home).center.x
+        val settingsX = item(AppDestination.Settings).center.x
+        val span = settingsX - homeX
+        tab(AppDestination.Settings).performClick()
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(80)
+        val before = frame("反向前")
+        assertTrue("反向发生在滑行中途", before.bubble.center.x > homeX + density && before.bubble.center.x < settingsX - density)
+        tab(AppDestination.Home).performClick()
+        compose.mainClock.advanceTimeByFrame()
+        val first = frame("反向首帧")
+        // 弹簧先消解已有向右速度，再向左返回；不能重置到任一入口或重新从静止开始。
+        assertTrue("改选首帧保持已有运动方向", first.bubble.center.x >= before.bubble.center.x - density)
+        val samples = mutableListOf(before, first)
+        repeat(9) { index ->
+            compose.mainClock.advanceTimeBy(32)
+            samples += frame("反向中间${index + 1}")
+        }
+        samples.forEach { assertNotch(it); assertFloatingForeground(it) }
+        samples.zipWithNext().forEach { (previous, next) ->
+            assertTrue("相邻真实帧不能跳过近半条导航栏", abs(next.bubble.center.x - previous.bubble.center.x) < span * .3f)
+        }
+        assertTrue("反向过程中至少两个不同中间位置", samples.map { (it.bubble.center.x / density).roundToInt() }.distinct().size >= 3)
+        assertTrue("消解已有速度后实际向左返回", samples.last().bubble.center.x < first.bubble.center.x - 8 * density)
+        settle()
+        val end = frame("反向终点")
+        assertFloatingForeground(end)
+        assertEquals(homeX, end.bubble.center.x, density)
+        tab(AppDestination.Home).assertIsSelected()
+        compose.onNodeWithTag("底部导航浮动图标home", useUnmergedTree = true).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf(AppDestination.Settings, AppDestination.Home), navigations) }
     }
 
     @Test fun 禁用动画后新选中入口和真实凹槽立即到位() {
@@ -377,6 +416,21 @@ class NotchedBottomNavInstrumentedTest {
             red += color.red; green += color.green; blue += color.blue; count++
         }
         return Color(red / count, green / count, blue / count)
+    }
+
+    /** 只采圆钮内部上半部，排除外圈描边与下方固定槽位图标，防止空圆圈误通过。 */
+    private fun assertFloatingForeground(frame: Frame) {
+        val background = patch(frame, frame.bubble.center.x, frame.bubble.center.y - 17 * density)
+        val center = frame.bubble.center - frame.canvas.topLeft
+        val left = (center.x - 11 * density).roundToInt().coerceAtLeast(0)
+        val right = (center.x + 11 * density).roundToInt().coerceAtMost(frame.image.width - 1)
+        val top = (center.y - 11 * density).roundToInt().coerceAtLeast(0)
+        val bottom = center.y.roundToInt().coerceAtMost(frame.image.height - 1)
+        var foreground = 0
+        for (y in top..bottom) for (x in left..right) {
+            if (distance(frame.pixels[x, y], background) > .16f) foreground++
+        }
+        assertTrue("移动圆钮上半部必须实际绘制随行图标，前景像素=$foreground", foreground >= (8 * density).roundToInt())
     }
 
     /** 语义区域会被图标槽位裁切；用真实像素中前景颜色的质心检查完整图标升降。 */

@@ -32,6 +32,7 @@
     <string name="action_edit">편집</string>
     <string name="loading">불러오는 중…</string>
     <string name="load_failed">데이터를 불러올 수 없습니다</string>
+    <string name="home_annual_summary">연간 수입·지출</string>
     <string name="home_year_received">올해 받은 금액</string>
     <string name="home_year_given">올해 보낸 금액</string>
     <string name="home_net">차액</string>

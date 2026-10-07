@@ -28,7 +28,11 @@ class NativeTransitionRecordingTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
-    private fun text(value: String) = device.wait(Until.findObject(By.text(value)), 6000) ?: error("未显示：$value")
+    private fun text(value: String) = device.wait(Until.findObject(By.text(value)), 6000) ?: run {
+        frame("文字定位失败")
+        device.dumpWindowHierarchy(File(app.getExternalFilesDir(null), "transition-evidence/文字定位失败.xml"))
+        error("未显示：$value；测试提醒数量=${app.appContainer.reminderRepository.reminders.value.size}")
+    }
     private fun chooseLanguage(value: String) {
         val choices = listOf("跟随系统", "简体中文", "繁體中文", "English", "日本語", "한국어", "Español", "Français")
         // 同语言文字也在下方设置行中；必须等弹窗选项出现后点击对应单选项。
@@ -74,7 +78,8 @@ class NativeTransitionRecordingTest {
         awaitPage {
             val current = activity()
             current !== previous && current.hasWindowFocus() && current.appearanceHost.isNavigationReady &&
-                current.appearanceState.snapshot == null && current.appearanceState.pendingDark == null
+                current.appearanceState.snapshot == null && current.appearanceState.pendingDark == null &&
+                !current.startupState.visible
         }
     }
     private fun awaitChinese(previous: MainActivity, needsRecreation: Boolean) {
@@ -112,6 +117,7 @@ class NativeTransitionRecordingTest {
         assertEquals("本次检查使用指定的实际动画比例", expectedMotion, android.animation.ValueAnimator.areAnimatorsEnabled())
         text("我的").click()
         text("主题设置")
+        awaitPage { activity().appearanceHost.isNavigationReady }
         text("深色模式")
         if (themeSwitch().visibleBounds.bottom > device.displayHeight * 3 / 4) {
             device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
@@ -254,10 +260,20 @@ class NativeTransitionRecordingTest {
         text("语言")
         device.waitForIdle()
         text("首页").click()
+        device.wait(Until.findObject(By.desc("提醒")), 6000) ?: error("首页提醒入口未显示")
+        awaitPage { activity().appearanceHost.isNavigationReady }
+        device.findObject(By.desc("提醒")).click()
+        text("提醒")
+        awaitPage { activity().appearanceHost.isNavigationReady }
         device.waitForIdle()
-        device.wait(Until.findObject(By.desc("提醒")), 6000)!!.click()
-        device.waitForIdle()
-        device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4, device.displayWidth / 2, device.displayHeight / 2, 20)
+        // 页面滑入期间先等待导航完成，再按可见内容滚动，避免点中移动中的旧坐标。
+        repeat(5) {
+            if (!device.hasObject(By.text("还没有独立提醒"))) {
+                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                    device.displayWidth / 2, device.displayHeight / 2, 20)
+                device.waitForIdle()
+            }
+        }
         text("还没有独立提醒")
         frame("正常渲染_提醒空状态")
         val previous = activity()
@@ -331,11 +347,22 @@ class NativeTransitionRecordingTest {
             awaitChinese(chinesePrevious, needsChineseRecreation)
             for ((night, target) in listOf("yes" to AppThemeMode.LIGHT, "no" to AppThemeMode.DARK)) {
                 instrumentation.runOnMainSync { app.appContainer.themeRepository.setThemeMode(AppThemeMode.SYSTEM) }
+                val previous = activity()
+                val targetNight = if (night == "yes") android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    else android.content.res.Configuration.UI_MODE_NIGHT_NO
+                val needsRecreation = previous.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK != targetNight
                 device.executeShellCommand("cmd uimode night $night")
-                awaitPage { activity().resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
-                    if (night == "yes") android.content.res.Configuration.UI_MODE_NIGHT_YES else android.content.res.Configuration.UI_MODE_NIGHT_NO }
+                // 资源配置会先于新 Activity 的输入窗口更新，不能用旧实例就绪状态提前开始点击。
+                awaitPage {
+                    val current = activity()
+                    (!needsRecreation || current !== previous) &&
+                        current.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == targetNight &&
+                        current.hasWindowFocus() && current.appearanceHost.isNavigationReady && !current.startupState.visible
+                }
                 text("我的").click()
                 text("主题设置")
+                awaitPage { activity().appearanceHost.isNavigationReady }
                 text("深色模式")
                 val visibleToggle = themeSwitch()
                 // 配置重建会恢复设置列表，不能再次盲目拖动已经可见的开关。
@@ -346,8 +373,21 @@ class NativeTransitionRecordingTest {
                 awaitThemeMode(AppThemeMode.SYSTEM, dark = night == "yes")
                 val toggle = themeSwitch()
                 assertEquals("SYSTEM 开关显示实际外观", night == "yes", toggle.isChecked)
+                val beforeBounds = toggle.visibleBounds
+                frame("系统${night}_点击前")
                 toggle.click()
-                awaitThemeMode(target, dark = target == AppThemeMode.DARK)
+                try {
+                    awaitThemeMode(target, dark = target == AppThemeMode.DARK)
+                } catch (failure: AssertionError) {
+                    frame("系统${night}_开关失败")
+                    val current = activity()
+                    println("开关失败：系统=$night，目标=$target，偏好=${app.appContainer.themeRepository.themeMode.value}，" +
+                        "点击前范围=$beforeBounds，当前范围=${toggle.visibleBounds}，当前选中=${themeSwitch().isChecked}，焦点=${current.hasWindowFocus()}，" +
+                        "导航就绪=${current.appearanceHost.isNavigationReady}，快照=${current.appearanceState.snapshot != null}，" +
+                        "待切换=${current.appearanceState.pendingDark}，开屏=${current.startupState.visible}")
+                    device.dumpWindowHierarchy(File(app.getExternalFilesDir(null), "transition-evidence/系统${night}_开关失败.xml"))
+                    throw failure
+                }
                 assertEquals("点击后切换为实际外观的相反模式", night != "yes", themeSwitch().isChecked)
                 frame("系统${night}_开关反向切换")
             }

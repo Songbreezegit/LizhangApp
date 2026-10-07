@@ -165,9 +165,10 @@ fun GiftSaveBar(
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(76.dp).frostedGlassFrame(hazeState, glassShape)
+                Modifier.fillMaxWidth().height(76.dp)
                     .testTag("礼金保存栏")
-                    .clickable(enabled = enabled && !isSaving, role = Role.Button, onClick = onSave),
+                    .pressClickable(enabled = enabled && !isSaving, role = Role.Button, shape = glassShape, onClick = onSave)
+                    .frostedGlassFrame(hazeState, glassShape),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -212,7 +213,7 @@ fun DiscardGiftChangesDialog(
     )
 }
 
-@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){Surface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit){GlassClickableSurface(onClick=onClick,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,7 +266,7 @@ private fun ContactPickerSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(shown, key = Contact::id) { contact ->
-                        Surface(
+                        GlassClickableSurface(
                             onClick = { onSelect(contact) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),

@@ -12,7 +12,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInRoot
@@ -45,29 +46,38 @@ fun FeatureGuideOverlay(
     val direction = LocalLayoutDirection.current
     val insets = WindowInsets.safeDrawing
     val color = MaterialTheme.colorScheme.primary
+    val bubbleColor = MaterialTheme.colorScheme.surface
     var origin by remember { mutableStateOf(Offset.Zero) }
-    Layout(
+    var bubbleBounds by remember(target) { mutableStateOf<Rect?>(null) }
+    SubcomposeLayout(
         modifier = modifier.fillMaxSize().testTag("功能引导高亮")
             .onPlaced { origin = it.positionInRoot(); initialPlacement = false }
             .onGloballyPositioned { origin = it.positionInRoot() }
             .drawBehind {
-                val anchor = registry.bounds(target)?.translate(-origin) ?: return@drawBehind
+                val anchor = registry.bounds(target)?.translate(-origin)?.inflate(4.dp.toPx()) ?: return@drawBehind
                 val stroke = 2.dp.toPx()
                 drawRoundRect(color.copy(alpha = .85f), topLeft = anchor.topLeft + Offset(stroke / 2, stroke / 2),
                     size = Size((anchor.width - stroke).coerceAtLeast(0f), (anchor.height - stroke).coerceAtLeast(0f)),
-                    cornerRadius = CornerRadius(20.dp.toPx()), style = Stroke(stroke))
+                    cornerRadius = CornerRadius(14.dp.toPx()), style = Stroke(stroke))
+                val bubble = bubbleBounds ?: return@drawBehind
+                val pointer = guidePointer(anchor, bubble, 24.dp.toPx(), 6.dp.toPx())
+                // 气泡靠边时只移动箭头根部；尖端始终落在真实目标相邻边的中心。
+                val arrow = Path().apply {
+                    moveTo(pointer.baseLeft.x, pointer.baseLeft.y)
+                    lineTo(pointer.tip.x, pointer.tip.y)
+                    lineTo(pointer.baseRight.x, pointer.baseRight.y)
+                }
+                drawPath(arrow, bubbleColor)
+                drawPath(arrow, color.copy(alpha = .85f), style = Stroke(1.5.dp.toPx()))
             },
-        content = {
-            FeatureGuideBubble(state.featureGuideStep, onNext, onSkip)
-        },
-    ) { measurables, constraints ->
+    ) { constraints ->
         val gap = 12.dp.roundToPx()
         val left = (insets.getLeft(density, direction) - origin.x).roundToInt().coerceAtLeast(0) + gap
         val right = constraints.maxWidth - insets.getRight(density, direction) - gap
         val top = (insets.getTop(density) - origin.y).roundToInt().coerceAtLeast(0) + gap
         fun space(anchor: Rect?): GuideSpace {
             val navTop = listOf(FeatureGuideTarget.ADD_RECORD, FeatureGuideTarget.CONTACTS, FeatureGuideTarget.SETTINGS)
-                .mapNotNull { registry.bounds(it)?.top }.minOrNull()
+                .mapNotNull { registry.interactionBounds(it)?.top ?: registry.bounds(it)?.top }.minOrNull()
             // 顶部目标的气泡也必须停在实际底栏上方。
             val bottom = min(constraints.maxHeight - insets.getBottom(density) - gap,
                 navTop?.let { (it - origin.y).roundToInt() - gap } ?: constraints.maxHeight)
@@ -75,26 +85,43 @@ fun FeatureGuideOverlay(
             val belowStart = maxOf(anchor?.bottom?.roundToInt()?.plus(gap) ?: top, top)
             return GuideSpace(aboveEnd, belowStart, (aboveEnd - top).coerceAtLeast(0), (bottom - belowStart).coerceAtLeast(0))
         }
-        val measuredSpace = space(registry.bounds(target)?.translate(-origin))
         val width = min(((right - left).coerceAtLeast(0) * .86f).roundToInt(), 360.dp.roundToPx())
-        val availableHeight = maxOf(measuredSpace.above, measuredSpace.below)
-        if (width == 0 || availableHeight == 0) {
-            layout(constraints.maxWidth, constraints.maxHeight) { }
-        } else {
-            val bubble = measurables[0].measure(Constraints(minWidth = width, maxWidth = width, maxHeight = availableHeight))
-            layout(constraints.maxWidth, constraints.maxHeight) {
-                // 同窗兄弟控件先放置，再读取它们本帧的真实位置；首次预览也无需硬编码目标。
-                val anchor = registry.bounds(target)?.translate(-origin) ?: return@layout
-                val placedSpace = space(anchor)
-                if (bubble.height > maxOf(placedSpace.above, placedSpace.below)) return@layout
-                val preferBelow = target == FeatureGuideTarget.REMINDERS
-                val placeBelow = if (preferBelow) placedSpace.below >= bubble.height else placedSpace.above < bubble.height
-                val bubbleY = if (placeBelow) placedSpace.belowStart else placedSpace.aboveEnd - bubble.height
-                val bubbleX = (anchor.center.x.roundToInt() - bubble.width / 2).coerceIn(left, right - bubble.width)
-                bubble.place(bubbleX, bubbleY)
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            // 同窗兄弟控件先放置，再按本帧的锚点测量气泡，避免首次布局采用过期高度。
+            val anchor = registry.bounds(target)?.translate(-origin)?.inflate(4.dp.toPx()) ?: run {
+                bubbleBounds = null
+                return@layout
             }
+            val placedSpace = space(anchor)
+            val availableHeight = maxOf(placedSpace.above, placedSpace.below)
+            if (width == 0 || availableHeight == 0) {
+                bubbleBounds = null
+                return@layout
+            }
+            val bubble = subcompose(target) {
+                FeatureGuideBubble(state.featureGuideStep, onNext, onSkip)
+            }.single().measure(Constraints(minWidth = width, maxWidth = width, maxHeight = availableHeight))
+            val preferBelow = target == FeatureGuideTarget.REMINDERS
+            val placeBelow = if (preferBelow) placedSpace.below >= bubble.height else placedSpace.above < bubble.height
+            val bubbleY = if (placeBelow) placedSpace.belowStart else placedSpace.aboveEnd - bubble.height
+            val bubbleX = (anchor.center.x.roundToInt() - bubble.width / 2).coerceIn(left, right - bubble.width)
+            bubbleBounds = Rect(bubbleX.toFloat(), bubbleY.toFloat(),
+                (bubbleX + bubble.width).toFloat(), (bubbleY + bubble.height).toFloat())
+            bubble.place(bubbleX, bubbleY)
         }
     }
 }
 
 private data class GuideSpace(val aboveEnd: Int, val belowStart: Int, val above: Int, val below: Int)
+
+internal data class GuidePointer(val baseLeft: Offset, val baseRight: Offset, val tip: Offset)
+
+/** 使用物理坐标，RTL、边缘夹持和不同系统栏尺寸都不会再次镜像箭头。 */
+internal fun guidePointer(anchor: Rect, bubble: Rect, cornerRadius: Float, halfWidth: Float): GuidePointer {
+    val bubbleAbove = bubble.bottom <= anchor.top
+    val baseY = if (bubbleAbove) bubble.bottom else bubble.top
+    val inset = min(cornerRadius + halfWidth, bubble.width / 2)
+    val baseX = anchor.center.x.coerceIn(bubble.left + inset, bubble.right - inset)
+    val tip = Offset(anchor.center.x, if (bubbleAbove) anchor.top else anchor.bottom)
+    return GuidePointer(Offset(baseX - halfWidth, baseY), Offset(baseX + halfWidth, baseY), tip)
+}

@@ -1,5 +1,16 @@
 package com.yangsong.lizhang.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.runtime.Composable
@@ -17,6 +28,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.testTag
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -67,6 +82,7 @@ fun LiZhangNavGraph(
     openRemindersRequest: Long? = null,
     onOpenRemindersConsumed: () -> Unit = {},
     onboardingViewModel: OnboardingViewModel = viewModel(factory = OnboardingViewModel.factory(appContainer.onboardingRepository)),
+    guideEnabled: Boolean = true,
 ) {
     val nav = rememberNavController()
     val hazeState = rememberHazeState()
@@ -86,6 +102,14 @@ fun LiZhangNavGraph(
     // 导航条目恢复到可交互状态后才能消费语言交接，不按固定帧数估计。
     SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
+    val layoutDirection = LocalLayoutDirection.current
+    val pageEasing = CubicBezierEasing(.2f, .8f, .2f, 1f)
+    fun motionDirection(from: String?, to: String?, returning: Boolean = false): Int {
+        val before = mainTabs.indexOfFirst { it.route == from }
+        val after = mainTabs.indexOfFirst { it.route == to }
+        val forward = if (before >= 0 && after >= 0) after > before else !returning
+        return (if (forward) 1 else -1) * (if (layoutDirection == LayoutDirection.Rtl) -1 else 1)
+    }
     val go: (AppDestination) -> Unit = {
         it.featureGuideTarget()?.let { target -> onboardingViewModel.targetInvoked(target.step) }
         nav.open(it)
@@ -121,7 +145,32 @@ fun LiZhangNavGraph(
     }
     CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides guideRegistry) {
     Box(Modifier.fillMaxSize()) {
-    NavHost(nav, AppDestination.Home.route, Modifier.hazeSource(hazeState)) {
+    NavHost(
+        nav, AppDestination.Home.route, Modifier.hazeSource(hazeState).testTag("业务导航页面"),
+        enterTransition = {
+            if (initialState.destination.route == targetState.destination.route) EnterTransition.None
+            else {
+                val direction = motionDirection(initialState.destination.route, targetState.destination.route)
+                slideInHorizontally(tween(360, easing = pageEasing)) { it / 8 * direction } +
+                    fadeIn(tween(240), initialAlpha = .45f)
+            }
+        },
+        exitTransition = {
+            if (initialState.destination.route == targetState.destination.route) ExitTransition.None
+            else {
+                val direction = motionDirection(initialState.destination.route, targetState.destination.route)
+                slideOutHorizontally(tween(260, easing = pageEasing)) { -it / 12 * direction } + fadeOut(tween(220))
+            }
+        },
+        popEnterTransition = {
+            val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
+            slideInHorizontally(tween(360, easing = pageEasing)) { it / 8 * direction } + fadeIn(tween(240), initialAlpha = .45f)
+        },
+        popExitTransition = {
+            val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
+            slideOutHorizontally(tween(260, easing = pageEasing)) { -it / 12 * direction } + fadeOut(tween(220))
+        },
+    ) {
         composable(AppDestination.Home.route) {
             HomeScreen(viewModel(factory = HomeViewModel.factory(appContainer.contactRepository, appContainer.giftRecordRepository)), go, openRecord)
         }
@@ -283,15 +332,24 @@ fun LiZhangNavGraph(
             PrivacyScreen(nav::popBackStack)
         }
     }
-    currentMainTab
-        ?.takeUnless { it == AppDestination.AddGift || (it == AppDestination.Contacts && contactsSelectionMode) }
-        ?.let { tab ->
-        BottomNavBar(tab, go, Modifier.align(Alignment.BottomCenter), hazeState)
+    // 保留退场期间的目的地，让记一笔的浮钮先响应，再随底栏轻落退出。
+    var lastMainRoute by rememberSaveable { mutableStateOf(AppDestination.Home.route) }
+    SideEffect { currentMainTab?.let { lastMainRoute = it.route } }
+    val barTab = currentMainTab ?: mainTabs.first { it.route == lastMainRoute }
+    val showBottomBar = currentMainTab != null && currentMainTab != AppDestination.AddGift &&
+        !(currentMainTab == AppDestination.Contacts && contactsSelectionMode)
+    AnimatedVisibility(
+        visible = showBottomBar,
+        modifier = Modifier.align(Alignment.BottomCenter).testTag("底部导航出入场"),
+        enter = slideInVertically(tween(320, easing = pageEasing)) { it / 3 } + fadeIn(tween(240)),
+        exit = slideOutVertically(tween(220, easing = pageEasing)) { it / 3 } + fadeOut(tween(180)),
+    ) {
+        BottomNavBar(barTab, go, Modifier, hazeState, enabled = showBottomBar)
     }
     CenteredSnackbarHost(snackbar)
     FeatureGuideOverlay(
         state = onboardingState,
-        isHome = currentMainTab == AppDestination.Home && navigationReady,
+        isHome = guideEnabled && currentMainTab == AppDestination.Home && navigationReady,
         registry = guideRegistry,
         onNext = { onboardingViewModel.advanceFeatureGuide(onboardingState.featureGuideStep) },
         onSkip = onboardingViewModel::skipFeatureGuide,

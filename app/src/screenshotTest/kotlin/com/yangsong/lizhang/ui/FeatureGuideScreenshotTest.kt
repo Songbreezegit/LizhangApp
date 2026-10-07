@@ -7,7 +7,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import com.android.tools.screenshot.PreviewTest
 import com.yangsong.lizhang.domain.onboarding.FeatureGuideStep
 import com.yangsong.lizhang.domain.onboarding.OnboardingState
@@ -20,11 +22,11 @@ import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 import dev.chrisbanes.haze.rememberHazeState
 
 @Composable
-private fun GuidePreview(step: FeatureGuideStep) {
+private fun GuidePreview(step: FeatureGuideStep, direction: LayoutDirection = LayoutDirection.Ltr) {
     LiZhangTheme {
         val registry = remember { FeatureGuideTargetRegistry() }
         val haze = rememberHazeState()
-        CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides registry) {
+        CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides registry, LocalLayoutDirection provides direction) {
             Box(Modifier.fillMaxSize()) {
                 HomeContent(HomeUiState(isLoading = false), {})
                 BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), haze)
@@ -48,3 +50,13 @@ fun FeatureGuideStep1Preview() = GuidePreview(FeatureGuideStep.ADD_RECORD)
 @Preview(name = "提醒法语深色大字体", locale = "fr", widthDp = 320, heightDp = 640, uiMode = 0x20, fontScale = 1.5f)
 @Composable
 fun FeatureGuideStep3Preview() = GuidePreview(FeatureGuideStep.REMINDERS)
+
+@PreviewTest
+@Preview(name = "我的法语大字体右侧指针", locale = "fr", widthDp = 320, heightDp = 640, fontScale = 1.5f)
+@Composable
+fun FeatureGuideStep4Preview() = GuidePreview(FeatureGuideStep.SETTINGS)
+
+@PreviewTest
+@Preview(name = "我的RTL西语深色左侧指针", locale = "es", widthDp = 320, heightDp = 640, fontScale = 1.5f, uiMode = 0x20)
+@Composable
+fun FeatureGuideStep4RtlPreview() = GuidePreview(FeatureGuideStep.SETTINGS, LayoutDirection.Rtl)

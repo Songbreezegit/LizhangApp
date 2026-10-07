@@ -43,7 +43,7 @@ fun IndependentReminderEditor(reminder: IndependentReminder?, onDismiss: () -> U
                 }
                 Row(Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.independent_annually), Modifier.weight(1f).padding(top = 12.dp))
-                    Switch(annually, { annually = it }, colors = glassSwitchColors(), modifier = Modifier.testTag("独立提醒每年重复"))
+                    GlassSwitch(annually, { annually = it }, colors = glassSwitchColors(), modifier = Modifier.testTag("独立提醒每年重复"))
                 }
                 Text(stringResource(if (reminder?.annually == true && annually && validDate)
                     R.string.independent_annual_edit_rule else R.string.independent_date_rule), style = MaterialTheme.typography.bodySmall,

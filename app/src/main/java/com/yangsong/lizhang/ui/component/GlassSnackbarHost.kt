@@ -55,6 +55,7 @@ fun GlassSnackbar(
         Icon(if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle, null, tint = accent)
         Text(message, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium)
-        if (actionLabel != null) TextButton(onAction) { Text(actionLabel, color = accent) }
+        if (actionLabel != null) GlassTextButton(onAction,
+            colors = ButtonDefaults.textButtonColors(contentColor = accent)) { Text(actionLabel) }
     }
 }

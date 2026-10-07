@@ -164,7 +164,7 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
 
 @Composable
 private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(
+    GlassClickableSurface(
         onClick = onClick,
         modifier = modifier.aspectRatio(1f).padding(2.dp),
         shape = CircleShape,
@@ -342,7 +342,7 @@ fun NotificationsContent(
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
-                            Switch(colors = glassSwitchColors(),
+                            GlassSwitch(colors = glassSwitchColors(),
                                 checked = state.remindersEnabled,
                                 onCheckedChange = onEnabledChange,
                             )
@@ -405,7 +405,7 @@ private fun IndependentReminderCard(reminder: IndependentReminder, state: Notifi
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(reminder.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                Switch(reminder.enabled, { onEnabled(reminder.id, it) }, colors = glassSwitchColors(),
+                GlassSwitch(reminder.enabled, { onEnabled(reminder.id, it) }, colors = glassSwitchColors(),
                     modifier = Modifier.testTag("独立提醒开关-${reminder.id}").semantics { contentDescription = toggleDescription })
             }
             Text(stringResource(if (reminder.annually) R.string.independent_annually else R.string.independent_once),
@@ -464,7 +464,7 @@ private fun ReminderScheduleCard(
 
 @Composable
 private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit) {
-    Surface(onClick = onClick, color = androidx.compose.ui.graphics.Color.Transparent) {
+    GlassClickableSurface(onClick = onClick, color = androidx.compose.ui.graphics.Color.Transparent) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -486,7 +486,7 @@ fun ReminderAdvanceDialog(selectedDays: Int, onDismiss: () -> Unit, onSelect: (I
                 supportedReminderAdvanceDays.forEach { days ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                            .selectable(selectedDays == days, role = Role.RadioButton, onClick = { onSelect(days) })
+                            .pressSelectable(selectedDays == days, role = Role.RadioButton, onClick = { onSelect(days) })
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

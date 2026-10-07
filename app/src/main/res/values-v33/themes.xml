@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LiZhang.Starting" parent="Theme.LiZhang">
+        <item name="android:windowBackground">@drawable/startup_window</item>
+        <item name="android:windowSplashScreenBackground">@color/startup_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/startup_icon</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <!-- Android 13 起部分启动来源默认只显示底色；明确保留品牌图标用于首帧交接。 -->
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+    </style>
+</resources>

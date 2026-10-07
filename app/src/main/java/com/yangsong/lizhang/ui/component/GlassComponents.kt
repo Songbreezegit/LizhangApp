@@ -3,13 +3,14 @@ package com.yangsong.lizhang.ui.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import dev.chrisbanes.haze.HazeState
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import com.yangsong.lizhang.ui.theme.LocalThemeDarkFraction
 import androidx.compose.ui.unit.dp
@@ -77,10 +79,11 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val clickable = if (onClick == null) modifier else modifier.clip(shape).clickable(onClick = onClick)
+    val clickable = if (onClick == null) modifier else modifier.pressClickable(shape = shape, onClick = onClick)
     Column(clickable.glassFrame(shape), content = content)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GlassButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     shape: Shape = RoundedCornerShape(GlassTokens.ControlRadius),
@@ -94,19 +97,30 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 ) {
     // 调用方传入的危险操作颜色保留；主要实色按钮不增加多余的内层描边。
     val tonal = colors.containerColor != MaterialTheme.colorScheme.primary && colors.containerColor != MaterialTheme.colorScheme.error
-    Button(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, shape = shape, colors = colors,
-        border = if (tonal) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null, content = content)
+    val source = remember { MutableInteractionSource() }
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        Button(onClick, modifier.heightIn(min = 48.dp).pressFeedback(source, shape, enabled,
+            accent = colors.contentColor),
+            enabled = enabled, shape = shape, colors = colors, interactionSource = source,
+            border = if (tonal) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null, content = content)
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GlassIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable () -> Unit) {
-    FilledTonalIconButton(onClick, modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp), enabled = enabled,
-        shape = RoundedCornerShape(GlassTokens.ControlRadius),
+    val source = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(GlassTokens.ControlRadius)
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    FilledTonalIconButton(onClick, modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+        .pressFeedback(source, shape, enabled, pressedScale = .95f), enabled = enabled,
+        shape = shape, interactionSource = source,
         colors = IconButtonDefaults.filledTonalIconButtonColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.DisabledAlpha),
         ), content = content)
+    }
 }
 
 /** 不使用 Material FAB 的实体 Surface，背景与前景分别绘制。 */
@@ -118,27 +132,33 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 ) {
     Box(
         modifier.size(56.dp)
-            .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius))
-            .clickable(role = Role.Button, onClick = onClick),
+            .pressClickable(role = Role.Button, shape = RoundedCornerShape(GlassTokens.ControlRadius),
+                pressedScale = .95f, onClick = onClick)
+            .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius)),
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary, content = content)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GlassChip(
     selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit,
     modifier: Modifier = Modifier, leadingIcon: (@Composable () -> Unit)? = null,
     accent: Color = MaterialTheme.colorScheme.primary,
 ) {
-    FilterChip(selected, onClick, label, modifier.heightIn(min = 48.dp), leadingIcon = leadingIcon,
-        shape = RoundedCornerShape(GlassTokens.ControlRadius),
+    val source = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(GlassTokens.ControlRadius)
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    FilterChip(selected, onClick, label, modifier.heightIn(min = 48.dp).pressFeedback(source, shape, accent = accent),
+        leadingIcon = leadingIcon, interactionSource = source, shape = shape,
         colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             selectedContainerColor = accent.copy(alpha = .14f).compositeOver(MaterialTheme.colorScheme.surface),
             selectedLabelColor = accent, selectedLeadingIconColor = accent),
         border = BorderStroke(1.dp, if (selected) accent.copy(alpha = .26f) else MaterialTheme.colorScheme.outlineVariant))
+    }
 }
 
 @Composable fun GlassSearchBar(value: String, onValueChange: (String) -> Unit, hint: String) {
@@ -167,14 +187,74 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 }
 
 /** 弱操作使用同一圆角和按压反馈，危险操作沿用调用方的红色语义。 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GlassTextButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
     content: @Composable RowScope.() -> Unit,
 ) {
-    TextButton(onClick, modifier.heightIn(min = 48.dp), enabled = enabled,
-        shape = RoundedCornerShape(GlassTokens.ControlRadius),
+    val source = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(GlassTokens.ControlRadius)
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    TextButton(onClick, modifier.heightIn(min = 48.dp).pressFeedback(source, shape, enabled, colors.contentColor), enabled = enabled,
+        shape = shape, interactionSource = source,
         colors = colors.copy(containerColor = Color.Transparent, disabledContainerColor = Color.Transparent), content = content)
+    }
+}
+
+/** 保留 Surface 的点击语义与颜色，只统一触点光晕和回弹。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GlassClickableSurface(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = RectangleShape,
+    color: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = contentColorFor(color),
+    content: @Composable () -> Unit,
+) {
+    val source = remember { MutableInteractionSource() }
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        Surface(onClick = onClick, modifier = modifier.pressFeedback(source, shape, enabled, pressedScale = .985f),
+            enabled = enabled, shape = shape, color = color, contentColor = contentColor,
+            interactionSource = source, content = content)
+    }
+}
+
+/** 开关与复选框保留原生选中动画，点击反馈与其他控件使用同一触点光晕。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GlassSwitch(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: SwitchColors = glassSwitchColors(),
+) {
+    val source = remember { MutableInteractionSource() }
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        Switch(checked, onCheckedChange, modifier.pressFeedback(source,
+            // 开关保留原生滑块动画，触摸期间不缩放可拖动控件的坐标空间。
+            RoundedCornerShape(GlassTokens.ControlRadius), enabled, pressedScale = 1f),
+            enabled = enabled, colors = colors, interactionSource = source)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GlassCheckbox(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val source = remember { MutableInteractionSource() }
+    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+        Checkbox(checked, onCheckedChange, modifier.pressFeedback(source,
+            RoundedCornerShape(12.dp), enabled, pressedScale = .96f),
+            enabled = enabled, interactionSource = source)
+    }
 }
 
 /** 开关关闭态使用中性色，避免 Material 默认紫灰混入蓝橘主题。 */

@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -165,7 +166,6 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun HeroSummaryCard(
     state: HomeUiState,
     onYearSelected: (Int) -> Unit,
@@ -178,51 +178,69 @@ private fun HeroSummaryCard(
     val expandedDescription = stringResource(if (yearMenuExpanded) R.string.state_expanded else R.string.state_collapsed)
     val anchor = remember { YearMenuAnchor() }
     Layout(modifier = Modifier.fillMaxWidth(), content = {
-        GlassCard(Modifier.fillMaxWidth().hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
+        GlassCard(Modifier.fillMaxWidth().testTag("年度收支卡片").hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                // 年份入口保持顶部对齐，菜单仍由 20dp 内边距和本帧入口高度定位。
+                // 入口实际高度决定菜单位置；标题与金额独立分层，不再用插图占据汇总空间。
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.weight(1f)) {
-                        Surface(
-                            onClick = { onExpandedChange(!yearMenuExpanded) },
-                            modifier = Modifier.testTag("年份入口")
-                                .layout { measurable, constraints ->
-                                    val button = measurable.measure(constraints)
-                                    anchor.height = button.height
-                                    layout(button.width, button.height) { button.placeRelative(0, 0) }
-                                }
-                                .semantics { stateDescription = expandedDescription }
-                                .onGloballyPositioned {
-                                    onButtonBounds(it.boundsInRoot())
-                                },
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = .07f),
-                        ) {
-                            Row(
-                                Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 9.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(stringResource(R.string.year_format, state.year), Modifier.weight(1f, fill = false),
-                                    fontWeight = FontWeight.Bold)
-                                Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    GlassClickableSurface(
+                        onClick = { onExpandedChange(!yearMenuExpanded) },
+                        modifier = Modifier.widthIn(max = 172.dp).testTag("年份入口")
+                            .layout { measurable, constraints ->
+                                val button = measurable.measure(constraints)
+                                anchor.height = button.height
+                                layout(button.width, button.height) { button.placeRelative(0, 0) }
                             }
+                            .semantics { stateDescription = expandedDescription }
+                            .onGloballyPositioned {
+                                onButtonBounds(it.boundsInRoot())
+                            },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    ) {
+                        Row(
+                            Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.year_format, state.year), Modifier.weight(1f, fill = false),
+                                fontWeight = FontWeight.Bold)
+                            Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
                         }
                     }
-                    Image(illustrationPainter(R.drawable.home_hero_cat), null, Modifier.size(80.dp),
-                        contentScale = ContentScale.Fit)
+                    Text(stringResource(R.string.home_annual_summary), Modifier.weight(1f).align(Alignment.CenterVertically),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(24.dp))
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val amountWidth = Modifier.widthIn(min = minOf(128.dp, maxWidth), max = maxWidth)
-                    // 先按金额实际宽度排版；长金额和大字体放到下一行，不压缩或省略数字。
-                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp), maxItemsInEachRow = 2) {
-                        AnnualAmount(R.string.home_year_received, state.received, MaterialTheme.colorScheme.primary, amountWidth)
-                        AnnualAmount(R.string.home_year_given, state.given, MaterialTheme.colorScheme.secondary, amountWidth)
+                    val density = LocalDensity.current
+                    val measurer = rememberTextMeasurer()
+                    val amountStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+                    val labelStyle = MaterialTheme.typography.bodyMedium
+                    val columnWidth = (constraints.maxWidth - with(density) { 24.dp.roundToPx() }) / 2
+                    val texts = listOf(
+                        com.yangsong.lizhang.ui.mapper.displayAmount(state.received) to amountStyle,
+                        com.yangsong.lizhang.ui.mapper.displayAmount(state.given) to amountStyle,
+                        stringResource(R.string.home_year_received) to labelStyle,
+                        stringResource(R.string.home_year_given) to labelStyle,
+                    )
+                    // 先测量完整数字与本地化标签，放不下两列就整体上下排，不把金额挤成省略号。
+                    val stacked = density.fontScale >= 1.2f || maxWidth < 280.dp || texts.any { (text, style) ->
+                        measurer.measure(text, style, softWrap = false, maxLines = 1).size.width > columnWidth
+                    }
+                    if (stacked) {
+                        Column(Modifier.fillMaxWidth().testTag("年度金额纵向"), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                            AnnualAmount(R.string.home_year_received, state.received, MaterialTheme.colorScheme.primary, Modifier.fillMaxWidth())
+                            AnnualAmount(R.string.home_year_given, state.given, MaterialTheme.colorScheme.secondary, Modifier.fillMaxWidth())
+                        }
+                    } else {
+                        Row(Modifier.fillMaxWidth().testTag("年度金额双列"), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            AnnualAmount(R.string.home_year_received, state.received, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                            AnnualAmount(R.string.home_year_given, state.given, MaterialTheme.colorScheme.secondary, Modifier.weight(1f))
+                        }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(20.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .65f))
                 Spacer(Modifier.height(10.dp))
                 Text(stringResource(R.string.contact_net_amount, stringResource(R.string.home_net),
@@ -271,10 +289,10 @@ private class YearMenuAnchor {
 
 @Composable
 private fun AnnualAmount(label: Int, amount: Long, tint: Color, modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(label), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium)
-        Text(com.yangsong.lizhang.ui.mapper.displayAmount(amount), color = tint,
+        Text(com.yangsong.lizhang.ui.mapper.displayAmount(amount), Modifier.testTag("年度金额-$label"), color = tint,
             style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
     }
 }
@@ -320,7 +338,7 @@ private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar
 @Composable
 private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
     onClick: () -> Unit, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 8.dp),
+    Column(modifier.clip(RoundedCornerShape(16.dp)).pressClickable(role = Role.Button, accent = tint, pressedScale = .96f, onClick = onClick).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(52.dp).background(tint.copy(alpha = .09f), RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center) {

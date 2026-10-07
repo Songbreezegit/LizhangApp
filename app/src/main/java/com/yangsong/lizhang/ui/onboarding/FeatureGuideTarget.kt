@@ -35,36 +35,48 @@ fun AppDestination.featureGuideTarget(): FeatureGuideTarget? = when (this) {
 class FeatureGuideTargetRegistry {
     private data class Registration(val owner: Any, val bounds: Rect)
     private val targets = mutableStateMapOf<FeatureGuideTarget, Registration>()
+    private val interactions = mutableStateMapOf<FeatureGuideTarget, Registration>()
 
     fun bounds(target: FeatureGuideTarget): Rect? = targets[target]?.bounds
+    fun interactionBounds(target: FeatureGuideTarget): Rect? = interactions[target]?.bounds
 
-    internal fun register(target: FeatureGuideTarget, owner: Any, bounds: Rect) {
-        targets[target] = Registration(owner, bounds)
+    internal fun register(target: FeatureGuideTarget, owner: Any, bounds: Rect, visual: Boolean = true) {
+        (if (visual) targets else interactions)[target] = Registration(owner, bounds)
     }
 
-    internal fun unregister(target: FeatureGuideTarget, owner: Any) {
+    internal fun unregister(target: FeatureGuideTarget, owner: Any, visual: Boolean = true) {
         // 导航离场组件不能清除恢复后新组件的坐标。
-        if (targets[target]?.owner === owner) targets.remove(target)
+        val entries = if (visual) targets else interactions
+        if (entries[target]?.owner === owner) entries.remove(target)
     }
 }
 
 val LocalFeatureGuideTargetRegistry = staticCompositionLocalOf<FeatureGuideTargetRegistry?> { null }
 
 /** 控件只报告位置，不判断步骤、不消费触摸，也不持久化坐标。 */
-fun Modifier.featureGuideTarget(target: FeatureGuideTarget): Modifier = composed {
+fun Modifier.featureGuideTarget(target: FeatureGuideTarget, registerBounds: Boolean = true): Modifier =
+    testTag("功能引导目标${target.name}").featureGuideAnchorBounds(target, visual = false).then(
+        if (registerBounds) Modifier.featureGuideAnchorBounds(target) else Modifier,
+    )
+
+/** 点击范围可以包含留白；引导边框只跟随真正看得见的图标、标签或控件。 */
+fun Modifier.featureGuideVisualAnchor(target: FeatureGuideTarget): Modifier =
+    testTag("功能引导视觉锚点${target.name}").featureGuideAnchorBounds(target)
+
+private fun Modifier.featureGuideAnchorBounds(target: FeatureGuideTarget, visual: Boolean = true): Modifier = composed {
     val registry = LocalFeatureGuideTargetRegistry.current
-    val owner = remember(registry, target) { Any() }
-    DisposableEffect(registry, target, owner) {
-        onDispose { registry?.unregister(target, owner) }
+    val owner = remember(registry, target, visual) { Any() }
+    DisposableEffect(registry, target, owner, visual) {
+        onDispose { registry?.unregister(target, owner, visual) }
     }
     fun report(coordinates: LayoutCoordinates) {
         val bounds = coordinates.boundsInRoot()
         // LazyColumn 滚动后只剩部分可见、或目标尚未布局时，等待它再次完整出现。
         if (bounds.width >= coordinates.size.width - .5f && bounds.height >= coordinates.size.height - .5f &&
             bounds.width > 0f && bounds.height > 0f) {
-            registry?.register(target, owner, bounds)
-        } else registry?.unregister(target, owner)
+            registry?.register(target, owner, bounds, visual)
+        } else registry?.unregister(target, owner, visual)
     }
     // 放置时先报告，气泡在同一帧的后续放置阶段即可读取；全局回调持续校正滚动等变化。
-    testTag("功能引导目标${target.name}").onPlaced(::report).onGloballyPositioned(::report)
+    onPlaced(::report).onGloballyPositioned(::report)
 }

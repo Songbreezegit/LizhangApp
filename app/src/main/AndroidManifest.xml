@@ -23,6 +23,7 @@
         </service>
         <activity
             android:name=".MainActivity"
+            android:theme="@style/Theme.LiZhang.Starting"
             android:configChanges="locale|layoutDirection"
             android:exported="true"
             android:launchMode="singleTop"

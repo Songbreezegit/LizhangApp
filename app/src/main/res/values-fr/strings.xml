@@ -34,6 +34,7 @@
     <string name="action_edit">Modifier</string>
     <string name="loading">Chargement…</string>
     <string name="load_failed">Impossible de lire les données pour le moment</string>
+    <string name="home_annual_summary">Bilan annuel</string>
     <string name="home_year_received">Reçu cette année</string>
     <string name="home_year_given">Offert cette année</string>
     <string name="home_net">Solde</string>

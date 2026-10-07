@@ -63,7 +63,7 @@ fun FrostedYearMenu(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .background(if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .12f) else Color.Transparent)
                     .testTag("年份选项-$year")
-                    .selectable(selected, role = Role.RadioButton, onClick = { onYearSelected(year) })
+                    .pressSelectable(selected, role = Role.RadioButton, onClick = { onYearSelected(year) })
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

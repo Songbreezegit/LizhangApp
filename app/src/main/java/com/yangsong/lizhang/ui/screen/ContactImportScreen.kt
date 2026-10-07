@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassCheckbox
+import com.yangsong.lizhang.ui.component.pressToggleable
 import com.yangsong.lizhang.ui.component.GlassSurface
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassTextButton
@@ -216,10 +218,10 @@ fun ContactImportContent(
 private fun ContactImportRow(row: ContactImportCandidate, selected: Boolean, enabled: Boolean, onToggle: (String) -> Unit) {
     GlassCard(Modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().toggleable(selected, enabled = enabled && !row.exists, role = Role.Checkbox) { onToggle(row.contact.phone) }.padding(12.dp),
+            Modifier.fillMaxWidth().pressToggleable(selected, enabled = enabled && !row.exists, role = Role.Checkbox) { onToggle(row.contact.phone) }.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(selected, onCheckedChange = null, enabled = enabled && !row.exists)
+            GlassCheckbox(selected, onCheckedChange = null, enabled = enabled && !row.exists)
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(row.contact.name, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     color = if (row.exists) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)

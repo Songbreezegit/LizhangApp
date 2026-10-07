@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassCheckbox
+import com.yangsong.lizhang.ui.component.pressToggleable
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import com.yangsong.lizhang.ui.component.AppScaffold
@@ -217,11 +219,11 @@ fun ContactsContent(
                     GlassCard(Modifier.fillMaxWidth()) {
                         Box(Modifier.padding(horizontal = 14.dp)) {
                             if (state.isSelectionMode) Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(item.contact.id in state.selectedContactIds,
+                                GlassCheckbox(item.contact.id in state.selectedContactIds,
                                     onCheckedChange = { onToggleContact(item.contact.id) }, enabled = !busy)
                                 Box(Modifier.weight(1f)) {
                                     val masked = item.copy(contact = item.contact.copy(phone = item.contact.phone?.let(ContactImportRules::maskPhone)))
-                                    ContactListItem(masked) { if (!busy) onToggleContact(item.contact.id) }
+                                    ContactListItem(masked, enabled = !busy) { onToggleContact(item.contact.id) }
                                 }
                             } else ContactListItem(item) { onContactClick(item.contact.id) }
                         }
@@ -256,10 +258,10 @@ fun ContactsContent(
                     Text(if (hasRecords) stringResource(R.string.contact_bulk_confirm_records, preview.contactsWithGiftRecords, preview.giftRecordCount)
                         else stringResource(R.string.contact_bulk_confirm_empty))
                     if (hasRecords) Row(
-                        Modifier.fillMaxWidth().toggleable(state.cascadeConfirmed, enabled = !state.isDeleting, role = Role.Checkbox) { onConfirmCascade(it) },
+                        Modifier.fillMaxWidth().pressToggleable(state.cascadeConfirmed, enabled = !state.isDeleting, role = Role.Checkbox) { onConfirmCascade(it) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(state.cascadeConfirmed, onCheckedChange = null, enabled = !state.isDeleting)
+                        GlassCheckbox(state.cascadeConfirmed, onCheckedChange = null, enabled = !state.isDeleting)
                         Text(androidx.compose.ui.res.pluralStringResource(R.plurals.contact_bulk_acknowledge, preview.giftRecordCount, preview.giftRecordCount), Modifier.weight(1f))
                     }
                 }

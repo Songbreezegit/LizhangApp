@@ -2,6 +2,7 @@ package com.yangsong.lizhang.flow
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -35,6 +36,7 @@ private fun ChineseFixture(content: @Composable () -> Unit) {
     val originalContext = LocalContext.current
     val originalConfiguration = LocalConfiguration.current
     val originalView = LocalView.current
+    val originalRegistryOwner = requireNotNull(LocalActivityResultRegistryOwner.current)
     var hostReady by remember(originalView) { mutableStateOf(false) }
     DisposableEffect(originalView) {
         // Dialog/Popup 的独立组合从宿主 View.context 重新提供资源，单独的 LocalContext
@@ -53,6 +55,7 @@ private fun ChineseFixture(content: @Composable () -> Unit) {
         CompositionLocalProvider(
             LocalContext provides chinese,
             LocalConfiguration provides chinese.resources.configuration,
+            LocalActivityResultRegistryOwner provides originalRegistryOwner,
         ) { content() }
     }
 }

@@ -34,6 +34,7 @@
     <string name="action_edit">Editar</string>
     <string name="loading">Cargando…</string>
     <string name="load_failed">No se pueden cargar los datos en este momento</string>
+    <string name="home_annual_summary">Balance anual</string>
     <string name="home_year_received">Recibido este año</string>
     <string name="home_year_given">Entregado este año</string>
     <string name="home_net">Saldo neto</string>

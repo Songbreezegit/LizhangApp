@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 系统的 288dp 图标画布留出边距，接近应用内品牌动画起始的 85dp，避免交接时骤然缩小。 -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/launcher_cat"
+    android:inset="35%" />

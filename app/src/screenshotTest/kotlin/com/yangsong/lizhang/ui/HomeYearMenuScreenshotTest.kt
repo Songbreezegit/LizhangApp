@@ -6,7 +6,7 @@ import com.yangsong.lizhang.ui.screen.HomeContent
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.HomeUiState
 
-/** 使用实际汇总文字、渐变和猫咪作为菜单背景，覆盖浅深主题与大字体。 */
+/** 使用实际年度汇总文字与实体卡片作为菜单背景，覆盖浅深主题与大字体。 */
 @PreviewTest @GlassConfigurations @Composable
 fun HomeYearMenuScreenshot() {
     LiZhangTheme {

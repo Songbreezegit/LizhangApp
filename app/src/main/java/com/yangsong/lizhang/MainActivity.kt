@@ -3,12 +3,15 @@ package com.yangsong.lizhang
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.animation.ValueAnimator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
@@ -23,6 +26,9 @@ import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.viewmodel.AppearanceTransitionViewModel
 import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
+import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
+import com.yangsong.lizhang.ui.component.BrandStartupOverlay
+import com.yangsong.lizhang.ui.component.StartupWindowGate
 import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
 import com.yangsong.lizhang.domain.onboarding.OnboardingMode
 import androidx.lifecycle.Lifecycle
@@ -34,10 +40,14 @@ import com.yangsong.lizhang.ui.navigation.ReminderLaunchRequest
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.component.AppearanceTransition
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 
 class MainActivity : AppCompatActivity() {
     internal lateinit var appearanceHost: AppearanceTransitionHost
     internal lateinit var appearanceState: AppearanceTransitionViewModel
+    internal lateinit var startupState: StartupAnimationViewModel
+    private lateinit var startupWindowGate: StartupWindowGate
     private val reminderLaunchRequest = MutableStateFlow<ReminderLaunchRequest?>(null)
     private var nextRequestKey = 0L
     private val openRemindersRequest = MutableStateFlow<Long?>(null)
@@ -45,12 +55,19 @@ class MainActivity : AppCompatActivity() {
     private var localeRecreationRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_LiZhang)
         super.onCreate(savedInstanceState)
         appliedLocaleTags = resources.configuration.locales.toLanguageTags()
         // 保留窗口已有边到边配置，避免重复初始化。
         if (!window.decorView.isAttachedToWindow) enableEdgeToEdge()
+        val app = application as LiZhangApplication
+        startupState = ViewModelProvider(this)[StartupAnimationViewModel::class.java]
+        startupState.initialize(app.startupSession.claim(
+            restoringState = savedInstanceState != null,
+            directEntry = isReminderIntent(intent),
+        ), animationsEnabled = ValueAnimator.areAnimatorsEnabled())
         handleReminderIntent(intent)
-        val appContainer = (application as LiZhangApplication).appContainer
+        val appContainer = app.appContainer
         val onboardingViewModel = ViewModelProvider(this, OnboardingViewModel.factory(appContainer.onboardingRepository))[OnboardingViewModel::class.java]
         appearanceState = ViewModelProvider(this)[AppearanceTransitionViewModel::class.java]
         appearanceState.languagePreference = currentAppLanguage()
@@ -63,6 +80,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.ViewGroup>(android.R.id.content).removeAllViews()
         setContent {
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
+            val startupVisible = startupState.visible
             LaunchedEffect(onboardingState.completed) {
                 if (onboardingState.completed) appContainer.startReminderCoordination()
             }
@@ -86,36 +104,46 @@ class MainActivity : AppCompatActivity() {
                     CompositionLocalProvider(LocalPendingDark provides appearanceState.pendingDark,
                         LocalCurrentLanguage provides appearanceState.languagePreference) {
                         Surface(color = MaterialTheme.colorScheme.background) {
-                            if (!onboardingState.completed) {
-                                // 引导没有业务导航条目，直接随当前 Activity 生命周期同步就绪。
-                                // 复用窗口重建时不依赖 Compose 状态收集的恢复时机。
-                                DisposableEffect(lifecycle, appearanceHost) {
-                                    val observer = LifecycleEventObserver { owner, _ ->
-                                        appearanceHost.navigationReady(owner.lifecycle.currentState == Lifecycle.State.RESUMED)
-                                    }
-                                    lifecycle.addObserver(observer)
-                                    onDispose { lifecycle.removeObserver(observer) }
+                            Box(Modifier.fillMaxSize()) {
+                                Box(if (startupVisible) Modifier.fillMaxSize().clearAndSetSemantics { }
+                                    else Modifier.fillMaxSize()) {
+                                    if (!onboardingState.completed) {
+                                        // 引导没有业务导航条目，直接随当前 Activity 生命周期同步就绪。
+                                        // 复用窗口重建时不依赖 Compose 状态收集的恢复时机。
+                                        DisposableEffect(lifecycle, appearanceHost) {
+                                            val observer = LifecycleEventObserver { owner, _ ->
+                                                appearanceHost.navigationReady(owner.lifecycle.currentState == Lifecycle.State.RESUMED)
+                                            }
+                                            lifecycle.addObserver(observer)
+                                            onDispose { lifecycle.removeObserver(observer) }
+                                        }
+                                        OnboardingScreen(OnboardingMode.FIRST_LAUNCH,
+                                            onFinish = { onboardingViewModel.finish(OnboardingMode.FIRST_LAUNCH) })
+                                    } else LiZhangNavGraph(
+                                        appContainer = appContainer,
+                                        onboardingViewModel = onboardingViewModel,
+                                        reminderLaunchRequest = pendingReminder,
+                                        onReminderRequestConsumed = {
+                                            if (reminderLaunchRequest.value == pendingReminder) {
+                                                reminderLaunchRequest.value = null
+                                            }
+                                        },
+                                        openRemindersRequest = pendingOpenReminders,
+                                        onOpenRemindersConsumed = { openRemindersRequest.value = null },
+                                        guideEnabled = !startupVisible,
+                                    )
                                 }
-                                OnboardingScreen(OnboardingMode.FIRST_LAUNCH,
-                                    onFinish = { onboardingViewModel.finish(OnboardingMode.FIRST_LAUNCH) })
-                            } else LiZhangNavGraph(
-                                appContainer = appContainer,
-                                onboardingViewModel = onboardingViewModel,
-                                reminderLaunchRequest = pendingReminder,
-                                onReminderRequestConsumed = {
-                                    if (reminderLaunchRequest.value == pendingReminder) {
-                                        reminderLaunchRequest.value = null
-                                    }
-                                },
-                                openRemindersRequest = pendingOpenReminders,
-                                onOpenRemindersConsumed = { openRemindersRequest.value = null },
-                            )
+                                BrandStartupOverlay(startupState)
+                            }
                         }
                     }
                 }
             }
         }
         appearanceHost.attach()
+        startupWindowGate = StartupWindowGate(this, startupState,
+            waitForSystemSplash = savedInstanceState == null && startupState.visible && !startupState.hasStarted)
+        startupWindowGate.attach()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -132,10 +160,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) appearanceHost.cancel()
+        if (!isChangingConfigurations) {
+            startupState.finish()
+            appearanceHost.cancel()
+        }
     }
 
     override fun onDestroy() {
+        startupWindowGate.detach()
         appearanceHost.detach(isChangingConfigurations)
         super.onDestroy()
     }
@@ -143,8 +175,13 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (isReminderIntent(intent)) startupState.finish()
         handleReminderIntent(intent)
     }
+
+    private fun isReminderIntent(intent: Intent?): Boolean =
+        intent?.action == ReminderNavigationContract.ACTION_OPEN_REMINDERS ||
+            ReminderNavigationContract.readRecordId(intent) != null
 
     private fun handleReminderIntent(intent: Intent?) {
         if (intent?.action == ReminderNavigationContract.ACTION_OPEN_REMINDERS) {

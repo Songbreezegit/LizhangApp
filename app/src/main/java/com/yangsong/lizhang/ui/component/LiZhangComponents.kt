@@ -33,8 +33,8 @@ import com.yangsong.lizhang.ui.theme.*
 @Composable fun AppTopBar(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.()->Unit)?=null)=TopAppBar(title={Text(title,style=MaterialTheme.typography.titleLarge)},navigationIcon={if(onBack!=null)GlassIconButton(onBack){Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.action_back))}},actions={action?.invoke(this)},colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent))
 
 @Composable
-fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, modifier: Modifier = Modifier, hazeState: HazeState) =
-    NotchedBottomNavigation(current, onNavigate, modifier, hazeState)
+fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, modifier: Modifier = Modifier, hazeState: HazeState, enabled: Boolean = true) =
+    NotchedBottomNavigation(current, onNavigate, modifier, hazeState, enabled)
 
 @Composable fun PrimaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,loading:Boolean=false,enabled:Boolean=true,icon:ImageVector?=null){GlassButton(onClick,modifier.heightIn(min=52.dp),enabled=enabled&&!loading,shape=RoundedCornerShape(GlassTokens.ControlRadius),colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary,disabledContainerColor=if(loading)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,disabledContentColor=if(loading)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha=GlassTokens.DisabledAlpha))){if(loading)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=MaterialTheme.colorScheme.onPrimary)else{icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text,fontWeight=FontWeight.SemiBold)}}}
 @Composable fun SecondaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,icon:ImageVector?=null){GlassButton(onClick,modifier.heightIn(min=52.dp),colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.secondaryContainer,contentColor=MaterialTheme.colorScheme.onSecondaryContainer)){icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text)}}
@@ -68,7 +68,7 @@ private fun contactSurname(name:String):String{val clean=name.trim();if(clean.is
 @Composable fun ContactAvatar(name:String,size:androidx.compose.ui.unit.Dp,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.secondary){Surface(modifier.size(size),shape=CircleShape,color=tint.copy(alpha=.10f)){Box(contentAlignment=Alignment.Center){val surname=contactSurname(name).ifEmpty { stringResource(R.string.contact_avatar_fallback) };Text(surname,color=tint,style=if(surname.length>1)MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold)}}}
 @Composable
 fun GiftRecordListItem(item: GiftRecordWithContact, onClick: (() -> Unit)? = null) {
-    val click = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick)
+    val click = if (onClick == null) Modifier else Modifier.pressClickable(onClick = onClick)
     val tint = if (item.record.direction == GiftDirection.RECEIVED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     val amount = stringResource(
         if (item.record.direction == GiftDirection.RECEIVED) R.string.amount_received else R.string.amount_given,
@@ -95,10 +95,10 @@ fun GiftRecordListItem(item: GiftRecordWithContact, onClick: (() -> Unit)? = nul
     }
 }
 @Composable
-fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) {
+fun ContactListItem(summary: ContactLedgerSummary, enabled: Boolean = true, onClick: () -> Unit) {
     val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.2f
     val amountColor = if (summary.netInCents >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().pressClickable(enabled = enabled, onClick = onClick).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         ContactAvatar(summary.contact.name, 44.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -124,4 +124,4 @@ fun ContactListItem(summary: ContactLedgerSummary, onClick: () -> Unit) {
 @Composable fun LoadingState(){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()}}
 @Composable fun ErrorState(onRetry:()->Unit){EmptyState(stringResource(R.string.load_failed),action=stringResource(R.string.action_retry),onAction=onRetry)}
 @Composable fun CenteredSnackbarHost(hostState:SnackbarHostState){Box(Modifier.fillMaxSize().padding(24.dp),contentAlignment=Alignment.Center){SnackbarHost(hostState,Modifier.widthIn(max=360.dp))}}
-@Composable fun SettingsRow(icon:ImageVector,title:String,subtitle:String?=null,onClick:()->Unit,trailing:(@Composable ()->Unit)?=null,accent:Color=MaterialTheme.colorScheme.primary){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).heightIn(min=64.dp).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(14.dp),color=accent.copy(alpha=.10f)){Icon(icon,null,Modifier.padding(10.dp),tint=accent)};Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.SemiBold);subtitle?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}};trailing?.invoke()?:Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}
+@Composable fun SettingsRow(icon:ImageVector,title:String,subtitle:String?=null,onClick:()->Unit,trailing:(@Composable ()->Unit)?=null,accent:Color=MaterialTheme.colorScheme.primary){Row(Modifier.fillMaxWidth().pressClickable(accent = accent, onClick=onClick).heightIn(min=64.dp).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(14.dp),color=accent.copy(alpha=.10f)){Icon(icon,null,Modifier.padding(10.dp),tint=accent)};Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.SemiBold);subtitle?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}};trailing?.invoke()?:Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}

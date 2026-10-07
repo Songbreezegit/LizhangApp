@@ -1,8 +1,16 @@
 package com.yangsong.lizhang.ui.component
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -56,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuideVisualAnchor
 import dev.chrisbanes.haze.HazeState
 
 private data class BottomNavigationItem(
@@ -72,7 +82,6 @@ private val bottomNavigationItems = listOf(
 )
 
 private object NavigationMotion {
-    const val DurationMillis = 380
     val FloatingDiameter = 48.dp
     val FloatingRadius = FloatingDiameter / 2
     val IconLift = 14.dp
@@ -89,18 +98,17 @@ internal fun NotchedBottomNavigation(
     onNavigate: (AppDestination) -> Unit,
     modifier: Modifier,
     hazeState: HazeState,
+    enabled: Boolean = true,
 ) {
     val selectedIndex = bottomNavigationItems.indexOfFirst { it.destination == current }.coerceAtLeast(0)
-    // animateFloatAsState 初次组合直接采用当前目的地；快速重选从当前值继续。
+    // 弹簧保留改选瞬间的速度；首次组合直接采用当前目的地。
     val position by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
-        animationSpec = tween(NavigationMotion.DurationMillis, easing = FastOutSlowInEasing),
+        animationSpec = spring(dampingRatio = .86f, stiffness = 300f, visibilityThreshold = .001f),
         label = "导航浮钮与凹槽位置",
     )
     val direction = LocalLayoutDirection.current
     val interactions = remember { bottomNavigationItems.map { MutableInteractionSource() } }
-    val selectedPressed by interactions[selectedIndex].collectIsPressedAsState()
-    val floatingScale by navigationPressScale(selectedPressed)
     BoxWithConstraints(
         modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
             .heightIn(min = NavigationMotion.MinimumHeight),
@@ -118,13 +126,29 @@ internal fun NotchedBottomNavigation(
         )
         // offset 采用物理坐标；RTL 只在上面的索引映射一次，避免再次镜像。
         Box(
-            Modifier.align(AbsoluteAlignment.TopLeft)
+            Modifier.align(AbsoluteAlignment.TopLeft).zIndex(1f)
                 .absoluteOffset { androidx.compose.ui.unit.IntOffset((center - NavigationMotion.FloatingRadius).roundToPx(), 0) }
                 .size(NavigationMotion.FloatingDiameter).testTag("底部导航浮钮")
-                .graphicsLayer { scaleX = floatingScale; scaleY = floatingScale }
+                .pressFeedback(interactions[selectedIndex], CircleShape, enabled = enabled, pressedScale = .94f)
                 .frostedGlassFrame(hazeState, CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = GlassTokens.SelectedAlpha), CircleShape),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            // 图标随浮钮一起滑行，避免移动途中只剩空圆钮、新图标提前悬空。
+            AnimatedContent(
+                targetState = selectedIndex,
+                transitionSpec = {
+                    (fadeIn(tween(160)) + scaleIn(tween(260, easing = FastOutSlowInEasing), initialScale = .65f))
+                        .togetherWith(fadeOut(tween(110)) + scaleOut(tween(140), targetScale = .65f))
+                        .using(SizeTransform(clip = false))
+                },
+                label = "浮钮图标交接",
+            ) { index ->
+                Icon(bottomNavigationItems[index].icon, contentDescription = null,
+                    modifier = Modifier.size(23.dp).testTag("底部导航浮动图标${bottomNavigationItems[index].destination.route}"),
+                    tint = MaterialTheme.colorScheme.primary)
+            }
+        }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = horizontalPadding).selectableGroup(),
         ) {
@@ -134,8 +158,8 @@ internal fun NotchedBottomNavigation(
                 val scale by navigationPressScale(pressed)
                 val lift by animateFloatAsState(
                     targetValue = if (selected) 1f else 0f,
-                    animationSpec = tween(NavigationMotion.DurationMillis, easing = FastOutSlowInEasing),
-                    label = "导航图标升降${item.destination.route}",
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    label = "导航原位图标交接${item.destination.route}",
                 )
                 val tint by animateColorAsState(
                     targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -146,17 +170,23 @@ internal fun NotchedBottomNavigation(
                 Box(Modifier.weight(1f).testTag("底部导航项${item.destination.route}")) {
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = NavigationMotion.MinimumHeight)
-                            .then(item.destination.featureGuideTarget()?.let { Modifier.featureGuideTarget(it) } ?: Modifier)
+                            .then(item.destination.featureGuideTarget()?.let { Modifier.featureGuideTarget(it, registerBounds = false) } ?: Modifier)
                             .selectable(
                                 selected = selected,
                                 interactionSource = interactions[index],
                                 indication = null,
+                                enabled = enabled,
                                 role = Role.Tab,
                                 onClick = { if (!selected) onNavigate(item.destination) },
                             )
                             .padding(top = NavigationMotion.FloatingRadius, bottom = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                      Column(
+                        Modifier.fillMaxWidth()
+                            .then(item.destination.featureGuideTarget()?.let { Modifier.featureGuideVisualAnchor(it) } ?: Modifier),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                      ) {
                         Box(Modifier.fillMaxWidth().height(28.dp), contentAlignment = Alignment.Center) {
                             Icon(
                                 item.icon,
@@ -164,8 +194,9 @@ internal fun NotchedBottomNavigation(
                                 modifier = Modifier.size(23.dp).testTag("底部导航图标${item.destination.route}")
                                     .graphicsLayer {
                                         translationY = -NavigationMotion.IconLift.toPx() * lift
-                                        scaleX = scale
-                                        scaleY = scale
+                                        alpha = 1f - lift
+                                        scaleX = scale * (1f - .18f * lift)
+                                        scaleY = scale * (1f - .18f * lift)
                                     },
                                 tint = tint,
                             )
@@ -181,6 +212,7 @@ internal fun NotchedBottomNavigation(
                                 textAlign = TextAlign.Center,
                             ),
                         )
+                      }
                     }
                 }
             }

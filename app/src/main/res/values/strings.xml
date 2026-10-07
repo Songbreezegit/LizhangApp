@@ -32,6 +32,7 @@
     <string name="action_edit">编辑</string>
     <string name="loading">正在加载…</string>
     <string name="load_failed">暂时无法读取数据</string>
+    <string name="home_annual_summary">年度收支</string>
     <string name="home_year_received">本年收到</string>
     <string name="home_year_given">本年送出</string>
     <string name="home_net">净往来</string>

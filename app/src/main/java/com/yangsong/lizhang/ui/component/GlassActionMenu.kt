@@ -44,8 +44,8 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
             ) {
                 Row(
                     Modifier.heightIn(min = 48.dp)
+                        .pressClickable(role = Role.Button, shape = RoundedCornerShape(GlassTokens.ControlRadius)) { onDismiss(); action.onClick() }
                         .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius))
-                        .clickable(role = Role.Button) { onDismiss(); action.onClick() }
                         .padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

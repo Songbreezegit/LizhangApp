@@ -33,6 +33,7 @@
     <string name="action_edit">Edit</string>
     <string name="loading">Loading…</string>
     <string name="load_failed">Unable to load data right now</string>
+    <string name="home_annual_summary">Annual summary</string>
     <string name="home_year_received">Received This Year</string>
     <string name="home_year_given">Given This Year</string>
     <string name="home_net">Net Balance</string>

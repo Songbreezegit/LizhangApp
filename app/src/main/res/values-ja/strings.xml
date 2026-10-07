@@ -32,6 +32,7 @@
     <string name="action_edit">編集</string>
     <string name="loading">読み込み中…</string>
     <string name="load_failed">データを読み込めませんでした</string>
+    <string name="home_annual_summary">年間収支</string>
     <string name="home_year_received">今年の受け取り</string>
     <string name="home_year_given">今年の贈り物</string>
     <string name="home_net">差額</string>

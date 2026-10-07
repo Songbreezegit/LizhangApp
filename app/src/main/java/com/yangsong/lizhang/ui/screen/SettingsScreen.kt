@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.GlassSwitch
+import com.yangsong.lizhang.ui.component.pressSelectable
 import com.yangsong.lizhang.ui.component.LanguagePicker
 import com.yangsong.lizhang.ui.component.LocalAppearanceActions
 import com.yangsong.lizhang.ui.component.LocalPendingDark
@@ -589,7 +591,7 @@ fun SettingsContent(
                         themeDescription,
                         onClick = toggleDark,
                         trailing = {
-                            Switch(colors = glassSwitchColors(),
+                            GlassSwitch(colors = glassSwitchColors(),
                                 modifier = Modifier.onGloballyPositioned {
                                     switchCenter = it.positionInWindow() + Offset(it.size.width / 2f, it.size.height / 2f)
                                 },
@@ -647,7 +649,7 @@ private fun ThemeModeOption(
         AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
     }
     Row(
-        Modifier.fillMaxWidth().selectable(selected = selected == mode, role = Role.RadioButton,
+        Modifier.fillMaxWidth().pressSelectable(selected = selected == mode, role = Role.RadioButton,
             onClick = { onSelect(mode) }).padding(vertical = 4.dp),
     ) {
         RadioButton(selected = selected == mode, onClick = null, modifier = Modifier.size(48.dp))

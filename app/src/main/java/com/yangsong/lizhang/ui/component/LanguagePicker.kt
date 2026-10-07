@@ -90,7 +90,7 @@ fun LanguagePicker(onDismiss: () -> Unit) {
             }) {
                 AppLanguage.entries.forEach { language ->
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).pressSelectable(
                             selected = selected == language,
                             role = Role.RadioButton,
                             onClick = {
