@@ -9,6 +9,7 @@ import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.runtime.DisposableEffect
 import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import com.yangsong.lizhang.ui.component.currentAppLanguage
@@ -491,8 +492,8 @@ fun SettingsContent(
     val transition = LocalAppearanceActions.current
     val effectiveDark = LocalPendingDark.current ?: LocalEffectiveDarkTheme.current
     var switchCenter by remember { mutableStateOf(Offset.Zero) }
-    val toggleDark: () -> Unit = {
-        val target = !effectiveDark
+    fun setDark(target: Boolean, source: String, suppliedDark: Boolean? = null) {
+        (transition as? com.yangsong.lizhang.ui.component.AppearanceTransitionHost)?.themeCallback(source, target, suppliedDark)
         val change = { onThemeModeChange(if (target) AppThemeMode.DARK else AppThemeMode.LIGHT) }
         if (transition != null) transition.circular(switchCenter, target, change) else change()
     }
@@ -563,6 +564,10 @@ fun SettingsContent(
                         Icons.Outlined.Language,
                         stringResource(R.string.language),
                         onClick = { showLanguagePicker = true },
+                        modifier = Modifier.testTag("语言设置行").onGloballyPositioned {
+                            (transition as? com.yangsong.lizhang.ui.component.AppearanceTransitionHost)
+                                ?.languageTargetBounds(it.boundsInWindow())
+                        },
                         trailing = {
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 Text((LocalCurrentLanguage.current ?: currentAppLanguage()).displayName(), Modifier.widthIn(max = 80.dp),
@@ -589,14 +594,22 @@ fun SettingsContent(
                         Icons.Outlined.DarkMode,
                         stringResource(R.string.settings_dark),
                         themeDescription,
-                        onClick = toggleDark,
+                        onClick = { setDark(!effectiveDark, "row") },
+                        diagnosticName = "深色模式行",
+                        modifier = Modifier.testTag("深色模式行").onGloballyPositioned {
+                            (transition as? com.yangsong.lizhang.ui.component.AppearanceTransitionHost)
+                                ?.themeTargetBounds(false, it.boundsInWindow(), effectiveDark)
+                        },
                         trailing = {
                             GlassSwitch(colors = glassSwitchColors(),
-                                modifier = Modifier.onGloballyPositioned {
+                                diagnosticName = "深色模式开关",
+                                modifier = Modifier.testTag("深色模式开关").onGloballyPositioned {
                                     switchCenter = it.positionInWindow() + Offset(it.size.width / 2f, it.size.height / 2f)
+                                    (transition as? com.yangsong.lizhang.ui.component.AppearanceTransitionHost)
+                                        ?.themeTargetBounds(true, it.boundsInWindow(), effectiveDark)
                                 },
                                 checked = effectiveDark,
-                                onCheckedChange = { toggleDark() },
+                                onCheckedChange = { setDark(it, "switch", it) },
                             )
                         },
                     )

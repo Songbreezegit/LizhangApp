@@ -231,12 +231,13 @@ fun GlassSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: SwitchColors = glassSwitchColors(),
+    diagnosticName: String? = null,
 ) {
     val source = remember { MutableInteractionSource() }
     CompositionLocalProvider(LocalRippleConfiguration provides null) {
         Switch(checked, onCheckedChange, modifier.pressFeedback(source,
             // 开关保留原生滑块动画，触摸期间不缩放可拖动控件的坐标空间。
-            RoundedCornerShape(GlassTokens.ControlRadius), enabled, pressedScale = 1f),
+            RoundedCornerShape(GlassTokens.ControlRadius), enabled, pressedScale = 1f, diagnosticName = diagnosticName),
             enabled = enabled, colors = colors, interactionSource = source)
     }
 }

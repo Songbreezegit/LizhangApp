@@ -4,6 +4,8 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Build
+import android.os.Process
 import android.os.SystemClock
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -17,6 +19,10 @@ import androidx.test.uiautomator.Until
 import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.core.common.StartupFrameEvidence
+import com.yangsong.lizhang.core.common.diagnoseStartupFrames
+import com.yangsong.lizhang.ui.viewmodel.StartupDiagnosticEvent
+import com.yangsong.lizhang.ui.viewmodel.StartupDiagnosticSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -29,61 +35,143 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** 独立 instrumentation 冷进程执行；不安装 Compose 测试时钟，读取系统实际合成屏幕。 */
+/** 每轮必须独立冷进程执行；不安装 Compose 测试时钟，所有图片来自系统实际合成屏幕。 */
 class StartupRealFrameInstrumentedTest {
+    private data class Snapshot(
+        val requestedNanos: Long,
+        val receivedNanos: Long,
+        val hostId: Int?,
+        val density: Float,
+        val state: StartupDiagnosticSnapshot?,
+    ) {
+        val active get() = state?.let { it.visible && it.ready } == true
+        val progress get() = state?.progress ?: 0f
+    }
+
     private data class Frame(
-        val elapsedMillis: Long,
-        val before: Float,
-        val after: Float,
-        val active: Boolean,
+        val before: Snapshot,
+        val after: Snapshot,
+        val afterScaling: Snapshot,
+        val captureStartNanos: Long,
+        val captureEndNanos: Long,
+        val scalingStartNanos: Long,
+        val scalingEndNanos: Long,
+        val originalBytes: Int,
         val density: Float,
         val bitmap: Bitmap,
         val stableFinal: Boolean = false,
+        val interactionFinal: Boolean = false,
     )
 
     @Test fun 系统启动层退出后品牌确有多帧变化并露出真实首页() {
         assertTrue("真实中间帧验收需要启用系统动画", ValueAnimator.areAnimatorsEnabled())
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        // 在采样线程开始前完成自动化服务连接，避免首次截屏与 UiDevice 的连接配置互相竞争。
+        // 此连接与 PNG 编码延期在原交付中已经实现，本轮继续保留。
         val device = UiDevice.getInstance(instrumentation)
         val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
+        val args = InstrumentationRegistry.getArguments()
+        val runId = args.getString("repairRunId") ?: args.getString("v096RunId")
+            ?: "独立冷进程_${SystemClock.elapsedRealtime()}_${Process.myPid()}"
+        require(runId.matches(Regex("[\\p{L}\\p{N}_.-]+"))) { "运行编号不能包含路径分隔符" }
+        val folder = File(app.getExternalFilesDir(null), "startup-v096-real/$runId")
+        check(!folder.exists()) { "本轮证据目录已存在，不覆盖历史尝试：$runId" }
+        check(folder.mkdirs()) { "无法创建独立启动证据目录" }
+        val origin = System.nanoTime()
         val current = AtomicReference<MainActivity?>()
+        val frames = Collections.synchronizedList(mutableListOf<Frame>())
+        val captureNotes = Collections.synchronizedList(mutableListOf<String>())
+        val sampling = AtomicBoolean(true)
+        val samplingFailure = AtomicReference<Throwable?>()
+        val diagnostics = AtomicReference<List<StartupDiagnosticEvent>>(emptyList())
+        var completedBefore = false
+        var coldOpportunity = false
+        instrumentation.runOnMainSync {
+            completedBefore = app.appContainer.onboardingRepository.state.value.completed
+            coldOpportunity = !app.startupSession.hasClaimed
+        }
+        File(folder, "运行前置.txt").writeText(
+            "runId=$runId\nPID=${Process.myPid()}\nAPI=${Build.VERSION.SDK_INT}\n" +
+                "首次引导已完成=$completedBefore\n进程启动机会尚未消费=$coldOpportunity\n" +
+                "设计时长=880ms\n品牌采样窗口=.20..78\n动画速度由设备清单记录\n" +
+                "时基=System.nanoTime；以下调用和状态均使用同一单调时钟\n",
+        )
+        assertTrue("本用例必须独立冷进程执行，启动机会不能被之前用例消耗", coldOpportunity)
+
+        fun snapshot(): Snapshot {
+            val requested = System.nanoTime()
+            var result: Snapshot? = null
+            instrumentation.runOnMainSync {
+                val activity = current.get()
+                // Activity 与全部 Compose 状态在主线程一次读取，采样线程只读取不可变值。
+                result = Snapshot(requested, System.nanoTime(), activity?.let(System::identityHashCode),
+                    activity?.resources?.displayMetrics?.density ?: app.resources.displayMetrics.density,
+                    activity?.startupState?.diagnosticSnapshot())
+            }
+            return requireNotNull(result)
+        }
+
+        fun takeFrame(stableFinal: Boolean = false): Frame? {
+            val before = snapshot()
+            val started = System.nanoTime()
+            val bitmap = try {
+                instrumentation.uiAutomation.takeScreenshot()
+            } catch (error: Throwable) {
+                captureNotes.add("截图开始ms=${millis(started - origin)}；异常结束ms=${millis(System.nanoTime() - origin)}；progress前=${before.progress}；${error.stackTraceToString()}")
+                throw error
+            }
+            val ended = System.nanoTime()
+            // 截图结束立即取一致快照，不能把缩放耗时算入该图片的 after 进度。
+            val after = snapshot()
+            if (bitmap == null) {
+                captureNotes.add("截图开始ms=${millis(started - origin)}；结束ms=${millis(ended - origin)}；progress前/后=${before.progress}/${after.progress}；系统截图返回空")
+                return null
+            }
+            val scalingStarted = System.nanoTime()
+            val width = minOf(420, bitmap.width)
+            val originalBytes = bitmap.allocationByteCount
+            val scaled = Bitmap.createScaledBitmap(bitmap, width,
+                (bitmap.height * width.toFloat() / bitmap.width).roundToInt(), true)
+            val density = before.density * width / bitmap.width
+            if (scaled !== bitmap) bitmap.recycle()
+            val scaledAt = System.nanoTime()
+            // 保留旧规则的缩放后关联点，逐帧输出旧/新谓词对照，阈值完全相同。
+            val afterScaling = snapshot()
+            return Frame(before, after, afterScaling, started, ended, scalingStarted, scaledAt,
+                originalBytes, density, scaled, stableFinal)
+        }
+
         val lifecycle = ActivityLifecycleCallback { activity, stage ->
             if (activity is MainActivity && stage == Stage.CREATED) current.set(activity)
         }
         instrumentation.runOnMainSync { ActivityLifecycleMonitorRegistry.getInstance().addLifecycleCallback(lifecycle) }
-        val sampling = AtomicBoolean(true)
-        val samplingFailure = AtomicReference<Throwable?>()
-        val frames = Collections.synchronizedList(mutableListOf<Frame>())
-        val origin = SystemClock.elapsedRealtime()
+        var bufferLimit = false
         val observer = Thread {
             try {
-                while (sampling.get() && SystemClock.elapsedRealtime() - origin < 20_000) {
-                    val activity = current.get()
-                    val state = activity?.startupState
-                    val before = state?.progress ?: 0f
-                    val activeBefore = state?.let { it.visible && it.ready } == true
-                    val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: continue
-                    if (activity == null) {
-                        bitmap.recycle()
-                        SystemClock.sleep(25)
+                var retainedBytes = 0L
+                while (sampling.get() && System.nanoTime() - origin < 20_000_000_000L) {
+                    // 尚无目标 Activity 时不分配截图；进程启动层的完整覆盖必要时另用连续系统录制。
+                    if (current.get() == null) {
+                        SystemClock.sleep(5)
                         continue
                     }
-                    val width = minOf(420, bitmap.width)
-                    val scaled = Bitmap.createScaledBitmap(bitmap, width,
-                        (bitmap.height * width.toFloat() / bitmap.width).roundToInt(), true)
-                    val density = activity.resources.displayMetrics.density * width / bitmap.width
-                    if (scaled !== bitmap) bitmap.recycle()
-                    frames.add(Frame(SystemClock.elapsedRealtime() - origin, before, state!!.progress,
-                        activeBefore && state.visible && state.ready, density, scaled))
-                    if (frames.size >= 70 || (!state.visible && frames.size > 2)) break
-                    SystemClock.sleep(25)
+                    val frame = takeFrame() ?: continue
+                    frames.add(frame)
+                    retainedBytes += frame.bitmap.allocationByteCount
+                    if (frame.after.state?.visible == false && frames.size > 2) break
+                    if (frames.size >= 70 || retainedBytes >= 64L * 1024 * 1024) {
+                        bufferLimit = true
+                        break
+                    }
+                    // 动画期间不额外固定休眠；截图与主线程快照本身已提供同步边界。
                 }
             } catch (error: Throwable) {
                 samplingFailure.set(error)
             }
         }.apply { name = "开屏真实画面采样"; start() }
         var finished = false
+        var pageVisible = false
+        var interactionSucceeded = false
+        var scenarioFailure: Throwable? = null
         try {
             val intent = Intent(app, MainActivity::class.java).apply {
                 action = Intent.ACTION_MAIN
@@ -97,69 +185,141 @@ class StartupRealFrameInstrumentedTest {
                     if (finished) break
                     SystemClock.sleep(30)
                 }
-                // 保留真实页面首次露出的系统画面；所有 PNG 在采样后写入，避免编码延长采样间隔。
                 observer.join(1500)
                 sampling.set(false)
                 observer.join(3000)
-                scenario.onActivity { assertFalse("有限开屏结束后不残留遮挡", it.startupState.visible) }
-                var pageTitle = ""
-                var actualDensity = 1f
                 scenario.onActivity {
-                    pageTitle = it.getString(if (app.appContainer.onboardingRepository.state.value.completed)
-                        R.string.home_recent else R.string.onboarding_intro_title)
-                    actualDensity = it.resources.displayMetrics.density
+                    diagnostics.set(it.startupState.diagnostics())
+                    assertFalse("有限开屏结束后不残留遮挡", it.startupState.visible)
+                }
+                var pageTitle = ""
+                var interactionLabel = ""
+                var expectedAfterInteraction = ""
+                scenario.onActivity {
+                    pageTitle = it.getString(if (completedBefore) R.string.home_recent else R.string.onboarding_intro_title)
+                    interactionLabel = it.getString(if (completedBefore) R.string.nav_settings else R.string.onboarding_next)
+                    expectedAfterInteraction = it.getString(if (completedBefore) R.string.settings_dark else R.string.onboarding_features_title)
                 }
                 val page = device.wait(Until.findObject(By.text(pageTitle)), 6000)
                 assertNotNull("启动结束后实际首页或首次引导文字可见：$pageTitle", page)
-                val visiblePage = requireNotNull(page)
-                assertTrue("实际页面文字具有可见屏幕范围", visiblePage.visibleBounds.width() > 0 && visiblePage.visibleBounds.height() > 0)
+                val bounds = requireNotNull(page).visibleBounds
+                pageVisible = bounds.width() > 0 && bounds.height() > 0
+                assertTrue("实际页面文字具有可见屏幕范围", pageVisible)
                 device.waitForIdle(1500)
-                val finalBitmap = instrumentation.uiAutomation.takeScreenshot()
-                assertNotNull("取得真实页面的稳定系统合成终帧", finalBitmap)
-                val originalBitmap = requireNotNull(finalBitmap)
-                val width = minOf(420, originalBitmap.width)
-                val scaled = Bitmap.createScaledBitmap(originalBitmap, width,
-                    (originalBitmap.height * width.toFloat() / originalBitmap.width).roundToInt(), true)
-                val density = actualDensity * width / originalBitmap.width
-                if (scaled !== originalBitmap) originalBitmap.recycle()
-                frames.add(Frame(SystemClock.elapsedRealtime() - origin, 1f, 1f,
-                    active = false, density = density, bitmap = scaled, stableFinal = true))
+                val finalFrame = takeFrame(stableFinal = true)
+                assertNotNull("取得真实页面的稳定系统合成终帧", finalFrame)
+                frames.add(requireNotNull(finalFrame))
+                // 真实触摸后页面必须改变，单纯 visible=false 或找到文字不能证明覆盖层释放。
+                val target = device.wait(Until.findObject(By.text(interactionLabel)), 3000)
+                assertNotNull("终帧真实页面具有可操作入口：$interactionLabel", target)
+                val targetBounds = requireNotNull(target).visibleBounds
+                assertTrue("终帧入口启用且可见", target.isEnabled && !targetBounds.isEmpty)
+                device.click(targetBounds.centerX(), targetBounds.centerY())
+                interactionSucceeded = device.wait(Until.hasObject(By.text(expectedAfterInteraction)), 6000) == true
+                assertTrue("启动覆盖释放后真实触摸可以操作页面：$expectedAfterInteraction", interactionSucceeded)
+                scenario.onActivity { assertFalse("页面操作后品牌层不重新覆盖", it.startupState.visible) }
+                takeFrame(stableFinal = true)?.let { frames.add(it.copy(interactionFinal = true)) }
             }
+        } catch (error: Throwable) {
+            scenarioFailure = error
         } finally {
             sampling.set(false)
             observer.join(3000)
-            instrumentation.runOnMainSync { ActivityLifecycleMonitorRegistry.getInstance().removeLifecycleCallback(lifecycle) }
+            instrumentation.runOnMainSync {
+                current.get()?.let { diagnostics.set(it.startupState.diagnostics()) }
+                ActivityLifecycleMonitorRegistry.getInstance().removeLifecycleCallback(lifecycle)
+            }
         }
-        samplingFailure.get()?.let { throw AssertionError("系统合成屏幕采样失败", it) }
         val captured = frames.toList()
-        val folder = File(app.getExternalFilesDir(null), "startup-v096-real").apply { mkdirs() }
-        // 只清理本测试生成的旧帧，避免多次运行的同名目录混入上一轮证据。
-        folder.listFiles { file -> file.isFile && file.extension == "png" &&
-            (file.name.startsWith("真实开屏_") || file.name == "真实页面_稳定终帧.png") }
-            ?.forEach { check(it.delete()) }
         try {
             captured.forEachIndexed { index, frame ->
-                val name = if (frame.stableFinal) "真实页面_稳定终帧.png"
-                    else "真实开屏_${index}_${(frame.after * 100).roundToInt()}.png"
-                File(folder, name).outputStream().use {
-                    frame.bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
-                }
+                val name = if (frame.interactionFinal) "真实页面_交互后.png"
+                    else if (frame.stableFinal) "真实页面_稳定终帧.png"
+                    else "真实开屏_${index}_${(frame.after.progress * 100).roundToInt()}.png"
+                File(folder, name).outputStream().use { frame.bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
-            File(folder, "采样说明.txt").writeText(captured.mapIndexed { index, frame ->
-                "$index\t${frame.elapsedMillis}ms\t${frame.before}→${frame.after}\t启动层可见=${frame.active}\t名称笔画=${nameEdges(frame)}"
-            }.joinToString("\n"))
+            val visible = captured.filter { exclusionReasons(it).isEmpty() }
+            val oldVisible = captured.filter { exclusionReasons(it, oldAssociation = true).isEmpty() }
+            val blank = captured.count { !it.stableFinal && it.before.active && it.before.progress < .64f && brandEdges(it) < 20 }
+            val trace = diagnostics.get()
+            val animationCallbacks = trace.filter { it.frameNanos != null }
+            val maximumDispatchGap = animationCallbacks.zipWithNext().maxOfOrNull {
+                (first, second) -> second.state.monotonicNanos - first.state.monotonicNanos
+            } ?: 0L
+            val maximumCapture = captured.filter { !it.stableFinal && (it.before.active || it.after.active) }
+                .maxOfOrNull { it.captureEndNanos - it.captureStartNanos } ?: 0L
+            val firstAnimation = animationCallbacks.firstOrNull()?.state?.monotonicNanos
+            val contentCommit = trace.firstOrNull { it.event == "内容首帧已提交" }?.state?.monotonicNanos
+            val splashRemove = trace.firstOrNull { it.event == "系统启动层已调用移除" }?.state?.monotonicNanos
+            val changed = if (visible.size >= 2) changedBrandPixels(visible.first(), visible.last()) else 0
+            val span = if (visible.size >= 2) visible.last().captureStartNanos - visible.first().captureEndNanos else 0L
+            val startedBeforeContent = firstAnimation != null && contentCommit != null && firstAnimation < contentCommit
+            val startedBeforeSplash = firstAnimation != null && splashRemove != null && firstAnimation < splashRemove
+            val diagnosis = diagnoseStartupFrames(StartupFrameEvidence(visible.size, changed, span,
+                maximumCapture, maximumDispatchGap, startedBeforeContent, startedBeforeSplash)).description
+            File(folder, "采样说明.txt").writeText(buildString {
+                appendLine("runId=$runId；旧/新均要求主线程快照可见且就绪、before>=.20、after<=.78、名称笔画>=12")
+                appendLine("新规则在截图返回后立即关联；旧规则对照在缩放结束后关联；不放宽进度或像素阈值")
+                appendLine("调用前后快照等待包含在各请求/收到时间中；capture 时长仅含系统截图；scaling 含缩放及原图回收")
+                appendLine("序号\t截图开始ms\t截图结束ms\t截图耗时ms\t缩放耗时ms\t快照前请求/收到ms\t快照后请求/收到ms\tprogress前/后/缩放后\t宿主前/后\t原图分配bytes\t保留图bytes\t额外固定休眠ms\t名称笔画\t旧规则排除\t新规则排除")
+                captured.forEachIndexed { index, frame ->
+                    appendLine("$index\t${millis(frame.captureStartNanos - origin)}\t${millis(frame.captureEndNanos - origin)}\t" +
+                        "${millis(frame.captureEndNanos - frame.captureStartNanos)}\t${millis(frame.scalingEndNanos - frame.scalingStartNanos)}\t" +
+                        "${millis(frame.before.requestedNanos - origin)}/${millis(frame.before.receivedNanos - origin)}\t" +
+                        "${millis(frame.after.requestedNanos - origin)}/${millis(frame.after.receivedNanos - origin)}\t" +
+                        "${frame.before.progress}/${frame.after.progress}/${frame.afterScaling.progress}\t${frame.before.hostId}/${frame.after.hostId}\t" +
+                        "${frame.originalBytes}\t${frame.bitmap.allocationByteCount}\t0\t${nameEdges(frame)}\t" +
+                        "${exclusionReasons(frame, true).ifEmpty { listOf("有效") }.joinToString("；")}\t" +
+                        exclusionReasons(frame).ifEmpty { listOf("有效") }.joinToString("；"))
+                }
+                appendLine("旧判定有效=${oldVisible.size}；新判定有效=${visible.size}；保守真实时间跨度ms=${millis(span)}；品牌变化像素=$changed；空帧=$blank")
+                appendLine("最大截图耗时ms=${millis(maximumCapture)}；动画帧回调最大交付间隔ms=${millis(maximumDispatchGap)}；有界缓冲已耗尽=$bufferLimit")
+                appendLine("页面结束=$finished；真实页面可见=$pageVisible；真实触摸成功=$interactionSucceeded；诊断=$diagnosis")
+                appendLine("场景异常=${scenarioFailure?.stackTraceToString() ?: "无"}")
+                appendLine("采样异常=${samplingFailure.get()?.stackTraceToString() ?: "无"}")
+                appendLine("空截图或截图异常记录=${captureNotes.joinToString("\n")}")
+            })
+            File(folder, "窗口与动画时间线.txt").writeText(buildString {
+                appendLine("单调时间ms\t宿主\t事件\tvisible\tready\tprogress\t帧调度时间ms\t回调交付时间减帧调度ms")
+                trace.forEach { event ->
+                    appendLine("${millis(event.state.monotonicNanos - origin)}\t${event.hostId}\t${event.event}\t" +
+                        "${event.state.visible}\t${event.state.ready}\t${event.state.progress}\t" +
+                        "${event.frameNanos?.let { millis(it - origin) }}\t${event.frameNanos?.let { millis(event.state.monotonicNanos - it) }}")
+                }
+            })
+            scenarioFailure?.let { throw AssertionError("启动场景失败；原始证据已保留于 $runId", it) }
+            samplingFailure.get()?.let { throw AssertionError("系统合成屏幕采样失败；原始证据已保留于 $runId", it) }
+            assertFalse("采样线程必须退出后再检查或回收图片", observer.isAlive)
+            assertFalse("有界采集缓冲耗尽属于采集不足，不能声明通过", bufferLimit)
             assertTrue("启动页面按有限时长完成", finished)
-            val visible = captured.filter { it.active && it.before >= .20f && it.after <= .78f && nameEdges(it) >= 12 }
-            assertTrue("系统启动图退场后至少采集三个带应用名的实际品牌中间帧，取得 ${visible.size} 帧", visible.size >= 3)
-            assertTrue("品牌中间帧覆盖真实的一段时间轴", visible.last().after - visible.first().before >= .16f)
-            assertTrue("系统画面中的图标或扩散圆环确实变化", changedBrandPixels(visible.first(), visible.last()) >= 60)
-            val blank = captured.count { it.active && it.before < .64f && brandEdges(it) < 20 }
+            assertNotNull("记录当前内容首帧提交时间", contentCommit)
+            assertNotNull("记录实际动画起始帧时间", firstAnimation)
+            if (Build.VERSION.SDK_INT >= 31) assertNotNull("记录系统启动层退出时间", splashRemove)
+            assertFalse("动画必须在内容提交与系统启动层退出之后开始", startedBeforeContent || startedBeforeSplash)
+            assertTrue("系统启动图退场后至少采集三个带应用名的实际品牌中间帧，取得 ${visible.size} 帧；$diagnosis", visible.size >= 3)
+            assertTrue("品牌中间帧保守覆盖至少 880ms×.16 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
+            assertTrue("系统画面中的图标或扩散圆环确实变化，取得 $changed 个变化像素", changed >= 60)
             assertEquals("启动层有效期间没有实际纯色空帧", 0, blank)
-            println("真实开屏采样 ${captured.size} 帧，有效品牌中间帧 ${visible.size} 帧，空帧 $blank 帧")
+            assertTrue("最终真实页面可见且启动层不再遮挡实际触摸", pageVisible && interactionSucceeded)
+            println("真实开屏 $runId：${captured.size} 帧；旧有效 ${oldVisible.size}，新有效 ${visible.size}；空帧 $blank；$diagnosis")
         } finally {
-            captured.forEach { it.bitmap.recycle() }
+            if (!observer.isAlive) captured.forEach { it.bitmap.recycle() }
         }
     }
+
+    private fun exclusionReasons(frame: Frame, oldAssociation: Boolean = false): List<String> {
+        val after = if (oldAssociation) frame.afterScaling else frame.after
+        return buildList {
+            if (frame.stableFinal) add("稳定终帧，不作为品牌中间帧")
+            if (frame.before.hostId != after.hostId) add("截图跨越宿主重建")
+            if (!frame.before.active || !after.active) add("截图关联窗口并非两端均为可播放品牌层")
+            if (frame.before.progress < .20f) add("调用前进度低于.20")
+            if (after.progress > .78f) add("关联后进度高于.78")
+            if (nameEdges(frame) < 12) add("系统画面未显示足够应用名笔画")
+        }
+    }
+
+    private fun millis(nanos: Long) = nanos / 1_000_000.0
 
     private fun contrast(a: Int, b: Int): Int = maxOf(abs(Color.red(a) - Color.red(b)),
         abs(Color.green(a) - Color.green(b)), abs(Color.blue(a) - Color.blue(b)))
@@ -178,7 +338,7 @@ class StartupRealFrameInstrumentedTest {
         return edges
     }
 
-    /** 系统启动图没有下方的应用名；这个区域的真实笔画证明已露出 Compose 品牌画面。 */
+    /** 系统启动图没有下方应用名；真实笔画证明屏幕已经显示 Compose 品牌画面。 */
     private fun nameEdges(frame: Frame) = edges(frame, -90f, 77f, 90f, 139f)
     private fun brandEdges(frame: Frame) = edges(frame, -120f, -125f, 120f, 139f)
 
@@ -195,5 +355,9 @@ class StartupRealFrameInstrumentedTest {
             if (contrast(image.getPixel(x, y), last.bitmap.getPixel(x, y)) >= 8) changed++
         }
         return changed
+    }
+
+    companion object {
+        private const val MINIMUM_SPAN_NANOS = 140_800_000L
     }
 }

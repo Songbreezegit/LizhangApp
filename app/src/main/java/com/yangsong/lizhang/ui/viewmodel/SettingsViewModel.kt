@@ -93,6 +93,7 @@ class SettingsViewModel(
     }
 
     fun setThemeMode(mode: AppThemeMode) {
+        com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("SettingsViewModel.setThemeMode", detail = "mode=$mode")
         themeRepository?.setThemeMode(mode)
         _uiState.update { it.copy(themeMode = mode) }
     }

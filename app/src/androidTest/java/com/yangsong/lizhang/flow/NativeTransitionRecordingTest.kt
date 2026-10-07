@@ -22,12 +22,55 @@ import androidx.test.runner.lifecycle.Stage
 import androidx.activity.findViewTreeOnBackPressedDispatcherOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
+import com.yangsong.lizhang.core.common.ThemeOperationDiagnostics
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import android.view.Choreographer
+import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 
 /** 无 Compose 测试时钟，使用正常应用渲染流程录制空白设备。 */
 class NativeTransitionRecordingTest {
+    @get:Rule val evidence = object : TestWatcher() {
+        override fun failed(failure: Throwable, description: Description) {
+            val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
+            val name = "失败现场-${SystemClock.uptimeMillis()}"
+            val windowState = buildString {
+                runCatching {
+                    instrumentation.runOnMainSync {
+                        val current = ActivityLifecycleMonitorRegistry.getInstance()
+                            .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
+                        appendLine("窗口状态采集 t=${SystemClock.uptimeMillis()}")
+                        appendLine("当前输入快照=${current?.appearanceHost?.themeInputSnapshot()}")
+                        appendLine("当前启动快照=${current?.startupState?.diagnosticSnapshot()}")
+                        current?.startupState?.diagnostics()?.forEach { appendLine(it) }
+                    }
+                }.onFailure { appendLine("窗口状态采集受阻=${it.javaClass.simpleName}") }
+            }
+            File(folder, "$name.txt").writeText("case=${description.methodName}\n" + failure.stackTraceToString() +
+                "\n" + windowState + ThemeOperationDiagnostics.lines().joinToString("\n"))
+            runCatching { frame(name) }.onFailure { println("失败现场截图受阻：${it.javaClass.simpleName}") }
+            runCatching { device.dumpWindowHierarchy(File(folder, "$name.xml")) }
+                .onFailure { println("失败现场层级保存受阻：${it.javaClass.simpleName}") }
+        }
+    }
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
+    private val legacyLocator get() = InstrumentationRegistry.getArguments().getString("themeLocator", "precise") == "legacy"
+    @Before fun 明确空白专项设备的引导前置条件() {
+        instrumentation.runOnMainSync {
+            app.appContainer.onboardingRepository.complete()
+            app.appContainer.onboardingRepository.completeFeatureGuide()
+        }
+        assertTrue("主题验收从已完成引导的首页开始", app.appContainer.onboardingRepository.state.value.completed)
+    }
+    @After fun 保存专项诊断时间线() {
+        val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
+        File(folder, "主题链路-${SystemClock.uptimeMillis()}.txt").writeText(ThemeOperationDiagnostics.lines().joinToString("\n"))
+    }
     private fun text(value: String) = device.wait(Until.findObject(By.text(value)), 6000) ?: run {
         frame("文字定位失败")
         device.dumpWindowHierarchy(File(app.getExternalFilesDir(null), "transition-evidence/文字定位失败.xml"))
@@ -45,7 +88,10 @@ class NativeTransitionRecordingTest {
         options[choiceIndex].click()
     }
     private fun frame(name: String) {
+        val started = SystemClock.uptimeMillis()
+        ThemeOperationDiagnostics.record("test.screenshot.start", detail = "name=$name")
         val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: error("没有实际绘制帧")
+        ThemeOperationDiagnostics.record("test.screenshot.end", detail = "name=$name elapsed=${SystemClock.uptimeMillis() - started}")
         val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
         File(folder, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
@@ -101,9 +147,197 @@ class NativeTransitionRecordingTest {
         awaitThemeFrame(dark)
         device.waitForIdle()
     }
-    private fun themeSwitch() = device.wait(Until.findObject(By.pkg(app.packageName).checkable(true)), 6000)
-        ?: error("应用内深色模式开关未显示")
-    @Test fun 正常渲染下圆形弹窗语言和提醒页面走查() {
+    private fun themeSwitch(allowScroll: Boolean = true): UiObject2 {
+        // legacy 只用于原始失败归因对照；正式回归使用单参数资源 ID。
+        val selector = if (legacyLocator) By.pkg(app.packageName).checkable(true) else By.res("深色模式开关")
+        device.wait(Until.hasObject(selector), 6000)
+        var controls = device.findObjects(selector)
+        if (!legacyLocator && allowScroll) repeat(4) {
+            assertEquals("深色模式开关必须唯一", 1, controls.size)
+            val bounds = controls.single().visibleBounds
+            if (bounds.top >= device.displayHeight / 4 && bounds.bottom <= device.displayHeight * 3 / 4) return@repeat
+            val from = device.displayHeight / 2
+            val to = if (bounds.top < device.displayHeight / 4) from + device.displayHeight / 7
+                else from - device.displayHeight / 7
+            device.swipe(device.displayWidth / 2, from, device.displayWidth / 2, to, 20)
+            device.waitForIdle()
+            controls = device.findObjects(selector)
+        }
+        assertEquals("深色模式开关必须唯一", 1, controls.size)
+        return controls.single().also {
+            assertTrue("深色模式开关启用", it.isEnabled)
+            val bounds = it.visibleBounds
+            assertTrue("深色模式开关可见", bounds.width() > 0 && bounds.height() > 0)
+            if (!legacyLocator) assertTrue("深色模式开关位于可交互区域",
+                bounds.top >= device.displayHeight / 4 && bounds.bottom <= device.displayHeight * 3 / 4)
+            ThemeOperationDiagnostics.record("test.locator", detail = "legacy=$legacyLocator bounds=$bounds checked=${it.isChecked}")
+        }
+    }
+    private fun languageRow(title: String): UiObject2 {
+        val selector = By.res("语言设置行")
+        repeat(4) {
+            device.wait(Until.hasObject(selector), 6000)
+            val rows = device.findObjects(selector)
+            assertEquals("语言设置行必须唯一", 1, rows.size)
+            val row = rows.single()
+            val bounds = row.visibleBounds
+            if (bounds.top >= device.displayHeight / 4 && bounds.bottom <= device.displayHeight * 3 / 4) {
+                assertTrue("语言设置行启用", row.isEnabled)
+                text(title)
+                awaitStableSettingsControl("语言设置行")
+                ThemeOperationDiagnostics.record("test.language.locator", detail = "title=$title bounds=$bounds")
+                return freshControl("语言设置行")
+            }
+            // 顶部标题和浮动底栏会覆盖列表；局部文字可见不等于行的触点可交互。
+            val from = device.displayHeight / 2
+            val to = if (bounds.top < device.displayHeight / 4) from + device.displayHeight / 6
+                else from - device.displayHeight / 6
+            device.swipe(device.displayWidth / 2, from, device.displayWidth / 2, to, 20)
+            device.waitForIdle()
+        }
+        error("语言设置行未进入可交互区域：$title")
+    }
+    private fun freshControl(tag: String): UiObject2 {
+        val controls = device.findObjects(By.res(tag))
+        assertEquals("$tag 必须唯一", 1, controls.size)
+        return controls.single().also {
+            val bounds = it.visibleBounds
+            assertTrue("$tag 启用且位于可交互区域", it.isEnabled && bounds.width() > 0 &&
+                bounds.top >= device.displayHeight / 4 && bounds.bottom <= device.displayHeight * 3 / 4)
+        }
+    }
+    private fun awaitStableSettingsControl(tag: String) {
+        val ready = AtomicBoolean(false)
+        val expired = AtomicBoolean(false)
+        val deadline = SystemClock.uptimeMillis() + 6000
+        val displayHeight = device.displayHeight
+        val callback = object : Choreographer.FrameCallback {
+            var previous: AppearanceTransitionHost.ThemeInputSnapshot? = null
+            var stableFrames = 0
+            override fun doFrame(frameTimeNanos: Long) {
+                val input = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<MainActivity>().firstOrNull()?.appearanceHost?.themeInputSnapshot()
+                val bounds = when (tag) {
+                    "语言设置行" -> input?.languageBounds
+                    "深色模式行" -> input?.rowBounds
+                    else -> input?.switchBounds
+                }
+                val safe = bounds != null && bounds.top >= displayHeight / 4 &&
+                    bounds.bottom <= displayHeight * 3 / 4
+                stableFrames = if (input != null && input.attached && input.focused && input.navigationReady &&
+                    input.position != null && !input.scrolling && safe && input == previous) stableFrames + 1 else 0
+                previous = input
+                if (stableFrames >= 2) {
+                    ThemeOperationDiagnostics.record("test.frames.stable", detail = "tag=$tag frameTimeNanos=$frameTimeNanos input=$input")
+                    ready.set(true)
+                } else if (SystemClock.uptimeMillis() >= deadline) expired.set(true)
+                else Choreographer.getInstance().postFrameCallback(this)
+            }
+        }
+        instrumentation.runOnMainSync { Choreographer.getInstance().postFrameCallback(callback) }
+        try { awaitPage { ready.get() || expired.get() } }
+        finally { instrumentation.runOnMainSync { Choreographer.getInstance().removeFrameCallback(callback) } }
+        assertTrue("真实连续帧中列表已停止滚动且 $tag 边界稳定", ready.get())
+    }
+    private fun tapThemeSwitch(previous: UiObject2? = null): UiObject2 {
+        var control = previous ?: themeSwitch()
+        if (!legacyLocator) {
+            themeSwitch()
+            awaitStableSettingsControl("深色模式开关")
+            control = themeSwitch(allowScroll = false)
+        }
+        instrumentation.runOnMainSync {
+            val input = activityHostOnMain().themeInputSnapshot()
+            if (!legacyLocator) assertFalse("正式真实触摸前滚动已经结束", input.scrolling)
+            ThemeOperationDiagnostics.record("test.beforeTouch", detail = "input=$input")
+        }
+        control.click()
+        return control
+    }
+    private fun activityHostOnMain(): AppearanceTransitionHost = ActivityLifecycleMonitorRegistry.getInstance()
+        .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().first().appearanceHost
+    private fun openChineseLightSettings() {
+        launchFreshActivity()
+        val previous = activity()
+        val needsRecreation = currentAppLanguage() != AppLanguage.ZH_CN
+        instrumentation.runOnMainSync {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
+            app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT)
+        }
+        awaitChinese(previous, needsRecreation)
+        awaitThemeMode(AppThemeMode.LIGHT, dark = false)
+        text("我的").click()
+        text("深色模式")
+        val control = themeSwitch()
+        if (control.visibleBounds.bottom > device.displayHeight * 3 / 4) {
+            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                device.displayWidth / 2, device.displayHeight / 2, 20)
+        }
+        device.waitForIdle()
+    }
+    @Test fun 列表真实滚动后开关触摸独立回归() {
+        openChineseLightSettings()
+        for (dark in listOf(true, false)) {
+            tapThemeSwitch()
+            awaitThemeMode(if (dark) AppThemeMode.DARK else AppThemeMode.LIGHT, dark)
+            assertEquals("真实触摸后开关状态与页面一致", dark, themeSwitch().isChecked)
+        }
+    }
+    private fun prepareSafeControl(tag: String) {
+        repeat(4) {
+            val controls = device.findObjects(By.res(tag))
+            assertEquals("$tag 必须唯一", 1, controls.size)
+            val bounds = controls.single().visibleBounds
+            if (bounds.top >= device.displayHeight / 4 && bounds.bottom <= device.displayHeight * 3 / 4) return
+            val from = device.displayHeight / 2
+            val to = if (bounds.top < device.displayHeight / 4) from + device.displayHeight / 7
+                else from - device.displayHeight / 7
+            device.swipe(device.displayWidth / 2, from, device.displayWidth / 2, to, 20)
+            device.waitForIdle()
+        }
+        error("$tag 未进入可交互区域")
+    }
+    private fun submissionsSince(start: Long, stage: String): Int = ThemeOperationDiagnostics.lines().count {
+        it.substringAfter("t=").substringBefore(' ').toLongOrNull()?.let { time -> time >= start } == true &&
+            it.contains("stage=$stage ")
+    }
+    @Test fun 真实行与开关分别单次提交且快速连续操作保持最后意图() {
+        openChineseLightSettings()
+        val handoffs = activity().appearanceState.circularHandoffs
+        for ((tag, dark) in listOf("深色模式行" to true, "深色模式开关" to false)) {
+            prepareSafeControl(tag)
+            awaitStableSettingsControl(tag)
+            val start = SystemClock.uptimeMillis()
+            if (tag == "深色模式行") {
+                val bounds = freshControl(tag).visibleBounds
+                assertTrue(device.click(bounds.left + bounds.width() / 4, bounds.centerY()))
+            } else tapThemeSwitch()
+            awaitThemeMode(if (dark) AppThemeMode.DARK else AppThemeMode.LIGHT, dark)
+            assertEquals(dark, themeSwitch(allowScroll = false).isChecked)
+            assertEquals("单次真实触摸只有一次业务提交：$tag", 1,
+                submissionsSince(start, "SettingsViewModel.setThemeMode"))
+            assertEquals("同一触摸不会被行和子开关重复提交：$tag", 1,
+                submissionsSince(start, if (tag == "深色模式行") "callback.row" else "callback.switch"))
+        }
+        val expectedMotion = android.animation.ValueAnimator.areAnimatorsEnabled()
+        assertEquals(handoffs + if (expectedMotion) 2 else 0, activity().appearanceState.circularHandoffs)
+        var lastTarget = false
+        val rapidStart = SystemClock.uptimeMillis()
+        repeat(4) {
+            lastTarget = !themeSwitch(allowScroll = false).isChecked
+            // 只等有效开关意图显现，不等待上一个圆形覆盖结束。
+            freshControl("深色模式开关").click()
+            awaitPage { themeSwitch(allowScroll = false).isChecked == lastTarget }
+        }
+        awaitThemeMode(if (lastTarget) AppThemeMode.DARK else AppThemeMode.LIGHT, lastTarget)
+        assertEquals(4, submissionsSince(rapidStart, "callback.switch"))
+        assertEquals(lastTarget, themeSwitch(allowScroll = false).isChecked)
+        assertNull(activity().appearanceState.snapshot)
+        assertNull(activity().appearanceState.pendingDark)
+    }
+    @Test fun 正常渲染下圆形弹窗语言和提醒页面走查() = runFullLanguageScenario(1)
+    @Test fun 十二次语言重建后真实开关双向切换() = runFullLanguageScenario(2)
+    private fun runFullLanguageScenario(languageCycles: Int) {
         launchFreshActivity()
         val chinesePrevious = activity()
         val needsChineseRecreation = currentAppLanguage() != AppLanguage.ZH_CN
@@ -127,11 +361,11 @@ class NativeTransitionRecordingTest {
         awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         awaitPage { !themeSwitch().isChecked }
         frame("正常渲染_浅色设置")
-        themeSwitch().click()
+        tapThemeSwitch()
         awaitThemeMode(AppThemeMode.DARK, dark = true)
         awaitPage { themeSwitch().isChecked }
         frame("正常渲染_深色设置")
-        themeSwitch().click()
+        tapThemeSwitch()
         awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         awaitPage { !themeSwitch().isChecked }
         text("主题设置").click()
@@ -153,10 +387,14 @@ class NativeTransitionRecordingTest {
         device.swipe(device.displayWidth / 2, text("语言").visibleBounds.centerY(),
             device.displayWidth / 2, device.displayHeight / 7, 35)
         device.waitForIdle()
+        languageRow("语言")
         frame("正常渲染_语言切换前位置")
         var title = "语言"
-        for ((choice, target) in listOf("English" to "Language", "日本語" to "言語", "한국어" to "언어", "简体中文" to "语言",
-            "跟随系统" to "Language", "简体中文" to "语言")) {
+        val languagePath = listOf("English" to "Language", "日本語" to "言語", "한국어" to "언어", "简体中文" to "语言",
+            "跟随系统" to expectedSystemLanguageTitle(), "简体中文" to "语言")
+        for ((languageIndex, selection) in List(languageCycles) { languagePath }.flatten().withIndex()) {
+            val (choice, target) = selection
+            languageRow(title)
             val previous = activity()
             val state = previous.appearanceState
             val submissions = state.languageSubmissions
@@ -165,7 +403,7 @@ class NativeTransitionRecordingTest {
             val top = text(title).visibleBounds.top
             val position = previous.appearanceHost.currentListPosition
             assertNotNull("取得原有列表状态", position)
-            text(title).click()
+            languageRow(title).click()
             // 从点击之前持续读取系统实际合成画面，不能只检查重建完成后的终点。
             val sampling = AtomicBoolean(true)
             val samples = AtomicInteger()
@@ -175,14 +413,14 @@ class NativeTransitionRecordingTest {
                     val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: continue
                     if (!hasRenderedContent(bitmap)) {
                         val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
-                        File(folder, "语言空屏_${target}_${blankFrames.incrementAndGet()}.png").outputStream().use {
+                        File(folder, "语言空屏_${languageIndex + 1}_${target}_${blankFrames.incrementAndGet()}.png").outputStream().use {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                         }
                     }
                     val index = samples.incrementAndGet()
                     if (index % 8 == 1) {
                         val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
-                        File(folder, "语言连续帧_${target}_$index.png").outputStream().use {
+                        File(folder, "语言连续帧_${languageIndex + 1}_${target}_$index.png").outputStream().use {
                             bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
                         }
                     }
@@ -208,7 +446,7 @@ class NativeTransitionRecordingTest {
             assertEquals("每次语言选择只实际重建一次", hosts + 1, state.hostCount)
             assertEquals(submissions + 1, state.languageSubmissions)
             if (android.animation.ValueAnimator.areAnimatorsEnabled()) assertEquals(handoffs + 1, state.languageHandoffs)
-            frame("正常渲染_语言_$target")
+            frame("正常渲染_语言_${languageIndex + 1}_$target")
             assertEquals("语言重建保持首个可见设置项及偏移：原坐标 $top，现坐标 ${text(target).visibleBounds.top}，记录 ${state.lastLanguagePosition}，恢复 ${state.lastRestoredPosition}，目标 ${state.lastLanguageTarget}",
                 position, activity().appearanceHost.currentListPosition)
             title = target
@@ -216,7 +454,7 @@ class NativeTransitionRecordingTest {
         val sameLanguageState = activity().appearanceState
         val sameSubmissions = sameLanguageState.languageSubmissions
         val sameHosts = sameLanguageState.hostCount
-        text("语言").click()
+        languageRow("语言").click()
         chooseLanguage("简体中文")
         device.waitForIdle()
         text("取消").click()
@@ -232,16 +470,19 @@ class NativeTransitionRecordingTest {
         awaitThemeFrame(dark = false)
         val circularBefore = activity().appearanceState.circularHandoffs
         for (dark in listOf(true, false)) {
-            var toggle = device.wait(Until.findObject(By.pkg(app.packageName).checkable(true)), 6000)!!
+            var toggle = themeSwitch()
             if (toggle.visibleBounds.bottom > device.displayHeight * 3 / 4) {
                 device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
                     device.displayWidth / 2, device.displayHeight / 2, 20)
                 device.waitForIdle()
-                toggle = device.findObject(By.pkg(app.packageName).checkable(true))!!
+                toggle = themeSwitch()
             }
             assertEquals("点击前实际开关状态与目标相反", !dark, toggle.isChecked)
             frame("连续重建后开关点击前_$dark")
-            toggle.click()
+            // 截图可能跨越布局或无障碍树更新；正式路径在点击前重新定位。
+            if (!legacyLocator) toggle = themeSwitch()
+            ThemeOperationDiagnostics.record("test.click", detail = "targetDark=$dark bounds=${toggle.visibleBounds}")
+            toggle = tapThemeSwitch(toggle)
             try {
                 awaitPage { app.appContainer.themeRepository.themeMode.value ==
                     if (dark) AppThemeMode.DARK else AppThemeMode.LIGHT }
@@ -375,7 +616,7 @@ class NativeTransitionRecordingTest {
                 assertEquals("SYSTEM 开关显示实际外观", night == "yes", toggle.isChecked)
                 val beforeBounds = toggle.visibleBounds
                 frame("系统${night}_点击前")
-                toggle.click()
+                tapThemeSwitch(toggle)
                 try {
                     awaitThemeMode(target, dark = target == AppThemeMode.DARK)
                 } catch (failure: AssertionError) {
@@ -405,6 +646,14 @@ class NativeTransitionRecordingTest {
             instrumentation.runOnMainSync { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
             awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         }
+    }
+
+    private fun expectedSystemLanguageTitle(): String {
+        val systemLanguage = if (android.os.Build.VERSION.SDK_INT >= 33)
+            app.getSystemService(android.app.LocaleManager::class.java).systemLocales[0]
+        else android.content.res.Resources.getSystem().configuration.locales[0]
+        assertEquals("专项设备必须明确设置系统语言 en-US", "en-US", systemLanguage.toLanguageTag())
+        return "Language"
     }
 }
 

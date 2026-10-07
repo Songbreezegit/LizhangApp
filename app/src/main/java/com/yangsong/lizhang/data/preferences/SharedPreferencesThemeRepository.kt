@@ -15,9 +15,11 @@ class SharedPreferencesThemeRepository(context: Context) : ThemeRepository {
     override val themeMode = _themeMode.asStateFlow()
 
     override fun setThemeMode(mode: AppThemeMode) {
+        com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("ThemeRepository.setThemeMode", detail = "before=${_themeMode.value} mode=$mode")
         if (_themeMode.value == mode) return
         preferences.edit { putString(KEY_THEME_MODE, mode.name) }
         _themeMode.value = mode
+        com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("ThemeRepository.updated", detail = "mode=$mode")
     }
 
     private fun readThemeMode(): AppThemeMode = runCatching {

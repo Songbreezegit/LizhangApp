@@ -3,6 +3,7 @@ package com.yangsong.lizhang
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.MotionEvent
 import android.animation.ValueAnimator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
@@ -53,6 +54,12 @@ class MainActivity : AppCompatActivity() {
     private val openRemindersRequest = MutableStateFlow<Long?>(null)
     private var appliedLocaleTags = ""
     private var localeRecreationRequested = false
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        // 只旁观设置控件的真实触摸，不消费事件或改变手势仲裁。
+        if (BuildConfig.DEBUG && ::appearanceHost.isInitialized) appearanceHost.observeThemeTouch(event)
+        return super.dispatchTouchEvent(event)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_LiZhang)

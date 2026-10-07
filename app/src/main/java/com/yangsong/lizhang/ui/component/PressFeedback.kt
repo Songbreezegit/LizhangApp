@@ -47,14 +47,28 @@ fun Modifier.pressFeedback(
     enabled: Boolean = true,
     accent: Color = MaterialTheme.colorScheme.primary,
     pressedScale: Float = .975f,
+    diagnosticName: String? = null,
 ): Modifier {
     val pressed by interactionSource.collectIsPressedAsState()
     val focused by interactionSource.collectIsFocusedAsState()
     val hovered by interactionSource.collectIsHoveredAsState()
     var origin by remember(interactionSource) { mutableStateOf(Offset.Unspecified) }
     LaunchedEffect(interactionSource) {
+        var operation: com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.Operation? = null
         interactionSource.interactions.collect { interaction ->
             if (interaction is PressInteraction.Press) origin = interaction.pressPosition
+            if (diagnosticName != null) {
+                if (interaction is PressInteraction.Press) operation =
+                    com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.observedOperation
+                val stage = when (interaction) {
+                    is PressInteraction.Press -> "Press"
+                    is PressInteraction.Release -> "Release"
+                    is PressInteraction.Cancel -> "Cancel"
+                    else -> null
+                }
+                if (stage != null) com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record(
+                    "interaction.$diagnosticName.$stage", operation)
+            }
         }
     }
     val active = enabled && pressed
@@ -112,10 +126,11 @@ fun Modifier.pressClickable(
     shape: Shape = RoundedCornerShape(16.dp),
     accent: Color = MaterialTheme.colorScheme.primary,
     pressedScale: Float = .985f,
+    diagnosticName: String? = null,
     onClick: () -> Unit,
 ): Modifier {
     val source = remember { MutableInteractionSource() }
-    return pressFeedback(source, shape, enabled, accent, pressedScale)
+    return pressFeedback(source, shape, enabled, accent, pressedScale, diagnosticName)
         .clickable(source, indication = null, enabled = enabled, role = role, onClickLabel = onClickLabel, onClick = onClick)
 }
 

@@ -6,6 +6,40 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StartupAnimationViewModelTest {
+    @Test fun 一致快照与窗口帧时间线采用同一单调时钟且不改变时间轴() {
+        var now = 1_000L
+        val state = StartupAnimationViewModel(monotonicClock = { now }, diagnosticsEnabled = true)
+        state.initialize(eligible = true, animationsEnabled = true)
+        state.recordWindowEvent("内容首帧已提交", 7)
+        now = 2_000L
+        state.markReady()
+        state.onFrame(1_000_000_000L)
+        now = 3_000L
+        state.onFrame(1_440_000_000L)
+        val snapshot = state.diagnosticSnapshot()
+        assertEquals(3_000L, snapshot.monotonicNanos)
+        assertTrue(snapshot.visible && snapshot.ready && snapshot.initialized)
+        assertEquals(.5f, snapshot.progress, .001f)
+        assertEquals(1_000_000_000L, snapshot.firstFrameNanos)
+        val events = state.diagnostics()
+        assertEquals(7, events.first { it.event == "内容首帧已提交" }.hostId)
+        assertEquals(1_440_000_000L, events.last().frameNanos)
+        assertEquals(.5f, events.last().state.progress, .001f)
+        assertTrue(events.zipWithNext().all { (first, second) -> first.state.monotonicNanos <= second.state.monotonicNanos })
+    }
+
+    @Test fun Release关闭诊断后不分配逐帧证据而保持固定时长() {
+        val state = StartupAnimationViewModel(diagnosticsEnabled = false)
+        state.initialize(eligible = true, animationsEnabled = true)
+        state.recordWindowEvent("内容首帧已提交", 7)
+        state.markReady()
+        state.onFrame(1_000_000_000L)
+        state.onFrame(1_880_000_000L)
+        assertTrue(state.diagnostics().isEmpty())
+        assertFalse(state.visible)
+        assertEquals(1f, state.progress, 0f)
+    }
+
     @Test fun 配置重建保留时间轴并在固定时长结束() {
         val state = StartupAnimationViewModel()
         state.initialize(eligible = true, animationsEnabled = true)

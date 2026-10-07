@@ -42,6 +42,18 @@ class AppearanceTransitionViewModel : ViewModel() {
     var circularHandoffs = 0
         internal set
     var onSnapshotChanged: (() -> Unit)? = null
+        private set
+    private var observerHostId by mutableStateOf(0L)
+    internal fun ownsSnapshotObserver(hostId: Long): Boolean = observerHostId == hostId
+    internal fun observeSnapshots(hostId: Long, observer: () -> Unit) {
+        observerHostId = hostId
+        onSnapshotChanged = observer
+    }
+    internal fun releaseSnapshotObserver(hostId: Long) {
+        if (observerHostId != hostId) return
+        observerHostId = 0L
+        onSnapshotChanged = null
+    }
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { clear() }
     fun nextRequest(): Long { clear(); return ++requestId }
@@ -60,10 +72,15 @@ class AppearanceTransitionViewModel : ViewModel() {
     }
     fun clear() {
         handler.removeCallbacks(timeout)
+        snapshot?.let { shot ->
+            com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("overlay.release",
+                com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.Operation(shot.id, shot.originHost, shot.targetDark, 0),
+                "started=${shot.started} progress=${shot.progress}")
+        }
         // 释放引用；不 recycle 已经交给硬件渲染线程的画面。
         snapshot = null
         languageRequest = null
         onSnapshotChanged?.invoke()
     }
-    override fun onCleared() { onSnapshotChanged = null; clear() }
+    override fun onCleared() { observerHostId = 0L; onSnapshotChanged = null; clear() }
 }
