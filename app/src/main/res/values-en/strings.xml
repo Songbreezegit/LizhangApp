@@ -367,7 +367,7 @@
     <string name="feature_guide_reminders_title">Remember important dates</string>
     <string name="feature_guide_reminders_body">Add a reminder for an important date here. Enable reminders and notification permission to receive alerts at the scheduled time.</string>
     <string name="feature_guide_settings_title">Find more here</string>
-    <string name="feature_guide_settings_body">Export or restore a backup here. You can also find themes, languages, and a reusable practice guide in Settings.</string>
+    <string name="feature_guide_settings_body">Export or restore a backup here. You can also find themes and languages in Settings.</string>
     <string name="feature_guide_next">Next</string>
     <string name="feature_guide_skip">Skip guide</string>
     <string name="feature_guide_finish">Finish</string>

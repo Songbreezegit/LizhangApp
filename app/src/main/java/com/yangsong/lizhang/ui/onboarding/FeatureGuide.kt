@@ -64,6 +64,7 @@ fun FeatureGuideOverlay(
     val insets = WindowInsets.safeDrawing
     val color = MaterialTheme.colorScheme.primary
     val bubbleColor = MaterialTheme.colorScheme.surface
+    val bubbleBorderColor = MaterialTheme.colorScheme.outlineVariant
     var origin by remember { mutableStateOf(Offset.Zero) }
     var bubbleBounds by remember(target) { mutableStateOf<Rect?>(null) }
     SubcomposeLayout(
@@ -96,8 +97,10 @@ fun FeatureGuideOverlay(
                     lineTo(pointer.tip.x, pointer.tip.y)
                     lineTo(pointer.baseRight.x, pointer.baseRight.y)
                 }
-                drawPath(arrow, bubbleColor.copy(alpha = progress))
-                drawPath(arrow, color.copy(alpha = .85f * progress), style = Stroke(1.5.dp.toPx()))
+                // 尖角与气泡共用表面色、边框色和线宽，不沿用目标高亮的强调色。
+                drawPath(arrow, bubbleColor.copy(alpha = bubbleColor.alpha * progress))
+                drawPath(arrow, bubbleBorderColor.copy(alpha = bubbleBorderColor.alpha * progress),
+                    style = Stroke(1.dp.toPx()))
             },
     ) { constraints ->
         val gap = 12.dp.roundToPx()

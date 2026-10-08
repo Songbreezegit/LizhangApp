@@ -358,7 +358,7 @@
     <string name="feature_guide_reminders_title">大切な日を忘れずに</string>
     <string name="feature_guide_reminders_body">大切な日のリマインダーを追加できます。リマインダーと通知の権限を有効にすると、設定した時刻に通知を受け取れます。</string>
     <string name="feature_guide_settings_title">その他の機能はこちら</string>
-    <string name="feature_guide_settings_body">ここからバックアップを書き出したり復元したりできます。テーマ、言語、何度でも使える練習ガイドも設定にあります。</string>
+    <string name="feature_guide_settings_body">ここからバックアップを書き出したり復元したりできます。テーマと言語も設定にあります。</string>
     <string name="feature_guide_next">次へ</string>
     <string name="feature_guide_skip">ガイドをスキップ</string>
     <string name="feature_guide_finish">完了</string>

@@ -374,7 +374,6 @@ fun LiZhangNavGraph(
                 onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
                 onAbout = { nav.navigate(AppDestination.About.route) },
                 onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
-                onOnboarding = { nav.navigate(AppDestination.GuidePractice.route) { launchSingleTop = true } },
             )
         }
         composable(AppDestination.Onboarding.route) {

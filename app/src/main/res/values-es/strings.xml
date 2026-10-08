@@ -376,7 +376,7 @@
     <string name="feature_guide_reminders_title">Recuerda las fechas importantes</string>
     <string name="feature_guide_reminders_body">Añade aquí un recordatorio para una fecha importante. Activa los recordatorios y el permiso de notificaciones para recibir avisos a la hora prevista.</string>
     <string name="feature_guide_settings_title">Encuentra más opciones aquí</string>
-    <string name="feature_guide_settings_body">Exporta o restaura una copia de seguridad aquí. Los temas, los idiomas y una guía práctica reutilizable también están en Ajustes.</string>
+    <string name="feature_guide_settings_body">Exporta o restaura una copia de seguridad aquí. Los temas y los idiomas también están en Ajustes.</string>
     <string name="feature_guide_next">Siguiente</string>
     <string name="feature_guide_skip">Omitir guía</string>
     <string name="feature_guide_finish">Finalizar</string>

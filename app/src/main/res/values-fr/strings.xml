@@ -376,7 +376,7 @@
     <string name="feature_guide_reminders_title">Pensez aux dates importantes</string>
     <string name="feature_guide_reminders_body">Ajoutez un rappel pour une date importante. Activez les rappels et la permission de notification pour recevoir les alertes au moment prévu.</string>
     <string name="feature_guide_settings_title">Retrouvez plus de réglages ici</string>
-    <string name="feature_guide_settings_body">Exportez ou restaurez une sauvegarde ici. Les thèmes, les langues et un guide pratique réutilisable se trouvent aussi dans les paramètres.</string>
+    <string name="feature_guide_settings_body">Exportez ou restaurez une sauvegarde ici. Les thèmes et les langues se trouvent aussi dans les paramètres.</string>
     <string name="feature_guide_next">Suivant</string>
     <string name="feature_guide_skip">Passer le guide</string>
     <string name="feature_guide_finish">Terminer</string>

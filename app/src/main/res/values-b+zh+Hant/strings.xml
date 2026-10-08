@@ -358,7 +358,7 @@
     <string name="feature_guide_reminders_title">別忘了重要日子</string>
     <string name="feature_guide_reminders_body">點這裡新增重要日子的提醒。開啟提醒和通知權限後，可按設定時間收到通知。</string>
     <string name="feature_guide_settings_title">更多功能都在這裡</string>
-    <string name="feature_guide_settings_body">這裡可以匯出或還原備份。主題、語言和可反覆體驗的使用練習也在「我的」裡。</string>
+    <string name="feature_guide_settings_body">這裡可以匯出或還原備份。主題和語言也在「我的」裡。</string>
     <string name="feature_guide_next">下一步</string>
     <string name="feature_guide_skip">略過導覽</string>
     <string name="feature_guide_finish">完成</string>
