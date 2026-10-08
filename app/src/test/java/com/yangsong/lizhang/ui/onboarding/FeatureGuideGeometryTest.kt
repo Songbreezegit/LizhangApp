@@ -6,6 +6,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FeatureGuideGeometryTest {
+    @Test fun `位于固定保存栏后面的记账目标等滚动出来再高亮`() {
+        val registry = FeatureGuideTargetRegistry()
+        val saveOwner = Any()
+        val directionOwner = Any()
+        val save = Rect(16f, 700f, 344f, 776f)
+        registry.register(FeatureGuideTarget.RECORD_SAVE, saveOwner, save)
+        registry.register(FeatureGuideTarget.RECORD_DIRECTION, directionOwner, Rect(16f, 672f, 344f, 734f))
+        assertNull(registry.bounds(FeatureGuideTarget.RECORD_DIRECTION))
+        val visible = Rect(16f, 612f, 344f, 674f)
+        registry.register(FeatureGuideTarget.RECORD_DIRECTION, directionOwner, visible)
+        assertEquals(visible, registry.bounds(FeatureGuideTarget.RECORD_DIRECTION))
+        assertEquals(save, registry.bounds(FeatureGuideTarget.RECORD_SAVE))
+    }
+
     @Test fun `气泡靠右夹持时箭头仍落在目标上边中心`() {
         val anchor = Rect(286f, 700f, 342f, 756f)
         val bubble = Rect(20f, 440f, 340f, 672f)

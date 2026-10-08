@@ -17,7 +17,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import com.yangsong.lizhang.ui.component.LocalPendingDark
 import com.yangsong.lizhang.ui.component.LocalCurrentLanguage
@@ -30,10 +29,6 @@ import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 import com.yangsong.lizhang.ui.component.BrandStartupOverlay
 import com.yangsong.lizhang.ui.component.StartupWindowGate
-import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
-import com.yangsong.lizhang.domain.onboarding.OnboardingMode
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.ui.navigation.LiZhangNavGraph
@@ -76,6 +71,7 @@ class MainActivity : AppCompatActivity() {
         handleReminderIntent(intent)
         val appContainer = app.appContainer
         val onboardingViewModel = ViewModelProvider(this, OnboardingViewModel.factory(appContainer.onboardingRepository))[OnboardingViewModel::class.java]
+        onboardingViewModel.enterApp()
         appearanceState = ViewModelProvider(this)[AppearanceTransitionViewModel::class.java]
         appearanceState.languagePreference = currentAppLanguage()
         appearanceHost = AppearanceTransitionHost(this, appearanceState)
@@ -88,6 +84,10 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
             val startupVisible = startupState.visible
+            SideEffect {
+                // 返回中断、关闭动画及正常播完共用清理，避免退出监听留到下一次打开。
+                if (!startupVisible && ::startupWindowGate.isInitialized) startupWindowGate.detach()
+            }
             LaunchedEffect(onboardingState.completed) {
                 if (onboardingState.completed) appContainer.startReminderCoordination()
             }
@@ -114,19 +114,7 @@ class MainActivity : AppCompatActivity() {
                             Box(Modifier.fillMaxSize()) {
                                 Box(if (startupVisible) Modifier.fillMaxSize().clearAndSetSemantics { }
                                     else Modifier.fillMaxSize()) {
-                                    if (!onboardingState.completed) {
-                                        // 引导没有业务导航条目，直接随当前 Activity 生命周期同步就绪。
-                                        // 复用窗口重建时不依赖 Compose 状态收集的恢复时机。
-                                        DisposableEffect(lifecycle, appearanceHost) {
-                                            val observer = LifecycleEventObserver { owner, _ ->
-                                                appearanceHost.navigationReady(owner.lifecycle.currentState == Lifecycle.State.RESUMED)
-                                            }
-                                            lifecycle.addObserver(observer)
-                                            onDispose { lifecycle.removeObserver(observer) }
-                                        }
-                                        OnboardingScreen(OnboardingMode.FIRST_LAUNCH,
-                                            onFinish = { onboardingViewModel.finish(OnboardingMode.FIRST_LAUNCH) })
-                                    } else LiZhangNavGraph(
+                                    LiZhangNavGraph(
                                         appContainer = appContainer,
                                         onboardingViewModel = onboardingViewModel,
                                         reminderLaunchRequest = pendingReminder,
@@ -167,6 +155,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+        // 配置重建保留时间轴，但旧窗口从停止时起便不再提供就绪或帧回调。
+        if (::startupWindowGate.isInitialized) {
+            if (isChangingConfigurations) startupWindowGate.detach() else startupWindowGate.cancel()
+        }
         if (!isChangingConfigurations) {
             startupState.finish()
             appearanceHost.cancel()
@@ -174,7 +166,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        startupWindowGate.detach()
+        if (::startupWindowGate.isInitialized) startupWindowGate.detach()
         appearanceHost.detach(isChangingConfigurations)
         super.onDestroy()
     }
@@ -182,7 +174,10 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (isReminderIntent(intent)) startupState.finish()
+        if (isReminderIntent(intent)) {
+            if (::startupWindowGate.isInitialized) startupWindowGate.cancel()
+            startupState.finish()
+        }
         handleReminderIntent(intent)
     }
 

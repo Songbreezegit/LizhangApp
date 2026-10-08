@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.GlassSwitch
 import com.yangsong.lizhang.ui.component.pressSelectable
 import com.yangsong.lizhang.ui.component.LanguagePicker
@@ -529,6 +531,7 @@ fun SettingsContent(
                         Icons.Outlined.Backup,
                         stringResource(R.string.settings_backup),
                         onClick = onBackup,
+                        modifier = Modifier.featureGuideTarget(FeatureGuideTarget.SETTINGS_PAGE),
                         accent = MaterialTheme.colorScheme.secondary,
                         trailing = if (
                             state.isPreparingBackup || state.isReadingBackup || state.isRestoringBackup

@@ -4,34 +4,30 @@ import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 
-/** 品牌轻弹入场与单次柔和扩散；总时长固定，底下的真实页面同步准备。 */
+/** 按 Figma 900ms 时间线播放轻弹与柔光；真实页面在下方同步准备。 */
 @Composable
 fun BrandStartupOverlay(state: StartupAnimationViewModel, modifier: Modifier = Modifier) {
     if (!state.visible) return
@@ -54,7 +50,8 @@ fun BrandStartupOverlay(state: StartupAnimationViewModel, modifier: Modifier = M
             .graphicsLayer {
                 // 逐帧状态只在绘制阶段读取，冷启动时不反复重组整个品牌层。
                 val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
-                alpha = 1f - FastOutSlowInEasing.transform(((elapsed - 560f) / 320f).coerceIn(0f, 1f))
+                alpha = 1f - FastOutSlowInEasing.transform(((elapsed - 620f) /
+                    (StartupAnimationViewModel.DURATION_MILLIS - 620f)).coerceIn(0f, 1f))
             }
             .background(MaterialTheme.colorScheme.background)
             .semantics(mergeDescendants = true) { paneTitle = appName }
@@ -66,35 +63,28 @@ fun BrandStartupOverlay(state: StartupAnimationViewModel, modifier: Modifier = M
             },
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(208.dp), contentAlignment = Alignment.Center) {
-                Canvas(Modifier.fillMaxSize().testTag("品牌开屏扩散")) {
-                    val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
-                    val ring = LinearOutSlowInEasing.transform((elapsed / 740f).coerceIn(0f, 1f))
-                    val radius = (56f + 46f * ring).dp.toPx()
-                    drawCircle(accent.copy(alpha = .07f * (1f - ring)), radius)
-                    drawCircle(accent.copy(alpha = .32f * (1f - ring)), radius,
-                        style = Stroke(1.8.dp.toPx()))
-                }
-                Image(painterResource(R.drawable.launcher_cat), contentDescription = null,
-                    modifier = Modifier.size(112.dp).testTag("品牌开屏图标").graphicsLayer {
-                        val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
-                        val enter = LinearOutSlowInEasing.transform((elapsed / 300f).coerceIn(0f, 1f))
-                        val settle = FastOutSlowInEasing.transform(((elapsed - 300f) / 180f).coerceIn(0f, 1f))
-                        val brandScale = .76f + .30f * enter - .06f * settle
-                        scaleX = brandScale
-                        scaleY = brandScale
-                        translationY = (1f - enter) * 10.dp.toPx()
-                    })
+        // 按用户更新后的无文字稿，让猫与柔光环独立锚定屏幕中心。
+        Box(
+            Modifier.size(112.dp).testTag("品牌开屏扩散").graphicsLayer {
+                val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
+                val ring = LinearOutSlowInEasing.transform((elapsed / 620f).coerceIn(0f, 1f))
+                val ringScale = 1f + (208f / 112f - 1f) * ring
+                scaleX = ringScale
+                scaleY = ringScale
+                alpha = 1f - ring
             }
-            Text(appName, style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.testTag("品牌开屏名称").graphicsLayer {
-                    val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
-                    val textEnter = FastOutSlowInEasing.transform(((elapsed - 110f) / 200f).coerceIn(0f, 1f))
-                    alpha = textEnter
-                    translationY = (1f - textEnter) * 8.dp.toPx()
-                })
-        }
+                .background(accent.copy(alpha = .05f), CircleShape)
+                .border(1.6.dp, accent.copy(alpha = .18f), CircleShape),
+        )
+        Image(illustrationPainter(R.drawable.launcher_cat), contentDescription = null,
+            modifier = Modifier.size(112.dp).testTag("品牌开屏图标").graphicsLayer {
+                val elapsed = state.progress * StartupAnimationViewModel.DURATION_MILLIS
+                val enter = LinearOutSlowInEasing.transform((elapsed / 300f).coerceIn(0f, 1f))
+                val settle = FastOutSlowInEasing.transform(((elapsed - 300f) / 180f).coerceIn(0f, 1f))
+                val brandScale = .76f + .28f * enter - .04f * settle
+                scaleX = brandScale
+                scaleY = brandScale
+                translationY = (-8f * enter + 2f * settle).dp.toPx()
+            })
     }
 }

@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassCard
 import androidx.compose.foundation.layout.*
@@ -38,6 +40,7 @@ fun SearchScreen(
                 onValueChange = viewModel::updateQuery,
                 label = stringResource(R.string.search_hint),
                 leadingIcon = Icons.Outlined.Search,
+                modifier = Modifier.featureGuideTarget(FeatureGuideTarget.SEARCH),
             )
             GlassCard(
                 Modifier

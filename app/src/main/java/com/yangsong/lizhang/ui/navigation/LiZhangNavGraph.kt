@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -50,6 +51,7 @@ import androidx.navigation.navArgument
 import com.yangsong.lizhang.core.common.NavigationConstants
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.data.di.AppContainer
+import com.yangsong.lizhang.data.onboarding.GuidePracticeStore
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.ui.screen.*
 import com.yangsong.lizhang.ui.component.BottomNavBar
@@ -57,12 +59,36 @@ import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.viewmodel.*
 import com.yangsong.lizhang.ui.onboarding.OnboardingScreen
 import com.yangsong.lizhang.domain.onboarding.OnboardingMode
+import com.yangsong.lizhang.domain.onboarding.FeatureGuideStep
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideOverlay
+import com.yangsong.lizhang.ui.onboarding.LocalActiveFeatureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuidePresentation
+import com.yangsong.lizhang.ui.onboarding.recordGuideRoutes
+import com.yangsong.lizhang.ui.onboarding.GuidePracticeScreen
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTargetRegistry
 import com.yangsong.lizhang.ui.onboarding.LocalFeatureGuideTargetRegistry
-import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 
 private val mainTabs = listOf(AppDestination.Home, AppDestination.Contacts, AppDestination.AddGift, AppDestination.Settings)
+private const val CREATED_CONTACT_RESULT = "contact_created_id"
+
+/** 返回转场开始即回填，恢复交互后消费；结果只属于原记账条目。 */
+@Composable
+private fun CreatedContactResultEffect(nav: NavHostController, entry: NavBackStackEntry, editor: GiftEditorViewModel) {
+    val createdContactId by entry.savedStateHandle.getStateFlow<Long?>(CREATED_CONTACT_RESULT, null).collectAsStateWithLifecycle()
+    val lifecycleState by entry.lifecycle.currentStateAsState()
+    var appliedContactId by remember(entry) { mutableStateOf<Long?>(null) }
+    LaunchedEffect(createdContactId, lifecycleState) {
+        val id = createdContactId ?: return@LaunchedEffect
+        if (id > 0 && nav.currentBackStackEntry === entry && lifecycleState.isAtLeast(Lifecycle.State.STARTED)) {
+            // 页面在返回动画中也能展示正确的人，避免保存栏在转场期间仍保存原联系人。
+            if (appliedContactId != id) {
+                editor.selectCreatedContact(id)
+                appliedContactId = id
+            }
+            if (lifecycleState == Lifecycle.State.RESUMED) entry.savedStateHandle[CREATED_CONTACT_RESULT] = null
+        }
+    }
+}
 
 private fun NavHostController.open(destination: AppDestination) {
     navigate(destination.route) {
@@ -99,6 +125,7 @@ fun LiZhangNavGraph(
     val backStackEntry by nav.currentBackStackEntryAsState()
     val transition = LocalAppearanceActions.current as? AppearanceTransitionHost
     val navigationReady = backStackEntry?.lifecycle?.currentStateAsState()?.value == Lifecycle.State.RESUMED
+    val guide = if (guideEnabled && navigationReady) featureGuidePresentation(onboardingState, backStackEntry?.destination?.route) else null
     // 导航条目恢复到可交互状态后才能消费语言交接，不按固定帧数估计。
     SideEffect { transition?.navigationReady(navigationReady) }
     val currentMainTab = mainTabs.firstOrNull { it.route == backStackEntry?.destination?.route }
@@ -111,8 +138,13 @@ fun LiZhangNavGraph(
         return (if (forward) 1 else -1) * (if (layoutDirection == LayoutDirection.Rtl) -1 else 1)
     }
     val go: (AppDestination) -> Unit = {
-        it.featureGuideTarget()?.let { target -> onboardingViewModel.targetInvoked(target.step) }
         nav.open(it)
+    }
+    LaunchedEffect(backStackEntry?.destination?.route, navigationReady, onboardingState.featureGuideStep) {
+        if (guideEnabled && navigationReady && backStackEntry?.destination?.route in recordGuideRoutes &&
+            onboardingState.featureGuideStep == FeatureGuideStep.ADD_RECORD) {
+            onboardingViewModel.advanceFeatureGuide(FeatureGuideStep.ADD_RECORD)
+        }
     }
     val openRecord: (Long) -> Unit = { nav.navigate(AppDestination.GiftRecordDetail.createRoute(it)) }
     LaunchedEffect(openRemindersRequest) {
@@ -143,7 +175,8 @@ fun LiZhangNavGraph(
             }
         }
     }
-    CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides guideRegistry) {
+    CompositionLocalProvider(LocalFeatureGuideTargetRegistry provides guideRegistry,
+        LocalActiveFeatureGuideTarget provides guide?.target) {
     Box(Modifier.fillMaxSize()) {
     NavHost(
         nav, AppDestination.Home.route, Modifier.hazeSource(hazeState).testTag("业务导航页面"),
@@ -218,13 +251,29 @@ fun LiZhangNavGraph(
             val id = entry.arguments?.getLong(NavigationConstants.CONTACT_ID_ARGUMENT) ?: return@composable
             ContactEditorScreen(
                 viewModel(key = "contact-editor-$id", factory = ContactEditorViewModel.factory(id, appContainer.contactRepository)),
-                nav::popBackStack,
-            ) { nav.popBackStack(AppDestination.Contacts.route, false) }
+                onBack = { if (nav.currentBackStackEntry === entry) nav.popBackStack() },
+                onSaved = { savedContactId ->
+                    if (nav.currentBackStackEntry === entry) {
+                        val caller = nav.previousBackStackEntry
+                        if (id == NavigationConstants.NEW_CONTACT_ID && caller?.destination?.route in
+                            recordGuideRoutes + AppDestination.GiftRecordEditor.route) {
+                            caller?.savedStateHandle?.set(CREATED_CONTACT_RESULT, savedContactId)
+                        }
+                        nav.popBackStack()
+                    }
+                },
+            ) { if (nav.currentBackStackEntry === entry) nav.popBackStack(AppDestination.Contacts.route, false) }
         }
-        composable(AppDestination.AddGift.route) {
+        composable(AppDestination.AddGift.route) { entry ->
+            val editor: GiftEditorViewModel = viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository))
+            CreatedContactResultEffect(nav, entry, editor)
             AddGiftScreen(
-                viewModel(factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository)),
-                nav::popBackStack,
+                editor,
+                onBack = { if (nav.currentBackStackEntry === entry) nav.popBackStack() },
+                onCreateContact = {
+                    if (nav.currentBackStackEntry === entry && entry.lifecycle.currentState == Lifecycle.State.RESUMED)
+                        nav.navigate(AppDestination.ContactEditor.createRoute())
+                },
             )
         }
         composable(
@@ -232,16 +281,22 @@ fun LiZhangNavGraph(
             arguments = listOf(navArgument(NavigationConstants.CONTACT_ID_ARGUMENT) { type = NavType.LongType }),
         ) { entry ->
             val contactId = entry.arguments?.getLong(NavigationConstants.CONTACT_ID_ARGUMENT) ?: return@composable
-            AddGiftScreen(
-                viewModel(
+            val editor: GiftEditorViewModel = viewModel(
                     key = "gift-for-contact-$contactId",
                     factory = GiftEditorViewModel.factory(
                         appContainer.giftRecordRepository,
                         appContainer.contactRepository,
                         initialContactId = contactId,
                     ),
-                ),
-                nav::popBackStack,
+                )
+            CreatedContactResultEffect(nav, entry, editor)
+            AddGiftScreen(
+                editor,
+                onBack = { if (nav.currentBackStackEntry === entry) nav.popBackStack() },
+                onCreateContact = {
+                    if (nav.currentBackStackEntry === entry && entry.lifecycle.currentState == Lifecycle.State.RESUMED)
+                        nav.navigate(AppDestination.ContactEditor.createRoute())
+                },
             )
         }
         composable(
@@ -260,9 +315,15 @@ fun LiZhangNavGraph(
             arguments = listOf(navArgument(NavigationConstants.RECORD_ID_ARGUMENT) { type = NavType.LongType }),
         ) { entry ->
             val recordId = entry.arguments?.getLong(NavigationConstants.RECORD_ID_ARGUMENT) ?: return@composable
+            val editor: GiftEditorViewModel = viewModel(key = "gift-record-editor-$recordId", factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository, recordId))
+            CreatedContactResultEffect(nav, entry, editor)
             AddGiftScreen(
-                viewModel(key = "gift-record-editor-$recordId", factory = GiftEditorViewModel.factory(appContainer.giftRecordRepository, appContainer.contactRepository, recordId)),
-                onBack = nav::popBackStack,
+                editor,
+                onBack = { if (nav.currentBackStackEntry === entry) nav.popBackStack() },
+                onCreateContact = {
+                    if (nav.currentBackStackEntry === entry && entry.lifecycle.currentState == Lifecycle.State.RESUMED)
+                        nav.navigate(AppDestination.ContactEditor.createRoute())
+                },
             )
         }
         composable(AppDestination.ReceivedRecords.route) {
@@ -313,7 +374,7 @@ fun LiZhangNavGraph(
                 onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
                 onAbout = { nav.navigate(AppDestination.About.route) },
                 onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
-                onOnboarding = { nav.navigate(AppDestination.Onboarding.route) { launchSingleTop = true } },
+                onOnboarding = { nav.navigate(AppDestination.GuidePractice.route) { launchSingleTop = true } },
             )
         }
         composable(AppDestination.Onboarding.route) {
@@ -321,6 +382,20 @@ fun LiZhangNavGraph(
                 onboardingViewModel.finish(OnboardingMode.REVIEW)
                 nav.popBackStack()
             }, onBack = { nav.popBackStack() })
+        }
+        composable(AppDestination.GuidePractice.route) { entry ->
+            // 练习 ViewModel 没有业务仓储依赖，示例只在此路由的内存中流转。
+            val practice: GuidePracticeViewModel = viewModel(factory = GuidePracticeViewModel.factory(::GuidePracticeStore))
+            var exiting by remember(entry) { mutableStateOf(false) }
+            val finishPractice = {
+                if (!exiting && nav.currentBackStackEntry === entry) {
+                    exiting = true
+                    practice.clear()
+                    nav.popBackStack()
+                }
+                Unit
+            }
+            GuidePracticeScreen(practice, onExit = finishPractice, onComplete = finishPractice)
         }
         composable(AppDestination.FontGuide.route) {
             FontGuideScreen(nav::popBackStack)
@@ -338,22 +413,39 @@ fun LiZhangNavGraph(
     val barTab = currentMainTab ?: mainTabs.first { it.route == lastMainRoute }
     val showBottomBar = currentMainTab != null && currentMainTab != AppDestination.AddGift &&
         !(currentMainTab == AppDestination.Contacts && contactsSelectionMode)
+    // 记一笔路由立即打开，但底栏先完成 Figma 360ms 跟随，再退出，避免 180ms 就淡没。
+    val barExitDelay = if (currentMainTab == AppDestination.AddGift) 360 else 0
     AnimatedVisibility(
         visible = showBottomBar,
         modifier = Modifier.align(Alignment.BottomCenter).testTag("底部导航出入场"),
         enter = slideInVertically(tween(320, easing = pageEasing)) { it / 3 } + fadeIn(tween(240)),
-        exit = slideOutVertically(tween(220, easing = pageEasing)) { it / 3 } + fadeOut(tween(180)),
+        exit = slideOutVertically(tween(220, delayMillis = barExitDelay, easing = pageEasing)) { it / 3 } +
+            fadeOut(tween(180, delayMillis = barExitDelay)),
     ) {
         BottomNavBar(barTab, go, Modifier, hazeState, enabled = showBottomBar)
     }
     CenteredSnackbarHost(snackbar)
-    FeatureGuideOverlay(
-        state = onboardingState,
-        isHome = guideEnabled && currentMainTab == AppDestination.Home && navigationReady,
-        registry = guideRegistry,
-        onNext = { onboardingViewModel.advanceFeatureGuide(onboardingState.featureGuideStep) },
-        onSkip = onboardingViewModel::skipFeatureGuide,
-    )
+    guide?.let { currentGuide ->
+        val finishCurrentGuide = {
+            currentGuide.page?.let(onboardingViewModel::completePageGuide)
+                ?: onboardingViewModel.skipFeatureGuide()
+        }
+        FeatureGuideOverlay(
+            state = onboardingState,
+            isHome = true,
+            registry = guideRegistry,
+            step = currentGuide.step,
+            target = currentGuide.target,
+            onNext = {
+                if (currentGuide.page != null) onboardingViewModel.completePageGuide(currentGuide.page)
+                else if (currentGuide.step == FeatureGuideStep.ADD_RECORD) {
+                    onboardingViewModel.advanceFeatureGuide(FeatureGuideStep.ADD_RECORD)
+                    nav.open(AppDestination.AddGift)
+                } else onboardingViewModel.advanceFeatureGuide(currentGuide.step)
+            },
+            onSkip = finishCurrentGuide,
+        )
+    }
     }
     }
 }

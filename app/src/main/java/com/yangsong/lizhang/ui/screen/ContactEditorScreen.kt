@@ -21,7 +21,12 @@ import com.yangsong.lizhang.ui.component.*
 import com.yangsong.lizhang.ui.viewmodel.ContactEditorViewModel
 
 @Composable
-fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, onDeleted: () -> Unit) {
+fun ContactEditorScreen(
+    viewModel: ContactEditorViewModel,
+    onBack: () -> Unit,
+    onSaved: ((Long) -> Unit)? = null,
+    onDeleted: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showDiscardConfirmation by remember { mutableStateOf(false) }
@@ -29,20 +34,22 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
     val operationFailed = stringResource(R.string.contact_operation_failed)
     val requestBack = {
         when {
-            state.isSaving || state.isDeleting -> Unit
+            state.isSaving || state.isDeleting || state.isSaved -> Unit
             state.hasUnsavedChanges -> showDiscardConfirmation = true
             else -> onBack()
         }
     }
 
-    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving || state.isDeleting) {
+    BackHandler(enabled = state.hasUnsavedChanges || state.isSaving || state.isDeleting || state.isSaved) {
         requestBack()
     }
 
     LaunchedEffect(state.isSaved, state.isDeleted) {
         when {
             state.isDeleted -> onDeleted()
-            state.isSaved -> onBack()
+            state.isSaved -> state.savedContactId?.let { savedContactId ->
+                onSaved?.invoke(savedContactId) ?: onBack()
+            }
         }
     }
     LaunchedEffect(state.operationFailed) {
@@ -98,7 +105,7 @@ fun ContactEditorScreen(viewModel: ContactEditorViewModel, onBack: () -> Unit, o
                     onClick = viewModel::save,
                     modifier = Modifier.fillMaxWidth(),
                     loading = state.isSaving,
-                    enabled = !state.isDeleting,
+                    enabled = !state.isDeleting && !state.isSaved,
                 )
                 Spacer(Modifier.height(20.dp))
             }

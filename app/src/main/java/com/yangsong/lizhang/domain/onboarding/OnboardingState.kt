@@ -10,12 +10,15 @@ data class PermissionHistory(val explanationSeen: Boolean = false, val requested
 data class OnboardingState(
     val completed: Boolean = false,
     val featureGuideStep: FeatureGuideStep = FeatureGuideStep.ADD_RECORD,
+    val seenPageGuides: Set<FeatureGuidePage> = emptySet(),
     val homeRecordHintSeen: Boolean = false,
     val contactsHintSeen: Boolean = false,
     val contactsPermission: PermissionHistory = PermissionHistory(),
     val notificationsPermission: PermissionHistory = PermissionHistory(),
 ) {
     val featureGuideVisible get() = completed && featureGuideStep != FeatureGuideStep.COMPLETED
+
+    fun pageGuideVisible(page: FeatureGuidePage) = completed && page !in seenPageGuides
 
     fun hintSeen(hint: ContextualHint) = when (hint) {
         ContextualHint.HOME_RECORD -> homeRecordHintSeen

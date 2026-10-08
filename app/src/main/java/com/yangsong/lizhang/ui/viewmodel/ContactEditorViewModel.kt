@@ -27,6 +27,7 @@ data class ContactEditorUiState(
     val nameError: Boolean = false,
     val operationFailed: Boolean = false,
     val isSaved: Boolean = false,
+    val savedContactId: Long? = null,
     val isDeleted: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
 ) {
@@ -87,19 +88,24 @@ class ContactEditorViewModel(
 
     fun save() {
         val state = _uiState.value
-        if (state.isSaving || state.isDeleting) return
+        if (state.isSaving || state.isDeleting || state.isSaved) return
         if (state.name.isBlank()) {
             _uiState.update { it.copy(nameError = true) }
             return
         }
+        // 调度协程前锁定，避免快速连点产生多个联系人和错误的返回编号。
+        _uiState.update { it.copy(isSaving = true, operationFailed = false) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSaving = true, operationFailed = false) }
             val contact = state.toContact()
             runCatching {
-                if (state.isNewContact) repository.create(contact) else repository.update(contact)
-            }.onSuccess {
+                if (state.isNewContact) repository.create(contact)
+                else {
+                    repository.update(contact)
+                    state.contactId
+                }
+            }.onSuccess { savedContactId ->
                 _uiState.update {
-                    it.copy(isSaving = false, isSaved = true, hasUnsavedChanges = false)
+                    it.copy(isSaving = false, isSaved = true, savedContactId = savedContactId, hasUnsavedChanges = false)
                 }
             }.onFailure {
                 _uiState.update { it.copy(isSaving = false, operationFailed = true) }

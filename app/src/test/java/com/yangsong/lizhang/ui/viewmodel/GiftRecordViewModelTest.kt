@@ -137,6 +137,57 @@ class GiftRecordViewModelTest {
     }
 
     @Test
+    fun `没有联系人仍可编辑礼金且新建联系人返回后只替换联系人`() = runTest(dispatcher) {
+        val repository = FakeGiftRecordRepository(sampleRecord())
+        val contactRepository = FakeContactRepository()
+        val viewModel = GiftEditorViewModel(repository, contactRepository)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.contacts.isEmpty())
+        assertFalse(viewModel.uiState.value.isLoading)
+        assertNull(viewModel.uiState.value.contactId)
+        viewModel.update {
+            it.copy(amount = "288.88", eventDate = 1_753_200_000_000,
+                direction = GiftDirection.GIVEN, eventType = EventType.BIRTHDAY, notes = "模拟礼金备注")
+        }
+        viewModel.save()
+        assertEquals(GiftRecordValidationError.CONTACT_REQUIRED, viewModel.uiState.value.validationError)
+        val before = viewModel.uiState.value
+
+        contactRepository.addContact(Contact(id = 42L, name = "新建测试联系人"))
+        viewModel.selectCreatedContact(42L)
+        advanceUntilIdle()
+
+        val returned = viewModel.uiState.value
+        assertEquals(42L, returned.contactId)
+        assertEquals(before.amount, returned.amount)
+        assertEquals(before.eventDate, returned.eventDate)
+        assertEquals(before.direction, returned.direction)
+        assertEquals(before.eventType, returned.eventType)
+        assertEquals(before.notes, returned.notes)
+        assertNull(returned.validationError)
+        assertTrue(returned.hasUnsavedChanges)
+        assertEquals("新建测试联系人", returned.contacts.first { it.id == returned.contactId }.name)
+        viewModel.save()
+        advanceUntilIdle()
+        assertEquals(42L, repository.createdRecord?.contactId)
+        assertEquals(28_888L, repository.createdRecord?.amountInCents)
+    }
+
+    @Test
+    fun `无效新建联系人编号不清除原来的选择或草稿`() = runTest(dispatcher) {
+        val viewModel = GiftEditorViewModel(FakeGiftRecordRepository(sampleRecord()),
+            FakeContactRepository(sampleContact()), initialContactId = 3L)
+        advanceUntilIdle()
+        viewModel.update { it.copy(amount = "100", notes = "保留内容") }
+        val before = viewModel.uiState.value
+
+        viewModel.selectCreatedContact(0)
+        viewModel.selectCreatedContact(-1)
+
+        assertEquals(before, viewModel.uiState.value)
+    }
+
+    @Test
     fun `礼金日期晚于今天时阻止保存`() = runTest(dispatcher) {
         val now = 1_753_200_000_000
         val repository = FakeGiftRecordRepository(sampleRecord())
@@ -271,12 +322,13 @@ private class FakeGiftRecordRepository(initial: GiftRecord) : GiftRecordReposito
     }
 }
 
-private class FakeContactRepository(contact: Contact) : ContactRepository {
+private class FakeContactRepository(contact: Contact? = null) : ContactRepository {
     override suspend fun previewDelete(ids: Set<Long>): com.yangsong.lizhang.domain.model.ContactDeletePreview = error("此测试不执行批量删除")
     override suspend fun deleteContacts(ids: Set<Long>, confirmed: com.yangsong.lizhang.domain.model.ContactDeletePreview): com.yangsong.lizhang.domain.model.ContactBulkDeleteOutcome = error("此测试不执行批量删除")
     override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
-    private val contacts = MutableStateFlow(listOf(contact))
+    private val contacts = MutableStateFlow(listOfNotNull(contact))
+    fun addContact(contact: Contact) { contacts.value += contact }
     override fun observeContacts(query: String): Flow<List<Contact>> = contacts
     override fun observeContactSummaries(query: String): Flow<List<ContactLedgerSummary>> = flowOf(emptyList())
     override fun observeContact(contactId: Long): Flow<Contact?> = flowOf(contacts.value.firstOrNull { it.id == contactId })

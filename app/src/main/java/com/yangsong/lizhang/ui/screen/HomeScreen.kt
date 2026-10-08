@@ -180,7 +180,7 @@ private fun HeroSummaryCard(
     Layout(modifier = Modifier.fillMaxWidth(), content = {
         GlassCard(Modifier.fillMaxWidth().testTag("年度收支卡片").hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                // 入口实际高度决定菜单位置；标题与金额独立分层，不再用插图占据汇总空间。
+                // 入口实际高度决定菜单位置；年份与金额独立分层。
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     GlassClickableSurface(
@@ -207,9 +207,6 @@ private fun HeroSummaryCard(
                             Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
                         }
                     }
-                    Text(stringResource(R.string.home_annual_summary), Modifier.weight(1f).align(Alignment.CenterVertically),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.End)
                 }
                 Spacer(Modifier.height(24.dp))
                 BoxWithConstraints(Modifier.fillMaxWidth()) {

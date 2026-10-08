@@ -15,6 +15,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -51,8 +53,50 @@ class ContactEditorViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isSaved)
+        assertEquals(1L, viewModel.uiState.value.savedContactId)
         assertFalse(viewModel.uiState.value.hasUnsavedChanges)
         assertTrue(repository.created)
+    }
+
+    @Test
+    fun `新建联系人连续点击仅创建一次并保留实际返回编号`() = runTest(dispatcher) {
+        val repository = ContactEditorFakeRepository().apply { createdId = 42L }
+        val viewModel = ContactEditorViewModel(NavigationConstants.NEW_CONTACT_ID, repository)
+        viewModel.updateName("测试联系人")
+
+        repeat(5) { viewModel.save() }
+        assertTrue(viewModel.uiState.value.isSaving)
+        assertNull(viewModel.uiState.value.savedContactId)
+        advanceUntilIdle()
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(1, repository.createCount)
+        assertEquals(42L, viewModel.uiState.value.savedContactId)
+        assertTrue(viewModel.uiState.value.isSaved)
+    }
+
+    @Test
+    fun `联系人保存失败不提供返回编号且重试成功后才提供`() = runTest(dispatcher) {
+        val repository = ContactEditorFakeRepository().apply { failCreate = true; createdId = 42L }
+        val viewModel = ContactEditorViewModel(NavigationConstants.NEW_CONTACT_ID, repository)
+        viewModel.updateName("测试联系人")
+        viewModel.updateNotes("模拟备注")
+
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSaved)
+        assertFalse(viewModel.uiState.value.isSaving)
+        assertNull(viewModel.uiState.value.savedContactId)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+        assertEquals("模拟备注", viewModel.uiState.value.notes)
+        repository.failCreate = false
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(42L, viewModel.uiState.value.savedContactId)
+        assertFalse(viewModel.uiState.value.operationFailed)
     }
 }
 
@@ -62,6 +106,9 @@ private class ContactEditorFakeRepository : ContactRepository {
     override suspend fun importDeviceContacts(selections: List<com.yangsong.lizhang.domain.model.ContactImportSelection>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     override suspend fun createAll(contacts: List<Contact>): com.yangsong.lizhang.domain.model.ContactImportResult = error("此测试不执行通讯录导入")
     var created = false
+    var createdId = 1L
+    var createCount = 0
+    var failCreate = false
 
     override fun observeContacts(query: String): Flow<List<Contact>> = flowOf(emptyList())
 
@@ -71,8 +118,10 @@ private class ContactEditorFakeRepository : ContactRepository {
     override fun observeContact(contactId: Long): Flow<Contact?> = flowOf(null)
 
     override suspend fun create(contact: Contact): Long {
+        createCount++
+        if (failCreate) error("模拟联系人保存失败")
         created = true
-        return 1
+        return createdId
     }
 
     override suspend fun update(contact: Contact) = Unit

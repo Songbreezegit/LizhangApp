@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.GlassCheckbox
 import com.yangsong.lizhang.ui.component.pressToggleable
 import dev.chrisbanes.haze.hazeSource
@@ -240,7 +242,8 @@ fun ContactsContent(
     }
     if (!state.isSelectionMode) {
         Box(Modifier.align(Alignment.BottomEnd).navigationBarsPadding()
-            .padding(end = 20.dp, bottom = GlassTokens.BottomClearance)) {
+            .padding(end = 20.dp, bottom = GlassTokens.BottomClearance)
+            .featureGuideTarget(FeatureGuideTarget.CONTACTS_PAGE)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
                 listOf(GlassAction(stringResource(R.string.contact_import_menu), Icons.Outlined.Contacts, onImportContacts),
                     GlassAction(stringResource(R.string.contact_add_manual), Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)

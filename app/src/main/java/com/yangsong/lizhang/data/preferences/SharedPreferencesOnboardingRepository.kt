@@ -23,15 +23,19 @@ class SharedPreferencesOnboardingRepository(
             if (preferences.contains(COMPLETED)) preferences.getBoolean(COMPLETED, false) else null,
             evidence,
         )
-        val guideStep = FeatureGuidePolicy.initialStep(preferences.getString(FEATURE_GUIDE_STEP, null), completed)
-        // 集中迁移，与首次完成标记一起保存；旧版本已完成用户不会突然开始四步引导。
+        val savedStep = preferences.getString(FEATURE_GUIDE_STEP, null)
+        val guideStep = FeatureGuidePolicy.initialStep(savedStep, completed)
+        val seenPages = FeatureGuidePolicy.initialSeenPages(preferences.getStringSet(PAGE_GUIDES_SEEN, null), savedStep, completed)
+        // 集中迁移：旧版本已完成用户不会突然重播，新用户保留真实记账进度和各页首次介绍。
         preferences.edit {
             if (!preferences.contains(COMPLETED)) putBoolean(COMPLETED, completed)
-            if (!preferences.contains(FEATURE_GUIDE_STEP)) putString(FEATURE_GUIDE_STEP, guideStep.storedValue)
+            putString(FEATURE_GUIDE_STEP, guideStep.storedValue)
+            if (!preferences.contains(PAGE_GUIDES_SEEN)) putStringSet(PAGE_GUIDES_SEEN, seenPages.mapTo(mutableSetOf()) { it.name })
         }
         return OnboardingState(
             completed = completed,
             featureGuideStep = guideStep,
+            seenPageGuides = seenPages,
             homeRecordHintSeen = preferences.getBoolean(HOME_HINT, false),
             contactsHintSeen = preferences.getBoolean(CONTACTS_HINT, false),
             contactsPermission = PermissionHistory(
@@ -66,6 +70,14 @@ class SharedPreferencesOnboardingRepository(
         _state.value = _state.value.copy(featureGuideStep = step)
     }
 
+    @Synchronized override fun completePageGuide(page: FeatureGuidePage) {
+        val current = _state.value
+        if (!current.pageGuideVisible(page)) return
+        val seen = current.seenPageGuides + page
+        preferences.edit { putStringSet(PAGE_GUIDES_SEEN, seen.mapTo(mutableSetOf()) { it.name }) }
+        _state.value = current.copy(seenPageGuides = seen)
+    }
+
     @Synchronized override fun markHintSeen(hint: ContextualHint) {
         preferences.edit { putBoolean(if (hint == ContextualHint.HOME_RECORD) HOME_HINT else CONTACTS_HINT, true) }
         _state.value = when (hint) {
@@ -95,6 +107,7 @@ class SharedPreferencesOnboardingRepository(
         const val FILE_NAME = "onboarding_preferences"
         private const val COMPLETED = "onboarding_completed"
         private const val FEATURE_GUIDE_STEP = "feature_guide_step"
+        private const val PAGE_GUIDES_SEEN = "feature_guide_pages_seen"
         private const val HOME_HINT = "home_record_hint_seen"
         private const val CONTACTS_HINT = "contacts_hint_seen"
         private const val CONTACT_EXPLANATION = "contact_permission_explanation_seen"

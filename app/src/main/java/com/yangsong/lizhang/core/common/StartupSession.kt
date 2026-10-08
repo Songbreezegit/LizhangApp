@@ -1,13 +1,14 @@
 package com.yangsong.lizhang.core.common
 
-/** 进程内只消费一次启动机会；通知入口和系统恢复也会消费，回到桌面后不补播。 */
+/** 全新主窗口可播放；已存在窗口的恢复、通知直达和配置重建不增加启动动画。 */
 internal class StartupSession {
     private var claimed = false
     internal val hasClaimed get() = claimed
 
     fun claim(restoringState: Boolean, directEntry: Boolean): Boolean {
-        val firstActivity = !claimed
         claimed = true
-        return firstActivity && !restoringState && !directEntry
+        // 清理任务不一定结束进程，不能用进程内旧标记屏蔽下一次全新窗口。
+        // 同一窗口是否已初始化由 StartupAnimationViewModel 保证。
+        return !restoringState && !directEntry
     }
 }

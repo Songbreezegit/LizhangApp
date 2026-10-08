@@ -8,6 +8,11 @@ import com.yangsong.lizhang.domain.repository.OnboardingRepository
 class OnboardingViewModel(private val repository: OnboardingRepository) : ViewModel() {
     val state = repository.state
 
+    /** 首次打开直接进入首页，把最主要的记账操作放在真实页面中介绍。 */
+    fun enterApp() {
+        if (!state.value.completed) repository.complete()
+    }
+
     fun finish(mode: OnboardingMode) {
         if (mode == OnboardingMode.FIRST_LAUNCH) repository.complete()
     }
@@ -16,6 +21,7 @@ class OnboardingViewModel(private val repository: OnboardingRepository) : ViewMo
     fun targetInvoked(step: FeatureGuideStep) = repository.advanceFeatureGuide(step)
     fun skipFeatureGuide() = repository.completeFeatureGuide()
     fun completeFeatureGuide() = repository.completeFeatureGuide()
+    fun completePageGuide(page: FeatureGuidePage) = repository.completePageGuide(page)
 
     fun claimHint(hint: ContextualHint, loaded: Boolean, empty: Boolean): Boolean {
         if (!OnboardingPolicy.shouldShowHint(state.value.hintSeen(hint), loaded, empty)) return false

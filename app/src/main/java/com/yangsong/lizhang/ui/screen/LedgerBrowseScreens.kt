@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
+import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.glassSwitchColors
 import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
@@ -137,7 +139,7 @@ fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordCli
 
 @Composable
 private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext: () -> Unit, onDay: (Int) -> Unit) {
-    GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
+    GlassCard(Modifier.featureGuideTarget(FeatureGuideTarget.CALENDAR), shape = RoundedCornerShape(GlassTokens.Radius)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 GlassIconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
@@ -361,7 +363,7 @@ fun NotificationsContent(
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                        GlassTextButton(onAdd, Modifier.testTag("新增独立提醒")) {
+                        GlassTextButton(onAdd, Modifier.testTag("新增独立提醒").featureGuideTarget(FeatureGuideTarget.REMINDERS_PAGE)) {
                             Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.independent_add))
                         }

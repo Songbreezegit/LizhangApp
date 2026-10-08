@@ -37,7 +37,6 @@ data class GiftEditorUiState(
     val isSaving: Boolean = false,
     val hasUnsavedChanges: Boolean = false,
     val contacts: List<Contact> = emptyList(),
-    val isCreatingContact: Boolean = false,
 ) {
     val isEditing: Boolean get() = recordId != NavigationConstants.NEW_RECORD_ID
 }
@@ -104,31 +103,10 @@ class GiftEditorViewModel(
         update { it.copy(eventType = EventType.OTHER, customEventName = normalized) }
     }
 
-    fun createContact(name: String, phone: String, relationship: String) {
-        if (name.isBlank() || mutableUiState.value.isCreatingContact) return
-        viewModelScope.launch {
-            mutableUiState.update { it.copy(isCreatingContact = true, operationFailed = false) }
-            runCatching {
-                contactRepository.create(
-                    Contact(
-                        name = name.trim(),
-                        phone = phone.trim().ifBlank { null },
-                        relationship = relationship.trim().ifBlank { null },
-                    ),
-                )
-            }.onSuccess { contactId ->
-                mutableUiState.update {
-                    it.copy(
-                        contactId = contactId,
-                        isCreatingContact = false,
-                        validationError = null,
-                        hasUnsavedChanges = true,
-                    )
-                }
-            }.onFailure {
-                mutableUiState.update { it.copy(isCreatingContact = false, operationFailed = true) }
-            }
-        }
+    /** 从新建联系人页返回时，只替换联系人，保留当前礼金草稿。 */
+    fun selectCreatedContact(contactId: Long) {
+        if (contactId <= 0) return
+        update { it.copy(contactId = contactId) }
     }
 
     fun consumeOperationFailure() {
