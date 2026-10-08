@@ -90,7 +90,8 @@ fun FeatureGuideOverlay(
                 val placedBubble = bubbleBounds ?: return@drawBehind
                 // Figma 入场只改变位置与透明度；箭头跟随气泡真实边界。
                 val bubble = placedBubble.translate(Offset(0f, 8.dp.toPx() * (1f - progress)))
-                val pointer = guidePointer(anchor, bubble, 20.dp.toPx(), 6.dp.toPx())
+                // 28dp 底宽与 16dp 最小目标间距，避免尖角相对宽气泡过于细小。
+                val pointer = guidePointer(anchor, bubble, 20.dp.toPx(), 14.dp.toPx())
                 // 气泡靠边时只移动箭头根部；尖端始终落在真实目标相邻边的中心。
                 val arrow = Path().apply {
                     moveTo(pointer.baseLeft.x, pointer.baseLeft.y)
@@ -104,6 +105,7 @@ fun FeatureGuideOverlay(
             },
     ) { constraints ->
         val gap = 12.dp.roundToPx()
+        val pointerGap = 16.dp.roundToPx()
         val horizontalMargin = 16.dp.roundToPx()
         val left = (insets.getLeft(density, direction) - origin.x).roundToInt().coerceAtLeast(0) + horizontalMargin
         val right = constraints.maxWidth - insets.getRight(density, direction) - horizontalMargin
@@ -115,8 +117,8 @@ fun FeatureGuideOverlay(
             // 顶部目标的气泡也必须停在实际底栏上方。
             val bottom = min(constraints.maxHeight - insets.getBottom(density) - gap,
                 navTop?.let { (it - origin.y).roundToInt() - gap } ?: constraints.maxHeight)
-            val aboveEnd = min(anchor?.top?.roundToInt()?.minus(gap) ?: bottom, bottom)
-            val belowStart = maxOf(anchor?.bottom?.roundToInt()?.plus(gap) ?: top, top)
+            val aboveEnd = min(anchor?.top?.roundToInt()?.minus(pointerGap) ?: bottom, bottom)
+            val belowStart = maxOf(anchor?.bottom?.roundToInt()?.plus(pointerGap) ?: top, top)
             return GuideSpace(aboveEnd, belowStart, (aboveEnd - top).coerceAtLeast(0), (bottom - belowStart).coerceAtLeast(0))
         }
         val width = min((right - left).coerceAtLeast(0), 360.dp.roundToPx())
