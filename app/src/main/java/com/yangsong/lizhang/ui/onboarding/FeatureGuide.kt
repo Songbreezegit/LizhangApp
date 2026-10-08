@@ -63,10 +63,11 @@ fun FeatureGuideOverlay(
     val direction = LocalLayoutDirection.current
     val insets = WindowInsets.safeDrawing
     val color = MaterialTheme.colorScheme.primary
-    val bubbleColor = MaterialTheme.colorScheme.surface
-    val bubbleBorderColor = MaterialTheme.colorScheme.outlineVariant
+    val bubbleColor = GuideCloudPalette.surface
+    val bubbleBorderColor = GuideCloudPalette.outline
     var origin by remember { mutableStateOf(Offset.Zero) }
     var bubbleBounds by remember(target) { mutableStateOf<Rect?>(null) }
+    var decorationTopInset by remember(target) { mutableStateOf(0f) }
     SubcomposeLayout(
         modifier = modifier.fillMaxSize().testTag("功能引导高亮")
             .onPlaced { origin = it.positionInRoot(); initialPlacement = false }
@@ -90,17 +91,14 @@ fun FeatureGuideOverlay(
                 val placedBubble = bubbleBounds ?: return@drawBehind
                 // Figma 入场只改变位置与透明度；箭头跟随气泡真实边界。
                 val bubble = placedBubble.translate(Offset(0f, 8.dp.toPx() * (1f - progress)))
-                // 28dp 底宽与 16dp 最小目标间距，避免尖角相对宽气泡过于细小。
-                val pointer = guidePointer(anchor, bubble, 20.dp.toPx(), 14.dp.toPx())
+                val cloud = Rect(bubble.left, bubble.top + decorationTopInset, bubble.right, bubble.bottom)
+                // 猫咪顶部预留也计入安全区；尾根按云体实测边缘连续接入。
+                val pointer = guidePointer(anchor, cloud, 24.dp.toPx(), 20.dp.toPx())
                 // 气泡靠边时只移动箭头根部；尖端始终落在真实目标相邻边的中心。
-                val arrow = Path().apply {
-                    moveTo(pointer.baseLeft.x, pointer.baseLeft.y)
-                    lineTo(pointer.tip.x, pointer.tip.y)
-                    lineTo(pointer.baseRight.x, pointer.baseRight.y)
-                }
-                // 尖角与气泡共用表面色、边框色和线宽，不沿用目标高亮的强调色。
-                drawPath(arrow, bubbleColor.copy(alpha = bubbleColor.alpha * progress))
-                drawPath(arrow, bubbleBorderColor.copy(alpha = bubbleBorderColor.alpha * progress),
+                val contour = guideBubblePath(cloud, pointer, 24.dp.toPx(), 8.dp.toPx(), 2.dp.toPx())
+                // 背景与尾部只填充、描边一次，内容层不再另外绘制卡片边框。
+                drawPath(contour, bubbleColor.copy(alpha = bubbleColor.alpha * progress))
+                drawPath(contour, bubbleBorderColor.copy(alpha = bubbleBorderColor.alpha * progress),
                     style = Stroke(1.dp.toPx()))
             },
     ) { constraints ->
@@ -134,17 +132,26 @@ fun FeatureGuideOverlay(
                 bubbleBounds = null
                 return@layout
             }
+            val bubbleX = (anchor.center.x.roundToInt() - width / 2).coerceIn(left, right - width)
+            val rootInset = min(44.dp.toPx(), width / 2f)
+            val rootX = anchor.center.x.coerceIn(bubbleX + rootInset, bubbleX + width - rootInset)
+            val leftRoom = (rootX - 20.dp.toPx() - bubbleX - 24.dp.toPx()).coerceAtLeast(0f)
+            val rightRoom = (bubbleX + width - rootX - 20.dp.toPx() - 24.dp.toPx()).coerceAtLeast(0f)
+            val catOnLeft = leftRoom > rightRoom
+            // 装饰先缩小；保留正文和操作的空间，也让上尾不会穿过趴猫。
+            val heightScale = (availableHeight - 128.dp.toPx() * density.fontScale) / 112.dp.toPx()
+            val decorationScale = min(heightScale, maxOf(leftRoom, rightRoom) / 128.dp.toPx()).coerceIn(0f, 1f)
+            decorationTopInset = 40.dp.toPx() * decorationScale
             val bubble = subcompose(target) {
                 FeatureGuideBubble(step, onNext, onSkip, Modifier.graphicsLayer {
                     alpha = reveal.value
                     translationY = 8.dp.toPx() * (1f - reveal.value)
-                })
+                }, decorationScale = decorationScale, catOnLeft = catOnLeft)
             }.single().measure(Constraints(minWidth = width, maxWidth = width, maxHeight = availableHeight))
             val preferBelow = target == FeatureGuideTarget.REMINDERS || target == FeatureGuideTarget.REMINDERS_PAGE ||
                 target == FeatureGuideTarget.RECORD_CONTACT || target == FeatureGuideTarget.SEARCH
             val placeBelow = if (preferBelow) placedSpace.below >= bubble.height else placedSpace.above < bubble.height
             val bubbleY = if (placeBelow) placedSpace.belowStart else placedSpace.aboveEnd - bubble.height
-            val bubbleX = (anchor.center.x.roundToInt() - bubble.width / 2).coerceIn(left, right - bubble.width)
             bubbleBounds = Rect(bubbleX.toFloat(), bubbleY.toFloat(),
                 (bubbleX + bubble.width).toFloat(), (bubbleY + bubble.height).toFloat())
             bubble.place(bubbleX, bubbleY)
@@ -160,8 +167,10 @@ internal data class GuidePointer(val baseLeft: Offset, val baseRight: Offset, va
 internal fun guidePointer(anchor: Rect, bubble: Rect, cornerRadius: Float, halfWidth: Float): GuidePointer {
     val bubbleAbove = bubble.bottom <= anchor.top
     val baseY = if (bubbleAbove) bubble.bottom else bubble.top
-    val inset = min(cornerRadius + halfWidth, bubble.width / 2)
+    val radius = min(cornerRadius, min(bubble.width, bubble.height) / 2f).coerceAtLeast(0f)
+    val tailHalfWidth = min(halfWidth, ((bubble.width - 2f * radius) / 2f).coerceAtLeast(0f))
+    val inset = min(radius + tailHalfWidth, bubble.width / 2)
     val baseX = anchor.center.x.coerceIn(bubble.left + inset, bubble.right - inset)
     val tip = Offset(anchor.center.x, if (bubbleAbove) anchor.top else anchor.bottom)
-    return GuidePointer(Offset(baseX - halfWidth, baseY), Offset(baseX + halfWidth, baseY), tip)
+    return GuidePointer(Offset(baseX - tailHalfWidth, baseY), Offset(baseX + tailHalfWidth, baseY), tip)
 }
