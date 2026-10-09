@@ -1,0 +1,14 @@
+# 仅限备案通过且用户批准 DNS/公网端口/证书后，管理员临时配置 HTTP-01 验证。
+# 仅开放证书验证路径；不得在备案前安装或启用。
+server {
+    listen 80;
+    listen [::]:80;
+    server_name lizhang.songisle.xyz;
+    access_log off;
+    server_tokens off;
+    location /.well-known/acme-challenge/ {
+        root /var/lib/lizhang-acme;
+        try_files $uri =404;
+    }
+    location / { return 404; }
+}
