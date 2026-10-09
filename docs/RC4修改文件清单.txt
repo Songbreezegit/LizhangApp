@@ -1,0 +1,68 @@
+礼账 RC4 相对已验收 RC3 的修改文件清单
+基线：359b33626bb0d33e72ed0aa81ce214fa09ed56d6
+分支：release/v1.0.0-rc4
+状态：A新增，M修改，D删除，R重命名。该清单本身一并新增。
+
+M	README.md
+M	app/build.gradle.kts
+M	app/src/main/assets/legal/help.md
+M	app/src/main/assets/legal/metadata.properties
+M	app/src/main/assets/legal/privacy.md
+M	app/src/main/assets/legal/terms.md
+D	app/src/main/res/drawable-nodpi/avatar_grandmother.png
+D	app/src/main/res/drawable-nodpi/avatar_man_brown.png
+D	app/src/main/res/drawable-nodpi/avatar_woman_black.png
+D	app/src/main/res/drawable-nodpi/avatar_woman_brown.png
+D	app/src/main/res/drawable/ic_launcher_monochrome.xml
+M	app/src/main/res/values-b+zh+Hant/candidate_release_strings.xml
+M	app/src/main/res/values-b+zh+Hant/strings.xml
+M	app/src/main/res/values-en/candidate_release_strings.xml
+M	app/src/main/res/values-en/strings.xml
+M	app/src/main/res/values-es/candidate_release_strings.xml
+M	app/src/main/res/values-es/strings.xml
+M	app/src/main/res/values-fr/candidate_release_strings.xml
+M	app/src/main/res/values-fr/strings.xml
+M	app/src/main/res/values-ja/candidate_release_strings.xml
+M	app/src/main/res/values-ja/strings.xml
+M	app/src/main/res/values-ko/candidate_release_strings.xml
+M	app/src/main/res/values-ko/strings.xml
+M	app/src/main/res/values/candidate_release_strings.xml
+M	app/src/main/res/values/strings.xml
+M	app/src/test/java/com/yangsong/lizhang/PrivacyNoticeResourcesTest.kt
+M	docs/RC2签名与发布检查.md
+M	docs/RC3正式签名操作方案.md
+A	docs/RC4商店资料说明.md
+A	docs/RC4正式签名准备.md
+A	docs/RC4自动化验证报告.md
+M	docs/v1.0.0正式发布清单.md
+M	docs/上架前修复事项.md
+A	docs/备案通过后发布步骤.md
+M	release/legal-approval.properties
+M	release/legal-release.gradle
+M	release/unapproved-content-pattern.txt
+M	scripts/fixtures/legal-gate-regression.gradle
+M	scripts/sign-release.ps1
+M	scripts/test-official-release-gate.ps1
+A	scripts/test-sign-release.ps1
+D	scripts/verify-rc2-release.ps1
+R094	scripts/verify-rc3-release.ps1	scripts/verify-rc4-release.ps1
+A	store-listing/v1.0.0/01-应用文案.md
+A	store-listing/v1.0.0/02-权限与隐私说明.md
+A	store-listing/v1.0.0/03-素材规格.md
+A	store-listing/v1.0.0/04-五张截图规划.md
+A	store-listing/v1.0.0/05-审核使用说明.md
+A	store-listing/v1.0.0/06-材料与联系方式清单.md
+A	store-listing/v1.0.0/07-官方规则来源.md
+A	store-listing/v1.0.0/README.md
+M	website/README.md
+M	website/content/help.md
+M	website/content/privacy.md
+M	website/content/terms.md
+M	website/legal/android-content-manifest.json
+M	website/legal/legal-approval.properties
+M	website/legal/metadata.properties
+M	website/scripts/build.mjs
+M	website/scripts/legal-consistency.mjs
+M	website/scripts/site.test.mjs
+M	website/site.config.json
+A	docs/RC4修改文件清单.txt

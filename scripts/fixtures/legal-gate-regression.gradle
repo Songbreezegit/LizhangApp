@@ -53,11 +53,15 @@ tasks.register('gateRegression') {
             ['邮箱格式错误', false, '邮箱', { metadata.contact_email='invalid'; approval.contact_email='invalid'; sync() }],
             ['日期格式错误', false, 'YYYY-MM-DD', { approval.approved_at='2026-99-99'; sync() }],
             ['分发历史未确认', false, 'distribution_history_status', { approval.distribution_history_status='pending'; sync() }],
+            ['网站备案未确认', false, 'filing_status', { approval.filing_status='pending'; sync() }],
+            ['网站缺少备案号', false, 'filing_record', { approval.filing_record=''; metadata.filing_record=''; site.icpNumber=''; sync() }],
+            ['网站审核中不能作为备案号', false, 'filing_record', { approval.filing_record='ICP备案审核中'; metadata.filing_record=approval.filing_record; site.icpNumber=approval.filing_record; sync() }],
+            ['网站备案已确认仍缺APP材料', false, 'app_filing_material', { approval.app_filing_material='pending'; sync() }],
             ['APP备案适用材料未确认', false, 'app_filing_status', { approval.app_filing_status='pending'; sync() }],
             ['版本代码未递增', false, 'versionCode', { approval.highest_distributed_version_code='24'; sync() }],
             ['版本代码与命令不一致', false, 'versionCode', { approval.version_code='25'; sync() }],
             ['证书指纹不完整', false, 'SHA-256', { approval.signing_certificate_sha256='a'; sync() }],
-            ['候选政策不能正式发布', false, '候选编号', { approval.policy_version='1.0.0-rc3-policy-v1'; metadata.policy_version=approval.policy_version; sync() }],
+            ['候选政策不能正式发布', false, '候选编号', { approval.policy_version='1.0.0-rc4-policy-v1'; metadata.policy_version=approval.policy_version; sync() }],
             ['中文全文仍为草稿', false, '未批准文案', { write(file('src/main/assets/legal/privacy.md'),'# 政策\n\n草稿待本人批准\n'); sync() }],
             ['英文正式告知仍为草稿', false, '未批准文案', { write(file('src/main/res/values-en/privacy_notice.xml'), '<resources><string name="message">draft</string></resources>\n'); sync() }],
             ['法语RC3草稿不能发布', false, '未批准文案', { write(file('src/main/res/values-fr/privacy_notice.xml'), '<resources><string name="message">projet RC3</string></resources>\n'); sync() }],
@@ -71,6 +75,7 @@ tasks.register('gateRegression') {
                 approval.website_content_sha256=sha(files.collect{"${rootProject.relativePath(it).replace('\\','/')}\n${sha(it.bytes)}\n"}.join('').getBytes('UTF-8'))
                 write(rootProject.file('release/legal-approval.properties'),propertiesText(approval)); write(rootProject.file('website/legal/legal-approval.properties'),propertiesText(approval)) }],
             ['网站版本偏离', false, '网站正式配置', { site.appVersion='0.9.12'; sync() }],
+            ['只修改网站备案号未更新批准', false, '网站正式配置', { site.icpNumber='合成新备案号'; sync() }],
             ['网站域名偏离', false, '网站正式配置', { site.domain='wrong.example.invalid'; sync() }],
         ]
         def results = []

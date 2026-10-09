@@ -3,7 +3,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$fixtureRoot = Join-Path $repoRoot ('build\rc3-check\gate-' + [Guid]::NewGuid().ToString('N'))
+$fixtureRoot = Join-Path $repoRoot ('build\rc4-check\gate-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'release'), (Join-Path $fixtureRoot 'app') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'release\legal-release.gradle') -Destination (Join-Path $fixtureRoot 'release\legal-release.gradle')
 Copy-Item -LiteralPath (Join-Path $repoRoot 'release\unapproved-content-pattern.txt') -Destination (Join-Path $fixtureRoot 'release\unapproved-content-pattern.txt')

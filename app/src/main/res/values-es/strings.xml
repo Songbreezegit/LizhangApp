@@ -32,9 +32,7 @@
     <string name="action_add_gift">Registrar un regalo</string>
     <string name="action_search">Buscar regalos y contactos</string>
     <string name="action_edit">Editar</string>
-    <string name="loading">Cargando…</string>
     <string name="load_failed">No se pueden cargar los datos en este momento</string>
-    <string name="home_annual_summary">Balance anual</string>
     <string name="home_year_received">Recibido este año</string>
     <string name="home_year_given">Entregado este año</string>
     <string name="home_net">Saldo neto</string>
@@ -82,12 +80,10 @@
     <string name="error_date_in_future">La fecha del regalo no puede ser posterior a hoy</string>
     <string name="saved_success">Registro de regalo guardado</string>
     <string name="contact_choose">Elegir contacto</string>
-    <string name="contact_create_quick">Añadir contacto rápido</string>
     <string name="contact_name">Nombre</string>
     <string name="contact_phone">Teléfono móvil (opcional)</string>
     <string name="contact_relationship">Relación (opcional)</string>
     <string name="contact_name_required">Introduce el nombre del contacto</string>
-    <string name="contact_created">Contacto creado y seleccionado</string>
     <string name="date_choose">Elegir fecha</string>
     <string name="date_previous_year">Año anterior</string>
     <string name="date_next_year">Año siguiente</string>
@@ -124,14 +120,12 @@
     <string name="search_intro">Introduce una palabra clave para buscar registros de regalos</string>
     <string name="search_no_result">No se encontraron registros</string>
     <string name="search_result">Resultados de búsqueda</string>
-    <string name="stats_year">Año</string>
     <string name="stats_monthly">Actividad mensual</string>
     <string name="stats_event">Por ocasión</string>
     <string name="stats_contact">Por contacto</string>
     <string name="stats_empty">No hay registros de regalos de este año</string>
     <string name="settings_backup">Copia de seguridad y restauración</string>
     <string name="settings_backup_description">Crea una copia sin cifrar o cifrada con contraseña, o restaura una copia de Lizhang. El archivo se comprobará antes de pedirte que confirmes la restauración.</string>
-    <string name="settings_backup_create_action">Crear copia de seguridad</string>
     <string name="settings_backup_restore_action">Restaurar desde una copia</string>
     <string name="settings_backup_prepare_failed">No se pudo crear la copia. Inténtalo de nuevo más tarde.</string>
     <string name="settings_backup_saved">Copia de seguridad guardada</string>
@@ -331,7 +325,6 @@
     <string name="independent_save">Guardar recordatorio</string>
     <string name="independent_storage_notice">Los recordatorios personales se guardan en este dispositivo y no se incluyen en las copias de seguridad de regalos.</string>
     <string name="settings_onboarding">Guía de uso</string>
-    <string name="settings_onboarding_description">Revisar la guía y la información de privacidad</string>
     <string name="onboarding_skip">Omitir</string>
     <string name="onboarding_next">Siguiente</string>
     <string name="onboarding_start">Empezar</string>
@@ -369,7 +362,6 @@
     <string name="feature_guide_settings_body">Exporta o restaura una copia de seguridad aquí. Los temas y los idiomas también están en Ajustes.</string>
     <string name="feature_guide_next">Siguiente</string>
     <string name="feature_guide_skip">Omitir guía</string>
-    <string name="feature_guide_finish">Finalizar</string>
     <string name="feature_guide_progress">%1$d / %2$d</string>
     <string name="feature_guide_start_record">Empezar a registrar</string>
     <string name="feature_guide_record_done">Listo</string>

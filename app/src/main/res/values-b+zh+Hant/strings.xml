@@ -30,9 +30,7 @@
     <string name="action_add_gift">記一筆禮金</string>
     <string name="action_search">搜尋禮金與聯絡人</string>
     <string name="action_edit">編輯</string>
-    <string name="loading">正在載入…</string>
     <string name="load_failed">暫時無法讀取資料</string>
-    <string name="home_annual_summary">年度收支</string>
     <string name="home_year_received">本年收到</string>
     <string name="home_year_given">本年送出</string>
     <string name="home_net">淨往來</string>
@@ -80,12 +78,10 @@
     <string name="error_date_in_future">禮金日期不能晚於今天</string>
     <string name="saved_success">禮金記錄已儲存</string>
     <string name="contact_choose">選擇聯絡人</string>
-    <string name="contact_create_quick">快速新增聯絡人</string>
     <string name="contact_name">姓名</string>
     <string name="contact_phone">手機號碼（選填）</string>
     <string name="contact_relationship">關係（選填）</string>
     <string name="contact_name_required">請輸入聯絡人姓名</string>
-    <string name="contact_created">聯絡人已建立並選取</string>
     <string name="date_choose">選擇日期</string>
     <string name="date_previous_year">上一年</string>
     <string name="date_next_year">下一年</string>
@@ -122,14 +118,12 @@
     <string name="search_intro">輸入關鍵字，查找往來記錄</string>
     <string name="search_no_result">沒有找到相關記錄</string>
     <string name="search_result">搜尋結果</string>
-    <string name="stats_year">年份</string>
     <string name="stats_monthly">每月往來</string>
     <string name="stats_event">按事件統計</string>
     <string name="stats_contact">按聯絡人統計</string>
     <string name="stats_empty">這一年還沒有禮金記錄</string>
     <string name="settings_backup">資料備份與還原</string>
     <string name="settings_backup_description">建立一般備份或密碼加密備份，也可以從現有禮帳備份還原。還原前會先驗證檔案並再次確認。</string>
-    <string name="settings_backup_create_action">建立備份</string>
     <string name="settings_backup_restore_action">從備份還原</string>
     <string name="settings_backup_prepare_failed">產生備份失敗，請稍後重試</string>
     <string name="settings_backup_saved">備份檔案已儲存</string>
@@ -313,7 +307,6 @@
     <string name="independent_save">儲存提醒</string>
     <string name="independent_storage_notice">獨立提醒儲存在本機，不包含在禮金備份中。</string>
     <string name="settings_onboarding">使用導覽</string>
-    <string name="settings_onboarding_description">重新查看禮帳的使用與隱私說明</string>
     <string name="onboarding_skip">略過</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_start">開始使用</string>
@@ -351,7 +344,6 @@
     <string name="feature_guide_settings_body">這裡可以匯出或還原備份。主題和語言也在「我的」裡。</string>
     <string name="feature_guide_next">下一步</string>
     <string name="feature_guide_skip">略過導覽</string>
-    <string name="feature_guide_finish">完成</string>
     <string name="feature_guide_progress">%1$d / %2$d</string>
     <string name="feature_guide_start_record">開始記帳</string>
     <string name="feature_guide_record_done">準備好了</string>

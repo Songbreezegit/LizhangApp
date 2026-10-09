@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="legal_candidate_notice">RC3 候選審核稿 · 尚未生效</string>
-    <string name="privacy_notice_candidate">這是 RC3 候選測試文案，營運者資訊、生效日期和正式政策版本仍待本人批准。本次確認不代表法律文字已審核通過。</string>
+    <string name="legal_candidate_notice">RC4 候選審核稿 · 尚未生效</string>
+    <string name="privacy_notice_candidate">這是 RC4 候選測試文案，營運者資訊、生效日期和正式政策版本仍待本人批准。本次確認不代表法律文字已審核通過。</string>
 </resources>

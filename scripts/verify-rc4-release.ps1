@@ -4,15 +4,21 @@ param(
     [string]$ApkPath = '',
     [string]$ApkAnalyzerPath = 'D:\Android\Sdk\cmdline-tools\latest\bin\apkanalyzer.bat',
     [string]$ApkSignerPath = 'D:\Android\Sdk\build-tools\36.0.0\apksigner.bat',
+    [string]$ZipAlignPath = 'D:\Android\Sdk\build-tools\36.0.0\zipalign.exe',
     [switch]$OfficialRelease,
-    [string]$ExpectedCertificateSha256 = ''
+    [switch]$BeforeSigning,
+    [string]$ExpectedCertificateSha256 = '',
+    [int]$ExpectedVersionCode = 23
 )
 
 $ErrorActionPreference = 'Stop'
+if ($ExpectedVersionCode -lt 1 -or $ExpectedVersionCode -gt 2100000000) { throw '版本代码必须是 1 至 2100000000 之间的整数。' }
+if ($BeforeSigning -and !$OfficialRelease) { throw '签名前核验仅用于已批准的正式未签名输入。' }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (!$ApkPath) { $ApkPath = Join-Path $repoRoot 'app\build\outputs\apk\release\app-release-unsigned.apk' }
 $apkFile = Get-Item -LiteralPath $ApkPath
-foreach ($tool in @($ApkAnalyzerPath, $ApkSignerPath)) {
+if ($apkFile.PSIsContainer -or $apkFile.Length -lt 22) { throw 'APK 输入必须是已存在且具有 ZIP 目录的文件。' }
+foreach ($tool in @($ApkAnalyzerPath, $ApkSignerPath, $ZipAlignPath)) {
     if (!(Test-Path -LiteralPath $tool -PathType Leaf)) { throw "缺少 Android SDK 工具：$tool" }
 }
 function Invoke-Analyzer([string[]]$AnalyzerArguments) {
@@ -24,14 +30,17 @@ function Invoke-Analyzer([string[]]$AnalyzerArguments) {
 $applicationId = Invoke-Analyzer @('manifest', 'application-id')
 $versionName = Invoke-Analyzer @('manifest', 'version-name')
 $versionCode = Invoke-Analyzer @('manifest', 'version-code')
-$expectedVersion = if ($OfficialRelease) { '1.0.0' } else { '1.0.0-rc2' }
-if ($applicationId -ne 'com.yangsong.lizhang' -or $versionName -ne $expectedVersion -or $versionCode -ne '23') {
+$expectedVersion = if ($OfficialRelease) { '1.0.0' } else { '1.0.0-rc4' }
+if (!$OfficialRelease -and $ExpectedVersionCode -ne 23) { throw 'RC4 候选版本代码必须为 23。' }
+if ($applicationId -ne 'com.yangsong.lizhang' -or $versionName -ne $expectedVersion -or [int]$versionCode -ne $ExpectedVersionCode) {
     throw "版本不符合本轮检查目标：$applicationId / $versionName / $versionCode。"
 }
 if ((Invoke-Analyzer @('manifest', 'min-sdk')) -ne '26' -or (Invoke-Analyzer @('manifest', 'target-sdk')) -ne '36') {
     throw 'Release 的 SDK 范围发生变化，需要重新审查。'
 }
 if ((Invoke-Analyzer @('manifest', 'debuggable')) -ne 'false') { throw 'Release APK 仍可调试。' }
+& $ZipAlignPath -c -P 16 4 $apkFile.FullName | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'Release APK 对齐验证失败。' }
 $manifest = Invoke-Analyzer @('manifest', 'print')
 if ($manifest -match 'android:testOnly="true"|GiftSaveTestActivity|AndroidJUnitRunner|<instrumentation\b') {
     throw 'Release Manifest 中发现测试宿主或测试专用标志。'
@@ -50,9 +59,29 @@ if ($definedDex -match '(?m)^\s*C\s+.*(?:org\.junit\.|androidx\.test\.|com\.yang
     throw 'Release DEX 定义中发现测试或调试宿主；禁止忽略该失败。'
 }
 
+$legalDigest = & (Join-Path $PSScriptRoot 'legal-content-digest.ps1')
+$websiteDigest = & (Join-Path $PSScriptRoot 'website-content-digest.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($apkFile.FullName)
 try {
+    $bindingEntry = $archive.GetEntry('assets/release-content-binding.properties')
+    if (!$bindingEntry) { throw 'APK 缺少编译时法律内容绑定，拒绝旧产物。' }
+    $reader = [IO.StreamReader]::new($bindingEntry.Open(), [Text.Encoding]::UTF8)
+    try { $bindingText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    function Get-BindingValue([string]$Name) {
+        $bindingMatches = [Regex]::Matches($bindingText, "(?m)^$([Regex]::Escape($Name))=([^\r\n]*)\r?$")
+        if ($bindingMatches.Count -ne 1) { throw "APK 编译时内容绑定的 $Name 缺失或重复。" }
+        $bindingMatches[0].Groups[1].Value
+    }
+    $expectedOfficial = if ($OfficialRelease) { 'true' } else { 'false' }
+    $metadataText = [IO.File]::ReadAllText((Join-Path $repoRoot 'app\src\main\assets\legal\metadata.properties'))
+    $policyVersion = [Regex]::Match($metadataText, '(?m)^policy_version=([^\r\n]*)').Groups[1].Value
+    if ((Get-BindingValue 'legal_content_sha256') -ne $legalDigest.legal_content_sha256 -or
+        (Get-BindingValue 'website_content_sha256') -ne $websiteDigest.website_content_sha256 -or
+        (Get-BindingValue 'is_official_release') -ne $expectedOfficial -or
+        (Get-BindingValue 'version_name') -ne $expectedVersion -or
+        (Get-BindingValue 'version_code') -ne "$ExpectedVersionCode" -or
+        (Get-BindingValue 'policy_version') -ne $policyVersion) { throw 'APK 编译时法律资源、网站内容、版本或正式模式与当前批准输入不一致。' }
     foreach ($name in @('privacy.md', 'terms.md', 'help.md', 'metadata.properties')) {
         $entry = $archive.GetEntry("assets/legal/$name")
         if (!$entry) { throw "APK 缺少完整离线正文：$name" }
@@ -65,23 +94,39 @@ try {
         if ($assetDigest -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
             throw "APK 离线正文与当前源码不一致：$name" }
     }
+    $hasV1Signature = $false
     foreach ($entry in $archive.Entries) {
-        if ($entry.FullName -match '(?i)(?:^|/)(?:local\.properties|[^/]+\.(?:jks|keystore|p12))$') {
+        if ($entry.FullName -match '^META-INF/[^/]+\.(RSA|DSA|EC|SF)$') { $hasV1Signature = $true }
+        if ($entry.FullName -match '(?i)(?:^|/)(?:local\.properties|[^/]*(?:signing|keystore)[^/]*\.properties|\.env(?:\.[^/]+)?|[^/]+\.(?:jks|keystore|p12|pfx|pem|key|password))$') {
             throw 'APK 包含本机配置或密钥文件。'
         }
     }
 } finally { $archive.Dispose() }
+# 即使已有签名损坏、verify 返回非零，也拒绝将其误当全新未签名输入。
+$apkBytes = [IO.File]::ReadAllBytes($apkFile.FullName)
+$endOffset = -1
+for ($offset = $apkBytes.Length - 22; $offset -ge [Math]::Max(0, $apkBytes.Length - 65557); $offset--) {
+    if ([BitConverter]::ToUInt32($apkBytes, $offset) -eq 0x06054b50 -and
+        $offset + 22 + [BitConverter]::ToUInt16($apkBytes, $offset + 20) -eq $apkBytes.Length) { $endOffset = $offset; break }
+}
+if ($endOffset -lt 0) { throw 'APK ZIP 目录结构无效。' }
+$centralOffset = [BitConverter]::ToUInt32($apkBytes, $endOffset + 16)
+if ($centralOffset -gt $apkBytes.Length -or $centralOffset -lt 16) { throw 'APK ZIP 目录偏移无效。' }
+$hasSigningBlock = [Text.Encoding]::ASCII.GetString($apkBytes, $centralOffset - 16, 16) -eq 'APK Sig Block 42'
 
 $signatureOutput = & $ApkSignerPath verify --verbose --print-certs $apkFile.FullName 2>&1
 $signatureExitCode = $LASTEXITCODE
 $signatureText = $signatureOutput -join "`n"
-$legalDigest = & (Join-Path $PSScriptRoot 'legal-content-digest.ps1')
+& (Join-Path $repoRoot 'gradlew.bat') -p $repoRoot --no-daemon --console=plain :app:verifyLegalContentConsistency | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'APK内容的App与网站一致性检查失败。' }
 if ($OfficialRelease) {
+    & (Join-Path $repoRoot 'gradlew.bat') -p $repoRoot --no-daemon --console=plain "-PofficialVersionCode=$ExpectedVersionCode" :app:verifyOfficialReleaseContent | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw '正式 APK 的完整发布批准检查失败。' }
     $approvalSource = [IO.File]::ReadAllText((Join-Path $repoRoot 'release\legal-approval.properties'), [Text.Encoding]::UTF8)
     function Get-ApprovedValue([string]$Name) {
-        $match = [Regex]::Match($approvalSource, "(?m)^$([Regex]::Escape($Name))\s*=\s*([^\r\n]*)\r?$")
-        if (!$match.Success) { throw "正式 APK 缺少批准记录：$Name。" }
-        return $match.Groups[1].Value.Trim()
+        $matches = [Regex]::Matches($approvalSource, "(?m)^$([Regex]::Escape($Name))\s*=\s*([^\r\n]*)\r?$")
+        if ($matches.Count -ne 1) { throw "正式 APK 批准记录缺失或重复：$Name。" }
+        return $matches[0].Groups[1].Value.Trim()
     }
     if ((Get-ApprovedValue 'approval_status') -ne 'approved' -or
         (Get-ApprovedValue 'signing_identity_status') -ne 'confirmed' -or
@@ -92,13 +137,14 @@ if ($OfficialRelease) {
     if ($ExpectedCertificateSha256.ToLowerInvariant() -ne (Get-ApprovedValue 'signing_certificate_sha256').ToLowerInvariant()) {
         throw '手工输入的证书指纹与发布批准文件不一致。'
     }
-    if ($signatureExitCode -ne 0) { throw '正式 APK 的签名验证失败。' }
+    if ($BeforeSigning -and ($signatureExitCode -eq 0 -or $hasV1Signature -or $hasSigningBlock)) { throw '签名前输入已有签名材料，拒绝替换其身份。' }
+    if (!$BeforeSigning -and $signatureExitCode -ne 0) { throw '正式 APK 的签名验证失败。' }
     $actualFingerprints = @([Regex]::Matches($signatureText, 'certificate SHA-256 digest:\s*([a-fA-F0-9]{64})') |
         ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
-    if ($actualFingerprints.Count -ne 1 -or $actualFingerprints[0] -ne $ExpectedCertificateSha256.ToLowerInvariant()) {
+    if (!$BeforeSigning -and ($actualFingerprints.Count -ne 1 -or $actualFingerprints[0] -ne $ExpectedCertificateSha256.ToLowerInvariant())) {
         throw '签名证书与本人批准的既有签名身份不一致。'
     }
-    if ($signatureText -notmatch 'Verified using v2 scheme.*true') { throw '正式 APK 未通过 v2 签名验证。' }
+    if (!$BeforeSigning -and $signatureText -notmatch 'Verified using v2 scheme.*true') { throw '正式 APK 未通过 v2 签名验证。' }
 }
 [PSCustomObject]@{
     apk = $apkFile.FullName
@@ -110,8 +156,13 @@ if ($OfficialRelease) {
     permissions = $permissions
     legal_content_sha256 = $legalDigest.legal_content_sha256
     legal_input_count = $legalDigest.input_count
+    website_content_sha256 = $websiteDigest.website_content_sha256
+    build_content_binding_verified = $true
     signature_verified = ($signatureExitCode -eq 0)
-    signature_identity_checked = [bool]$OfficialRelease
+    signature_material_present = ($hasV1Signature -or $hasSigningBlock)
+    alignment_verified = $true
+    signature_identity_checked = ([bool]$OfficialRelease -and !$BeforeSigning)
+    before_signing = [bool]$BeforeSigning
     candidate = !$OfficialRelease
     device_tests_run = $false
 }

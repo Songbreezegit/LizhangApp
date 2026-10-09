@@ -15,7 +15,7 @@
 - [验证结果与未验收边界](docs/测试结果.md)
 - [Android 上架前独立修复事项](../docs/上架前修复事项.md)
 
-本轮候选版本为 Android `1.0.0-rc3 / 23`，从已验收 RC2 提交 `d0a71a893ce662a44ab7b8a9e9f3f174e51bad42` 整合文档站。运营者、联系方式、生效日期、未成年人安排和网站日志保留等均待本人确认，法律全文保留真实候选审核稿状态。App 中可离线查看同一隐私政策、用户协议与帮助全文；加载失败时不能在首次告知中确认。
+当前 RC4 候选版本为 Android `1.0.0-rc4 / 23`，审查基线为已验收 RC3 提交 `359b33626bb0d33e72ed0aa81ce214fa09ed56d6`。文档站提交已由 RC3 整合，本轮没有重新合并。运营者、联系方式、生效日期、未成年人安排和网站日志保留等均待本人确认，法律全文保留真实候选审核稿状态。App 中可离线查看同一隐私政策、用户协议与帮助全文；加载失败时不能在首次告知中确认。
 
 ## 本地使用
 
@@ -44,7 +44,7 @@ npm run preview
 
 ## 备案前与正式构建
 
-普通 `npm run build` 始终输出审核版。正式构建为 `node scripts/build.mjs --public`，当前会明确拒绝：必须先完成文档审核，补齐非空主体、有效邮箱、有效生效日期及备案号，并在 `site.config.json` 确认 `reviewStatus: approved` 和严格布尔值 `icpApproved: true`。字符串 `"false"` 或数字 `1` 不算备案批准；正式域名固定为 `lizhang.songisle.xyz`。这些配置不是备案证明，须先获得真实备案结果与用户批准。
+普通 `npm run build` 始终输出审核版，页脚以普通状态文字显示“ICP备案审核中”，不作为备案号码，也不链接到备案查询。`site.config.json` 保持 `icpApproved: false`，真实批准文件的备案字段保持 `pending`。备案资料补齐后按 [备案通过后发布步骤](../docs/备案通过后发布步骤.md) 更新配置、正文、批准记录及两类摘要；不能只改页脚或布尔值。正式构建为 `node scripts/build.mjs --public`，当前会明确拒绝：必须先完成文档审核，补齐非空主体、有效邮箱、有效生效日期及备案号，并在 `site.config.json` 确认 `reviewStatus: approved` 和严格布尔值 `icpApproved: true`。字符串 `"false"` 或数字 `1` 不算备案批准；正式域名固定为 `lizhang.songisle.xyz`。这些配置不是备案证明，须先获得真实备案结果与用户批准。
 
 正式网站还必须使用 App 同一份公开批准记录：`legal/metadata.properties` 与 `legal/legal-approval.properties` 的批准状态、主体、邮箱、生效日期、政策版本、备案资料、审核者及未成年人安排完全一致；批准摘要须等于当前 Android 内容输入摘要。`website_content_sha256` 另外覆盖网站配置和全部 Markdown 正文，网站增加帮助、FAQ 或联系说明后，同样需要重新审查并批准摘要。网站配置必须与这份记录一致，应用版本须为 `1.0.0`，版本代码须匹配获批记录且大于已确认实际分发历史中的最高代码。修改正文、App 告知译文或批准字段后，旧摘要会失效；只把网站配置改为 approved 不能批准任何新内容。`npm run legal:sync` 与 `npm run legal:check` 会显示网站摘要，供本人核对，不写入批准字段。
 
@@ -64,4 +64,4 @@ Windows 可以构建和预览网站；上传脚本采用 Linux/WSL 的 GNU tar �
 
 ## 分支整合边界
 
-文档站两次有效提交 `9a0fde4` 与 `9ae6412` 已整合到 `release/v1.0.0-rc3`，保留 RC1、RC2 已验收 Android 改动。本轮不修改 `main`、线上网站、阿里云服务器、DNS、备案或松屿 Cloudflare 主站；候选产物供审查，正式操作仍须本人批准。网站历史审查记录保留其原始基线，RC3 验证结论与剩余发布事项以仓库 `docs/v1.0.0正式发布清单.md` 为准。
+文档站两次有效提交 `9a0fde4` 与 `9ae6412` 已整合到 `release/v1.0.0-rc3`，保留 RC1、RC2 已验收 Android 改动。RC4 不修改 `main`、线上网站、阿里云服务器、DNS、备案或松屿 Cloudflare 主站；候选产物供审查，正式操作仍须本人批准。网站历史审查记录保留其原始基线，历史 RC3 验证结论保留原样；当前 RC4 结果与待批准步骤见仓库 `docs/RC4自动化验证报告.md` 与 `docs/备案通过后发布步骤.md`。

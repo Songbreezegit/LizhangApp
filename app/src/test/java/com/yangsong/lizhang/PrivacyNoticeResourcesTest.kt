@@ -35,11 +35,11 @@ class PrivacyNoticeResourcesTest {
         for (qualifier in listOf("", "-b+zh+Hant", "-en", "-ja", "-ko", "-es", "-fr")) {
             val candidates = resources(qualifier, "candidate_release_strings.xml")
             assertEquals(setOf("legal_candidate_notice", "privacy_notice_candidate"), candidates.keys)
-            assertTrue(qualifier, candidates.values.all { it.contains("RC3") && !it.contains("RC2") })
+            assertTrue(qualifier, candidates.values.all { it.contains("RC4") && !Regex("RC[123]").containsMatchIn(it) })
             val neutral = resources(qualifier) + resources(qualifier, "legal_strings.xml")
             assertFalse(neutral.containsKey("legal_candidate_notice"))
             assertFalse(neutral.containsKey("privacy_notice_candidate"))
-            assertTrue(qualifier, neutral.values.none { it.contains("RC2") || it.contains("RC3") || it.contains("候选") || it.contains("尚未生效") })
+            assertTrue(qualifier, neutral.values.none { Regex("RC[1-4]").containsMatchIn(it) || it.contains("候选") || it.contains("尚未生效") })
         }
         assertTrue(resources("", "legal_strings.xml").getValue("legal_language_fallback").contains("不替代中文法律文本"))
     }

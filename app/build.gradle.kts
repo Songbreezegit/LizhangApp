@@ -27,9 +27,9 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = if (officialRelease) officialVersionCode ?: 23 else 23
-        versionName = if (officialRelease) "1.0.0" else "1.0.0-rc3"
+        versionName = if (officialRelease) "1.0.0" else "1.0.0-rc4"
         buildConfigField("boolean", "IS_OFFICIAL_RELEASE", officialRelease.toString())
-        val policyVersion = if (officialRelease) legalMetadata.getProperty("policy_version") else "1.0.0-rc3-policy-v1"
+        val policyVersion = if (officialRelease) legalMetadata.getProperty("policy_version") else "1.0.0-rc4-policy-v1"
         require(policyVersion.matches(Regex("[A-Za-z0-9._-]+"))) { "政策版本格式无效" }
         buildConfigField("String", "LEGAL_POLICY_VERSION", "\"$policyVersion\"")
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")

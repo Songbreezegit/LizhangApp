@@ -30,9 +30,7 @@
     <string name="action_add_gift">记一笔礼金</string>
     <string name="action_search">搜索礼金与联系人</string>
     <string name="action_edit">编辑</string>
-    <string name="loading">正在加载…</string>
     <string name="load_failed">暂时无法读取数据</string>
-    <string name="home_annual_summary">年度收支</string>
     <string name="home_year_received">本年收到</string>
     <string name="home_year_given">本年送出</string>
     <string name="home_net">净往来</string>
@@ -80,12 +78,10 @@
     <string name="error_date_in_future">礼金日期不能晚于今天</string>
     <string name="saved_success">礼金记录已保存</string>
     <string name="contact_choose">选择联系人</string>
-    <string name="contact_create_quick">快速新建联系人</string>
     <string name="contact_name">姓名</string>
     <string name="contact_phone">手机号（选填）</string>
     <string name="contact_relationship">关系（选填）</string>
     <string name="contact_name_required">请输入联系人姓名</string>
-    <string name="contact_created">联系人已创建并选中</string>
     <string name="date_choose">选择日期</string>
     <string name="date_previous_year">上一年</string>
     <string name="date_next_year">下一年</string>
@@ -122,14 +118,12 @@
     <string name="search_intro">输入关键词，查找往来记录</string>
     <string name="search_no_result">没有找到相关记录</string>
     <string name="search_result">搜索结果</string>
-    <string name="stats_year">年份</string>
     <string name="stats_monthly">月度往来</string>
     <string name="stats_event">按事件统计</string>
     <string name="stats_contact">按联系人统计</string>
     <string name="stats_empty">这一年还没有礼金记录</string>
     <string name="settings_backup">数据备份与恢复</string>
     <string name="settings_backup_description">创建普通备份或密码加密备份，也可以从已有礼账备份恢复。恢复前会先校验文件并再次确认。</string>
-    <string name="settings_backup_create_action">创建备份</string>
     <string name="settings_backup_restore_action">从备份恢复</string>
     <string name="settings_backup_prepare_failed">生成备份失败，请稍后重试</string>
     <string name="settings_backup_saved">备份文件已保存</string>
@@ -313,7 +307,6 @@
     <string name="independent_save">保存提醒</string>
     <string name="independent_storage_notice">独立提醒保存在本机，不包含在礼金备份中。</string>
     <string name="settings_onboarding">使用引导</string>
-    <string name="settings_onboarding_description">重新查看礼账的使用与隐私说明</string>
     <string name="onboarding_skip">跳过</string>
     <string name="onboarding_next">下一步</string>
     <string name="onboarding_start">开始使用</string>
@@ -351,7 +344,6 @@
     <string name="feature_guide_settings_body">这里可以导出或恢复备份。主题和语言也在「我的」里。</string>
     <string name="feature_guide_next">下一步</string>
     <string name="feature_guide_skip">跳过引导</string>
-    <string name="feature_guide_finish">完成</string>
     <string name="feature_guide_progress">%1$d / %2$d</string>
     <string name="feature_guide_start_record">开始记账</string>
     <string name="feature_guide_record_done">准备好了</string>

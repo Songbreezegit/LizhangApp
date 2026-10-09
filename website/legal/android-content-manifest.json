@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
   "algorithm": "sha256",
-  "androidLegalContentSha256": "b803fc0f34e996f26dc802e794c51abba5297860e1807794d9e1716a9ea4d337",
+  "androidLegalContentSha256": "951b9920a88dff7ee0062cc6190571c0479da7e6bfb7247a799075307e8cd04e",
   "inputs": [
     {
       "path": "src/main/assets/legal/help.md",
-      "sha256": "1daecb13dbd23f8962902855ed9bdae7b3aa5c66ed9abf6b313ea5d7ae57e02d"
+      "sha256": "10b884cb736a60083b7e0d0df77d8a61ebc1611b9f2d0227ba3af051c3f065c0"
     },
     {
       "path": "src/main/assets/legal/metadata.properties",
-      "sha256": "edbbefe5f71dc9766a433cc6bf27574fd0edc5a2fc7d7aae583c0a074ff32613"
+      "sha256": "041779ed8d8d5456e982631eb53f1c4b53b2bbca9acb3ba2186db00c6d3caeca"
     },
     {
       "path": "src/main/assets/legal/privacy.md",
-      "sha256": "c6121d913e542e0a079b166a86ede501f7bfdbad15316cb4dacf243173c654ba"
+      "sha256": "2075f4d03a81eefe91ea779baa949e2adf155d873bb668c19f5430154e2779e4"
     },
     {
       "path": "src/main/assets/legal/terms.md",
-      "sha256": "7115364069e327fac823d83bea0cfeb99a9bee65d46ddd27335b0acb93d34445"
+      "sha256": "2daa83a80d00e35ddc74c83adb311323a7ec6b75b9cea1ef9927da66dc37ded1"
     },
     {
       "path": "src/main/res/values-b+zh+Hant/candidate_release_strings.xml",
-      "sha256": "91b18b7df96b2f6f959c7cc06395e974aa41269258d7de9263e0a27aee282bed"
+      "sha256": "42e7e8f645e1b9fd188f9433b0c42a3868436ab8d6273b34dcc957ccf04e1e23"
     },
     {
       "path": "src/main/res/values-b+zh+Hant/legal_strings.xml",
@@ -33,7 +33,7 @@
     },
     {
       "path": "src/main/res/values-en/candidate_release_strings.xml",
-      "sha256": "f4b704b1caa50cdb89aa42bdf518adaff1428c3e4dfb4ace008814eb415cda3b"
+      "sha256": "85a7aa28a8191c8f6a359f2669f52792bccd195616402825da7ebbc30565d010"
     },
     {
       "path": "src/main/res/values-en/legal_strings.xml",
@@ -45,7 +45,7 @@
     },
     {
       "path": "src/main/res/values-es/candidate_release_strings.xml",
-      "sha256": "17220eb51fde68084ef2ce45cf95616f247a75a7a79eef5a5444cd027254e315"
+      "sha256": "76fdd8b1a2766553d579d55bf46a3779ce9641181422047893d730da3a9788b2"
     },
     {
       "path": "src/main/res/values-es/legal_strings.xml",
@@ -57,7 +57,7 @@
     },
     {
       "path": "src/main/res/values-fr/candidate_release_strings.xml",
-      "sha256": "2a92025413b989d68ca73447c2dfb09df4c986e699399cc8d36eded880438c97"
+      "sha256": "e4281665b0d1c9f93ab60b1ae22e7cc51737c1da7ea84c8855b02d0dba04ba67"
     },
     {
       "path": "src/main/res/values-fr/legal_strings.xml",
@@ -69,7 +69,7 @@
     },
     {
       "path": "src/main/res/values-ja/candidate_release_strings.xml",
-      "sha256": "1ae6c98601e07021f55a64ded57f4888f610120a4b7949027e813248189244ff"
+      "sha256": "3adc6a94f353c77258b81dec75d3d832e193d857ce5947fa124bf048d4051a73"
     },
     {
       "path": "src/main/res/values-ja/legal_strings.xml",
@@ -81,7 +81,7 @@
     },
     {
       "path": "src/main/res/values-ko/candidate_release_strings.xml",
-      "sha256": "b7aba0051c141465bf26bd0e1f7c73a9de8afa2c9d6f36832702a0b556e8bde1"
+      "sha256": "e3b7a2f59f2a369612582923576a4a948b3c09f8fe0bb2e757abea98304b3bb8"
     },
     {
       "path": "src/main/res/values-ko/legal_strings.xml",
@@ -93,7 +93,7 @@
     },
     {
       "path": "src/main/res/values/candidate_release_strings.xml",
-      "sha256": "6590a50b955d6d170fb7246cb83229578ead98a4725c6951e908cd1249f500ad"
+      "sha256": "2a32ba327d11ce37fb70151c136453d099d28c5ca99980c638b1545b0fe86843"
     },
     {
       "path": "src/main/res/values/legal_strings.xml",

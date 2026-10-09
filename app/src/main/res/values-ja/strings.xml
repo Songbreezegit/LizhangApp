@@ -30,9 +30,7 @@
     <string name="action_add_gift">贈答記録を追加</string>
     <string name="action_search">贈答記録・連絡先を検索</string>
     <string name="action_edit">編集</string>
-    <string name="loading">読み込み中…</string>
     <string name="load_failed">データを読み込めませんでした</string>
-    <string name="home_annual_summary">年間収支</string>
     <string name="home_year_received">今年の受け取り</string>
     <string name="home_year_given">今年の贈り物</string>
     <string name="home_net">差額</string>
@@ -80,12 +78,10 @@
     <string name="error_date_in_future">今日より後の日付は選べません</string>
     <string name="saved_success">贈答記録を保存しました</string>
     <string name="contact_choose">連絡先を選択</string>
-    <string name="contact_create_quick">連絡先を新規作成</string>
     <string name="contact_name">名前</string>
     <string name="contact_phone">電話番号（任意）</string>
     <string name="contact_relationship">関係（任意）</string>
     <string name="contact_name_required">名前を入力してください</string>
-    <string name="contact_created">連絡先を作成し、選択しました</string>
     <string name="date_choose">日付を選択</string>
     <string name="date_previous_year">前年</string>
     <string name="date_next_year">翌年</string>
@@ -122,14 +118,12 @@
     <string name="search_intro">キーワードを入力して記録を検索</string>
     <string name="search_no_result">該当する記録がありません</string>
     <string name="search_result">検索結果</string>
-    <string name="stats_year">年</string>
     <string name="stats_monthly">月別のやり取り</string>
     <string name="stats_event">行事別</string>
     <string name="stats_contact">連絡先別</string>
     <string name="stats_empty">この年の贈答記録はありません</string>
     <string name="settings_backup">バックアップと復元</string>
     <string name="settings_backup_description">通常のバックアップやパスワード付きバックアップを作成し、既存のLizhangバックアップから復元できます。復元前にファイルを検証し、確認画面を表示します。</string>
-    <string name="settings_backup_create_action">バックアップを作成</string>
     <string name="settings_backup_restore_action">バックアップから復元</string>
     <string name="settings_backup_prepare_failed">バックアップを作成できませんでした。しばらくしてから再試行してください。</string>
     <string name="settings_backup_saved">バックアップを保存しました</string>
@@ -313,7 +307,6 @@
     <string name="independent_save">リマインダーを保存</string>
     <string name="independent_storage_notice">独立したリマインダーは端末内に保存され、礼金のバックアップには含まれません。</string>
     <string name="settings_onboarding">使い方ガイド</string>
-    <string name="settings_onboarding_description">使い方とプライバシーの説明を確認</string>
     <string name="onboarding_skip">スキップ</string>
     <string name="onboarding_next">次へ</string>
     <string name="onboarding_start">使い始める</string>
@@ -351,7 +344,6 @@
     <string name="feature_guide_settings_body">ここからバックアップを書き出したり復元したりできます。テーマと言語も設定にあります。</string>
     <string name="feature_guide_next">次へ</string>
     <string name="feature_guide_skip">ガイドをスキップ</string>
-    <string name="feature_guide_finish">完了</string>
     <string name="feature_guide_progress">%1$d / %2$d</string>
     <string name="feature_guide_start_record">記録を始める</string>
     <string name="feature_guide_record_done">準備完了</string>

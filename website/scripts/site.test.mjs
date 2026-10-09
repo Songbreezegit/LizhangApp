@@ -65,6 +65,8 @@ async function checkOutput(dist, mode) {
       assert.match(html,/noindex,nofollow/);
       assert.match(html,/本地审阅稿/);
       assert.match(html,/尚未完成法律或应用商店合规审核/);
+      assert.match(html,/ICP备案审核中/);
+      assert.doesNotMatch(html,/href="https:\/\/beian\.miit\.gov\.cn\//);
       assert.doesNotMatch(html,/rel="canonical"/);
     } else {
       assert.doesNotMatch(html,/审核稿|审阅稿|尚未生效|待确认|本地审阅|review-notice|未公开上线/);
@@ -88,7 +90,7 @@ async function checkOutput(dist, mode) {
   }
   const manifest=JSON.parse(await readFile(path.join(dist,'release-manifest.json'),'utf8'));
   assert.equal(manifest.mode,mode);
-  assert.equal(manifest.auditCommit,'d0a71a893ce662a44ab7b8a9e9f3f174e51bad42');
+  assert.equal(manifest.auditCommit,'359b33626bb0d33e72ed0aa81ce214fa09ed56d6');
   assert.match(manifest.androidLegalContentSha256, /^[a-f0-9]{64}$/);
   for (const [name,hash] of Object.entries(manifest.files)) assert.equal(createHash('sha256').update(await readFile(path.join(dist,name))).digest('hex'),hash);
   assert.equal((await readFile(path.join(dist,'robots.txt'),'utf8')).trim(),`User-agent: *\n${mode==='review'?'Disallow':'Allow'}: /`);
@@ -120,11 +122,13 @@ test('未确认配置或无效正式元数据拒绝发布',async (t) => {
     ['日期待填写',{effectiveDate:'待填写'}],
     ['日期不存在',{effectiveDate:'2026-02-30'}],
     ['备案号待确认',{icpNumber:'待确认'}],
+    ['备案号为空',{icpNumber:''}],
+    ['ICP备案审核中不能作为正式号码',{icpNumber:'ICP备案审核中'}],
     ['错误主站域名',{domain:'songisle.xyz'}],
     ['页脚含审核状态',{updatedAt:'审核稿'}],
     ['网站主体偏离 App 批准',{operator:'另一个自动测试主体'}],
     ['网站政策版本偏离 App 批准',{policyVersion:'1.0.0-policy-v2'}],
-    ['候选名称不允许正式构建',{appVersion:'1.0.0-rc3'}],
+    ['候选名称不允许正式构建',{appVersion:'1.0.0-rc4'}],
     ['网站版本代码偏离 App 批准',{appVersionCode:23}],
   ];
   for (const [name,config] of cases) await t.test(name,async (subtest) => {
@@ -141,7 +145,7 @@ test('所有正文页的审核状态与未确认内容均拒绝正式构建',asy
     await assert.rejects(build({isPublic:true,projectRoot}),/正式构建已停止/);
     await assert.rejects(stat(path.join(projectRoot,'dist')),{code:'ENOENT'});
   });
-  for (const marker of ['审核稿','初稿','待开发者审核','本地审阅版本','尚未公开上线','待运营者确认','尚待补齐','【待填写】','TODO','审**核**稿','尚未通过法律或应用商店审核','尚未完成法律或应用商店合规审核','本稿不表示已经通过法律审核','供开发者审核','未确认','未定稿','RC2 候选','RC3 候选','candidate','未成年人安排待本人确认']) await t.test(marker,async (subtest) => {
+  for (const marker of ['审核稿','初稿','待开发者审核','本地审阅版本','尚未公开上线','待运营者确认','尚待补齐','【待填写】','TODO','审**核**稿','尚未通过法律或应用商店审核','尚未完成法律或应用商店合规审核','本稿不表示已经通过法律审核','供开发者审核','未确认','未定稿','RC2 候选','RC3 候选','RC4 候选','ICP备案审核中','candidate','未成年人安排待本人确认']) await t.test(marker,async (subtest) => {
     const projectRoot = await fixture(subtest,{approved:true});
     await writeFile(path.join(projectRoot,'content','privacy.md'),`# 隐私政策\n\n## 说明\n\n${marker}。`);
     await refreshFixtureLegal(projectRoot, { approve: true });
@@ -211,7 +215,7 @@ test('正式批准绑定正文摘要、主体、政策版本与实际分发历�
   }
 });
 test('正式政策编号和版本代码边界与 Android 发布门禁一致', async (t) => {
-  const policyCases = ['1.0.0-rc3-policy-v1', '1.0.0-RC2-policy-v1', '正式政策第一版'];
+  const policyCases = ['1.0.0-rc4-policy-v1', '1.0.0-rc3-policy-v1', '1.0.0-RC2-policy-v1', '正式政策第一版'];
   for (const value of policyCases) await t.test(value, async (subtest) => {
     const projectRoot = await fixture(subtest, { approved: true, config: { policyVersion: value } });
     for (const name of ['metadata.properties', 'legal-approval.properties']) {

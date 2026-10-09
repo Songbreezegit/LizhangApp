@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="legal_candidate_notice">RC3 review draft · Not yet effective</string>
-    <string name="privacy_notice_candidate">This is RC3 candidate test wording. Operator details, effective date and the official policy version still require developer approval. This confirmation does not mean the legal text has been approved.</string>
+    <string name="legal_candidate_notice">RC4 review draft · Not yet effective</string>
+    <string name="privacy_notice_candidate">This is RC4 candidate test wording. Operator details, effective date and the official policy version still require developer approval. This confirmation does not mean the legal text has been approved.</string>
 </resources>

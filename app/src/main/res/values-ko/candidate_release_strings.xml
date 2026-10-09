@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="legal_candidate_notice">RC3 검토용 초안 · 아직 미시행</string>
-    <string name="privacy_notice_candidate">이 문구는 RC3 후보 테스트용입니다. 운영자 정보, 시행일, 정식 정책 버전은 개발자의 승인이 필요합니다. 이번 확인이 법률 문구의 승인 완료를 의미하지는 않습니다.</string>
+    <string name="legal_candidate_notice">RC4 검토용 초안 · 아직 미시행</string>
+    <string name="privacy_notice_candidate">이 문구는 RC4 후보 테스트용입니다. 운영자 정보, 시행일, 정식 정책 버전은 개발자의 승인이 필요합니다. 이번 확인이 법률 문구의 승인 완료를 의미하지는 않습니다.</string>
 </resources>

@@ -31,9 +31,7 @@
     <string name="action_add_gift">Add Gift Record</string>
     <string name="action_search">Search gifts and contacts</string>
     <string name="action_edit">Edit</string>
-    <string name="loading">Loading…</string>
     <string name="load_failed">Unable to load data right now</string>
-    <string name="home_annual_summary">Annual summary</string>
     <string name="home_year_received">Received This Year</string>
     <string name="home_year_given">Given This Year</string>
     <string name="home_net">Net Balance</string>
@@ -81,12 +79,10 @@
     <string name="error_date_in_future">Gift date cannot be in the future</string>
     <string name="saved_success">Gift record saved</string>
     <string name="contact_choose">Choose Contact</string>
-    <string name="contact_create_quick">Quick Add Contact</string>
     <string name="contact_name">Name</string>
     <string name="contact_phone">Phone (optional)</string>
     <string name="contact_relationship">Relationship (optional)</string>
     <string name="contact_name_required">Enter a contact name</string>
-    <string name="contact_created">Contact created and selected</string>
     <string name="date_choose">Choose Date</string>
     <string name="date_previous_year">Previous Year</string>
     <string name="date_next_year">Next Year</string>
@@ -123,14 +119,12 @@
     <string name="search_intro">Enter a keyword to find gift records</string>
     <string name="search_no_result">No matching records</string>
     <string name="search_result">Search Results</string>
-    <string name="stats_year">Year</string>
     <string name="stats_monthly">Monthly Activity</string>
     <string name="stats_event">By Occasion</string>
     <string name="stats_contact">By Contact</string>
     <string name="stats_empty">No gift records for this year</string>
     <string name="settings_backup">Backup and Restore</string>
     <string name="settings_backup_description">Create a plain or password-protected backup, or restore a Lizhang backup. Files are checked before you confirm a restore.</string>
-    <string name="settings_backup_create_action">Create Backup</string>
     <string name="settings_backup_restore_action">Restore from Backup</string>
     <string name="settings_backup_prepare_failed">Unable to create backup. Try again later.</string>
     <string name="settings_backup_saved">Backup saved</string>
@@ -322,7 +316,6 @@
     <string name="independent_save">Save reminder</string>
     <string name="independent_storage_notice">Independent reminders are stored on this device and are not included in gift backups.</string>
     <string name="settings_onboarding">User guide</string>
-    <string name="settings_onboarding_description">Review the guide and privacy information</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_start">Get started</string>
@@ -360,7 +353,6 @@
     <string name="feature_guide_settings_body">Export or restore a backup here. You can also find themes and languages in Settings.</string>
     <string name="feature_guide_next">Next</string>
     <string name="feature_guide_skip">Skip guide</string>
-    <string name="feature_guide_finish">Finish</string>
     <string name="feature_guide_progress">%1$d / %2$d</string>
     <string name="feature_guide_start_record">Start recording</string>
     <string name="feature_guide_record_done">Ready</string>

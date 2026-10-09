@@ -76,7 +76,7 @@ tasks.register('generateReleaseContentBinding') {
         def metadata = readProperties(new File(assetDirectory, 'metadata.properties'))
         def target = output.get().asFile
         target.parentFile.mkdirs()
-        target.setText("legal_content_sha256=${contentDigest()}\nwebsite_content_sha256=${websiteContentDigest()}\nis_official_release=$official\nversion_name=${official ? '1.0.0' : '1.0.0-rc3'}\nversion_code=${official ? project.findProperty('officialVersionCode') : '23'}\npolicy_version=${official ? metadata.getProperty('policy_version') : '1.0.0-rc3-policy-v1'}\n", 'UTF-8')
+        target.setText("legal_content_sha256=${contentDigest()}\nwebsite_content_sha256=${websiteContentDigest()}\nis_official_release=$official\nversion_name=${official ? '1.0.0' : '1.0.0-rc4'}\nversion_code=${official ? project.findProperty('officialVersionCode') : '23'}\npolicy_version=${official ? metadata.getProperty('policy_version') : '1.0.0-rc4-policy-v1'}\n", 'UTF-8')
     }
 }
 def verifyOfficialContent = {
