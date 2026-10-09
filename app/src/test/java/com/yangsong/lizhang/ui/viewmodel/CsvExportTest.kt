@@ -33,6 +33,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.util.TimeZone
 import java.util.zip.ZipInputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -70,6 +71,121 @@ class CsvExportTest {
         assertTrue(csv.startsWith("\uFEFF联系人,金额（元）,往来方向,事件类型"))
         assertTrue(csv.contains("\"王,阿姨\",123.45,收到,婚礼"))
         assertTrue(csv.contains("\"祝福\"\"满满\"\"\n第二行\""))
+    }
+
+    @Test
+    fun `CSV 中和姓名自定义事件和备注中的公式前缀及全角变体`() {
+        listOf("=1+2", "+1+2", "-1+2", "@SUM(1)", "＝1＋2", "＋1", "－1", "＠SUM(1)").forEach { text ->
+            val item = sampleItem(contactName = text, notes = text).withCustomEvent(text)
+            val csv = GiftRecordCsvFormatter.format(chineseExportLabels, listOf(item))
+            val row = csv.parseCsvRows()[1]
+
+            assertEquals("姓名前缀：$text", "\t$text", row[0])
+            assertEquals("事件前缀：$text", "\t$text", row[3])
+            assertEquals("备注前缀：$text", "\t$text", row[5])
+            assertTrue("危险字段必须将制表符保留在双引号内", csv.contains("\"\t$text\""))
+            assertEquals(7, row.size)
+            assertEquals("123.45", row[1])
+        }
+    }
+
+    @Test
+    fun `CSV 前置空白控制符和不可见格式字符不能绕过公式中和`() {
+        listOf(" ", "\u00A0", "\u3000", "\t", "\r", "\n", "\u0000", "\uFEFF", "\u200B", "\u202E", " \t\r\n").forEach { prefix ->
+            val text = "${prefix}=1+2"
+            val item = sampleItem(contactName = text, notes = text).withCustomEvent(text)
+            val row = GiftRecordCsvFormatter.format(chineseExportLabels, listOf(item)).parseCsvRows()[1]
+
+            assertEquals("\t$text", row[0])
+            // 自定义事件名称沿用原有去除首尾空白的展示规则。
+            assertEquals("\t${text.trim()}", row[3])
+            assertEquals("\t$text", row[5])
+            assertEquals(7, row.size)
+        }
+    }
+
+    @Test
+    fun `CSV 前置控制符即使不跟公式也作为文本中和`() {
+        listOf("\t", "\r", "\n", "\u0000", "\uFEFF", "\u200B", "\u202E").forEach { prefix ->
+            val text = "${prefix}说明"
+            val row = GiftRecordCsvFormatter.format(
+                chineseExportLabels, listOf(sampleItem(contactName = text, notes = text)),
+            ).parseCsvRows()[1]
+
+            assertEquals("\t$text", row[0])
+            assertEquals("\t$text", row[5])
+        }
+    }
+
+    @Test
+    fun `CSV 中和文本标签但金额列包括负值保持数值格式`() {
+        val labels = chineseExportLabels.copy(
+            headers = chineseExportLabels.headers.toMutableList().apply { this[0] = "=1+2" },
+            directions = chineseExportLabels.directions + (GiftDirection.RECEIVED to "+1"),
+            events = chineseExportLabels.events + (EventType.WEDDING to "-1"),
+        )
+        val item = sampleItem().let { it.copy(record = it.record.copy(amountInCents = -12_345)) }
+        val rows = GiftRecordCsvFormatter.format(labels, listOf(item)).parseCsvRows()
+
+        assertEquals("\t=1+2", rows[0][0])
+        assertEquals("-123.45", rows[1][1])
+        assertEquals("\t+1", rows[1][2])
+        assertEquals("\t-1", rows[1][3])
+    }
+
+    @Test
+    fun `CSV 普通中文金额日期和原有空白保持原样`() {
+        val previousTimeZone = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val text = " 普通中文=1+2 '说明 "
+            val item = sampleItem(contactName = text, notes = text).let {
+                it.copy(record = it.record.copy(eventDate = 0, createdTime = 0))
+            }
+            val csv = GiftRecordCsvFormatter.format(chineseExportLabels, listOf(item))
+
+            assertEquals(
+                "\uFEFF联系人,金额（元）,往来方向,事件类型,事件日期,备注,创建时间\n" +
+                    "$text,123.45,收到,婚礼,1970-01-01,$text,1970-01-01 00:00:00\n",
+                csv,
+            )
+            assertEquals(2, csv.parseCsvRows().size)
+        } finally {
+            TimeZone.setDefault(previousTimeZone)
+        }
+    }
+
+    @Test
+    fun `CSV 引号逗号和换行不能将公式拆入新增单元格`() {
+        listOf("=1+2\",@SUM(1)\r\n-1", "普通\",=1+2\n+1", "普通;=1+2").forEach { text ->
+            val item = sampleItem(contactName = text, notes = text).withCustomEvent(text)
+            val csv = GiftRecordCsvFormatter.format(chineseExportLabels, listOf(item))
+            val rows = csv.parseCsvRows()
+            val exportedText = if (text.startsWith("=")) "\t$text" else text
+
+            assertEquals(2, rows.size)
+            assertEquals(7, rows[0].size)
+            assertEquals(7, rows[1].size)
+            assertEquals(exportedText, rows[1][0])
+            assertEquals(exportedText, rows[1][3])
+            assertEquals(exportedText, rows[1][5])
+            if (';' in text) assertTrue(csv.contains("\"$text\""))
+        }
+    }
+
+    @Test
+    fun `XLSX 公式外观文本仍使用显式文本类型且不添加CSV制表符`() {
+        val text = "=1+2"
+        val item = sampleItem(contactName = text, notes = text).withCustomEvent(text)
+        val sheet = GiftRecordXlsxFormatter.format(chineseExportLabels, listOf(item))
+            .unzipXmlEntries().getValue("xl/worksheets/sheet1.xml")
+
+        listOf("A2", "D2", "F2").forEach { coordinate ->
+            assertTrue(sheet.contains("<c r=\"$coordinate\" t=\"inlineStr\" s=\"0\"><is><t xml:space=\"preserve\">$text</t></is></c>"))
+        }
+        assertFalse(sheet.contains("<f>"))
+        assertFalse(sheet.contains("\t$text"))
+        assertTrue(sheet.contains("<v>123.45</v>"))
     }
 
     @Test
@@ -272,6 +388,46 @@ class CsvExportTest {
         ),
         contactName = contactName,
     )
+
+    private fun GiftRecordWithContact.withCustomEvent(text: String): GiftRecordWithContact =
+        copy(record = record.copy(eventType = EventType.OTHER, customEventName = text))
+}
+
+/** 独立读取字段结构，验证引号内的换行和分隔符不会产生额外记录或列。 */
+private fun String.parseCsvRows(): List<List<String>> {
+    val rows = mutableListOf<List<String>>()
+    val cells = mutableListOf<String>()
+    val cell = StringBuilder()
+    var quoted = false
+    var index = if (startsWith("\uFEFF")) 1 else 0
+    while (index < length) {
+        val character = this[index]
+        when {
+            character == '"' && quoted && getOrNull(index + 1) == '"' -> {
+                cell.append('"')
+                index++
+            }
+            character == '"' -> quoted = !quoted
+            !quoted && character == ',' -> {
+                cells.add(cell.toString())
+                cell.clear()
+            }
+            !quoted && character == '\n' -> {
+                cells.add(cell.toString())
+                rows.add(cells.toList())
+                cells.clear()
+                cell.clear()
+            }
+            else -> cell.append(character)
+        }
+        index++
+    }
+    check(!quoted) { "CSV 存在未闭合引号" }
+    if (cell.isNotEmpty() || cells.isNotEmpty()) {
+        cells.add(cell.toString())
+        rows.add(cells.toList())
+    }
+    return rows
 }
 
 private class FakeThemeRepository : ThemeRepository {

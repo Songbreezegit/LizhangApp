@@ -43,11 +43,12 @@ class StartupWindowGateInstrumentedTest {
         assertTrue(message, satisfied)
     }
 
-    @Test fun 系统退出回调缺失时既有超时释放启动覆盖状态() {
+    @Test fun 系统退出回调缺失时降级播放并在帧缺失后释放启动覆盖状态() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var root: View
             lateinit var state: StartupAnimationViewModel
             lateinit var gate: StartupWindowGate
+            var capturedExit: ((() -> Unit) -> Unit)? = null
             val callbacks = CapturedCallbacks()
             scenario.onActivity {
                 root = it.findViewById(android.R.id.content)
@@ -55,6 +56,7 @@ class StartupWindowGateInstrumentedTest {
                 state.initialize(eligible = true, animationsEnabled = true)
                 gate = StartupWindowGate(it, state, waitForSystemSplash = true, windowCallbacks = callbacks)
                 gate.attach()
+                capturedExit = callbacks.exit
                 root.postInvalidateOnAnimation()
             }
             try {
@@ -62,15 +64,17 @@ class StartupWindowGateInstrumentedTest {
                 instrumentation.runOnMainSync {
                     callbacks.pendingCommits.single().run()
                     assertTrue(state.visible)
-                    assertFalse("退出回调尚未到达，不提前播放", state.ready)
+                    // 已绘制后的短宽限允许缺失退出回调时降级播放，不能仍要求旧无限等待语义。
                     assertFalse(state.hasStarted)
                 }
                 waitFor("既有退出回调超时必须释放，不能永久遮挡") { !state.visible }
                 instrumentation.runOnMainSync {
                     assertFalse(state.ready)
                     assertEquals(1f, state.progress, 0f)
-                    assertTrue(state.diagnostics().any { it.event == "系统启动层退出回调超时" })
-                    callbacks.emitExit()
+                    assertTrue(state.diagnostics().any { "降级播放" in it.event })
+                    assertTrue(state.diagnostics().any { it.event == "启动动画帧回调超时" })
+                    assertTrue("降级与超时结束都清理退出监听", callbacks.clearCount > 0)
+                    callbacks.emitExit(capturedExit)
                     assertFalse("超时后的迟到退出不能复活启动层", state.visible)
                 }
             } finally {
@@ -122,7 +126,7 @@ class StartupWindowGateInstrumentedTest {
                     callbacks.emitExit(newExit)
                     assertTrue("新窗口两项条件都完成后可播放", state.ready)
                     state.onFrame(0L)
-                    state.onFrame(880_000_000L)
+                    state.onFrame(900_000_000L)
                     assertFalse(state.visible)
                     assertEquals(1f, state.progress, 0f)
                 }
@@ -137,11 +141,13 @@ class StartupWindowGateInstrumentedTest {
             val callbacks = CapturedCallbacks()
             lateinit var state: StartupAnimationViewModel
             lateinit var gate: StartupWindowGate
+            var capturedExit: ((() -> Unit) -> Unit)? = null
             scenario.onActivity {
                 state = StartupAnimationViewModel()
                 state.initialize(eligible = true, animationsEnabled = true)
                 gate = StartupWindowGate(it, state, true, callbacks)
                 gate.attach()
+                capturedExit = callbacks.exit
                 it.findViewById<View>(android.R.id.content).postInvalidateOnAnimation()
             }
             try {
@@ -149,7 +155,7 @@ class StartupWindowGateInstrumentedTest {
                 instrumentation.runOnMainSync {
                     state.finish()
                     callbacks.pendingCommits.single().run()
-                    callbacks.emitExit()
+                    callbacks.emitExit(capturedExit)
                     state.onFrame(500_000_000L)
                     assertFalse(state.visible)
                     assertFalse(state.ready)

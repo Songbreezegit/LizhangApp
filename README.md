@@ -329,3 +329,5 @@ app/build/outputs/apk/debug/app-debug.apk
 3. 在数据库首次升级时补充 Room Schema 1 到新版本的正式迁移与回归测试。
 
 每个主要里程碑都需要更新本 README，并重新执行测试、Lint 和 Debug 构建。
+
+2026-10-10：在 `release/v1.0.0-rc1` 完成 Android 上架前第一轮技术收尾，保持 `0.9.12 / 22`。保留 900ms 启动设计并修正测试契约，为 CSV 危险文本增加公式中和；修改清单和实际测试结果见 [RC1 技术检查](docs/发布收尾第一轮RC1.md)，权限、关键数据流程和正式政策待办见 [发布前代码审查](docs/Android发布前代码审查第一轮.md)。本轮不合并 main，不将政策草稿接入正式页面，不修改网站或 ECS。

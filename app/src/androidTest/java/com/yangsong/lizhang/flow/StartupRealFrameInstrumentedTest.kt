@@ -92,7 +92,7 @@ class StartupRealFrameInstrumentedTest {
         File(folder, "运行前置.txt").writeText(
             "runId=$runId\nPID=${Process.myPid()}\nAPI=${Build.VERSION.SDK_INT}\n" +
                 "首次引导已完成=$completedBefore\n进程启动机会尚未消费=$coldOpportunity\n" +
-                "设计时长=880ms\n品牌采样窗口=.20..78\n动画速度由设备清单记录\n" +
+                "设计时长=900ms\n品牌采样窗口=.20..78\n动画速度由设备清单记录\n" +
                 "时基=System.nanoTime；以下调用和状态均使用同一单调时钟\n",
         )
         assertTrue("本用例必须独立冷进程执行，启动机会不能被之前用例消耗", coldOpportunity)
@@ -297,7 +297,7 @@ class StartupRealFrameInstrumentedTest {
             if (Build.VERSION.SDK_INT >= 31) assertNotNull("记录系统启动层退出时间", splashRemove)
             assertFalse("动画必须在内容提交与系统启动层退出之后开始", startedBeforeContent || startedBeforeSplash)
             assertTrue("系统启动图退场后至少采集三个带应用名的实际品牌中间帧，取得 ${visible.size} 帧；$diagnosis", visible.size >= 3)
-            assertTrue("品牌中间帧保守覆盖至少 880ms×.16 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
+            assertTrue("品牌中间帧保守覆盖至少 140.8ms 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
             assertTrue("系统画面中的图标或扩散圆环确实变化，取得 $changed 个变化像素", changed >= 60)
             assertEquals("启动层有效期间没有实际纯色空帧", 0, blank)
             assertTrue("最终真实页面可见且启动层不再遮挡实际触摸", pageVisible && interactionSucceeded)

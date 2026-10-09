@@ -65,7 +65,7 @@ class GiftSaveFlowInstrumentedTest {
         restore.setChineseContent { LiZhangTheme(dark) {
             val bottom = WindowInsets.ime.getBottom(LocalDensity.current)
             SideEffect { imeBottom.set(bottom) }
-            AddGiftScreen(viewModel) { returnedAt.set(SystemClock.uptimeMillis()); returns.incrementAndGet() }
+            AddGiftScreen(viewModel, onBack = { returnedAt.set(SystemClock.uptimeMillis()); returns.incrementAndGet() })
         } }
         compose.onNodeWithTag("礼金保存栏").assertIsEnabled()
     }
@@ -149,7 +149,7 @@ class GiftSaveFlowInstrumentedTest {
             }
         }
         compose.setChineseContent { LiZhangTheme {
-            androidx.compose.runtime.key(editor.value) { AddGiftScreen(requireNotNull(editor.value)) { returns.incrementAndGet() } }
+            androidx.compose.runtime.key(editor.value) { AddGiftScreen(requireNotNull(editor.value), onBack = { returns.incrementAndGet() }) }
         } }
         compose.onNodeWithText("+ 自定义").performScrollTo().performClick()
         compose.onNodeWithText("添加").performClick()
