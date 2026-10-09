@@ -18,7 +18,8 @@ import org.junit.Test
 
 /** 只调整测试安装的引导与语言偏好；不创建联系人，也不清除应用数据。 */
 class ExpandedLanguageInstrumentedTest {
-    @get:Rule val compose = createEmptyComposeRule()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createEmptyComposeRule()
 
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
 

@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.TableView
@@ -108,6 +109,8 @@ fun SettingsScreen(
     onFontGuide: () -> Unit,
     onAbout: () -> Unit,
     onPrivacy: () -> Unit,
+    onTerms: () -> Unit,
+    onHelp: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -224,6 +227,8 @@ fun SettingsScreen(
         onFontGuide = onFontGuide,
         onAbout = onAbout,
         onPrivacy = onPrivacy,
+        onTerms = onTerms,
+        onHelp = onHelp,
         snackbarHost = { CenteredSnackbarHost(snackbar) },
     )
 
@@ -486,6 +491,8 @@ fun SettingsContent(
     onFontGuide: () -> Unit = {},
     onAbout: () -> Unit = {},
     onPrivacy: () -> Unit = {},
+    onTerms: () -> Unit = {},
+    onHelp: () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
 ) {
     val transition = LocalAppearanceActions.current
@@ -636,6 +643,20 @@ fun SettingsContent(
                         stringResource(R.string.settings_privacy),
                         stringResource(R.string.settings_privacy_description),
                         onClick = onPrivacy,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    SettingsRow(
+                        Icons.Outlined.Description,
+                        stringResource(R.string.legal_terms_title),
+                        stringResource(R.string.legal_terms_description),
+                        onClick = onTerms,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    SettingsRow(
+                        Icons.AutoMirrored.Outlined.HelpOutline,
+                        stringResource(R.string.legal_help_title),
+                        stringResource(R.string.legal_help_description),
+                        onClick = onHelp,
                     )
                 }
             }

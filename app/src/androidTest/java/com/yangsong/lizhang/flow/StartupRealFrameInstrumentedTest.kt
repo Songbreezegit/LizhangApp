@@ -37,6 +37,7 @@ import kotlin.math.roundToInt
 
 /** 每轮必须独立冷进程执行；不安装 Compose 测试时钟，所有图片来自系统实际合成屏幕。 */
 class StartupRealFrameInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private data class Snapshot(
         val requestedNanos: Long,
         val receivedNanos: Long,
@@ -196,12 +197,13 @@ class StartupRealFrameInstrumentedTest {
                 var interactionLabel = ""
                 var expectedAfterInteraction = ""
                 scenario.onActivity {
-                    pageTitle = it.getString(if (completedBefore) R.string.home_recent else R.string.onboarding_intro_title)
-                    interactionLabel = it.getString(if (completedBefore) R.string.nav_settings else R.string.onboarding_next)
-                    expectedAfterInteraction = it.getString(if (completedBefore) R.string.settings_dark else R.string.onboarding_features_title)
+                    pageTitle = it.getString(R.string.home_recent)
+                    interactionLabel = it.getString(R.string.nav_settings)
+                    expectedAfterInteraction = it.getString(R.string.settings_dark)
+                    assertTrue("隐私已确认后的当前入口使用首页功能引导", app.appContainer.onboardingRepository.state.value.completed)
                 }
                 val page = device.wait(Until.findObject(By.text(pageTitle)), 6000)
-                assertNotNull("启动结束后实际首页或首次引导文字可见：$pageTitle", page)
+                assertNotNull("启动结束后实际首页文字可见：$pageTitle", page)
                 val bounds = requireNotNull(page).visibleBounds
                 pageVisible = bounds.width() > 0 && bounds.height() > 0
                 assertTrue("实际页面文字具有可见屏幕范围", pageVisible)
@@ -210,7 +212,7 @@ class StartupRealFrameInstrumentedTest {
                 assertNotNull("取得真实页面的稳定系统合成终帧", finalFrame)
                 frames.add(requireNotNull(finalFrame))
                 // 真实触摸后页面必须改变，单纯 visible=false 或找到文字不能证明覆盖层释放。
-                val target = device.wait(Until.findObject(By.text(interactionLabel)), 3000)
+                val target = device.wait(Until.findObject(By.desc(interactionLabel)), 3000)
                 assertNotNull("终帧真实页面具有可操作入口：$interactionLabel", target)
                 val targetBounds = requireNotNull(target).visibleBounds
                 assertTrue("终帧入口启用且可见", target.isEnabled && !targetBounds.isEmpty)

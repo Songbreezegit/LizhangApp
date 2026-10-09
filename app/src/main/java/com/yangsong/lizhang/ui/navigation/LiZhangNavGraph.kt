@@ -53,6 +53,7 @@ import com.yangsong.lizhang.R
 import com.yangsong.lizhang.data.di.AppContainer
 import com.yangsong.lizhang.data.onboarding.GuidePracticeStore
 import com.yangsong.lizhang.domain.model.GiftDirection
+import com.yangsong.lizhang.domain.legal.LegalDocumentType
 import com.yangsong.lizhang.ui.screen.*
 import com.yangsong.lizhang.ui.component.BottomNavBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
@@ -374,6 +375,8 @@ fun LiZhangNavGraph(
                 onFontGuide = { nav.navigate(AppDestination.FontGuide.route) },
                 onAbout = { nav.navigate(AppDestination.About.route) },
                 onPrivacy = { nav.navigate(AppDestination.Privacy.route) },
+                onTerms = { nav.navigate(AppDestination.Terms.route) },
+                onHelp = { nav.navigate(AppDestination.Help.route) },
             )
         }
         composable(AppDestination.Onboarding.route) {
@@ -403,7 +406,22 @@ fun LiZhangNavGraph(
             AboutScreen(nav::popBackStack)
         }
         composable(AppDestination.Privacy.route) {
-            PrivacyScreen(nav::popBackStack)
+            LegalDocumentScreen(
+                viewModel(factory = LegalDocumentViewModel.factory(appContainer.legalDocumentRepository, LegalDocumentType.PRIVACY)),
+                nav::popBackStack,
+            )
+        }
+        composable(AppDestination.Terms.route) {
+            LegalDocumentScreen(
+                viewModel(factory = LegalDocumentViewModel.factory(appContainer.legalDocumentRepository, LegalDocumentType.TERMS)),
+                nav::popBackStack,
+            )
+        }
+        composable(AppDestination.Help.route) {
+            LegalDocumentScreen(
+                viewModel(factory = LegalDocumentViewModel.factory(appContainer.legalDocumentRepository, LegalDocumentType.HELP)),
+                nav::popBackStack,
+            )
         }
     }
     // 保留退场期间的目的地，让记一笔的浮钮先响应，再随底栏轻落退出。

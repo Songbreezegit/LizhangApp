@@ -18,7 +18,8 @@ import org.junit.Test
 
 /** 不创建隐私数据；实际 Canvas 像素和 Activity 页面均在模拟器验证。 */
 class AppearanceTransitionInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun 重复挂载幂等且解除的布局监听不清理后续宿主快照() {
         compose.runOnIdle {

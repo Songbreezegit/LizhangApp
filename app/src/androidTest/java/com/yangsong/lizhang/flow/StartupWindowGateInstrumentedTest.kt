@@ -16,6 +16,7 @@ import org.junit.Test
 
 /** 真实 Activity 根视图 + 独立非敏感启动状态；故障注入不能替代真实系统画面冷启动验收。 */
 class StartupWindowGateInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     private class CapturedCallbacks : StartupWindowCallbacks {

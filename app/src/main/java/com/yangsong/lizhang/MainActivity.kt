@@ -26,6 +26,8 @@ import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.viewmodel.AppearanceTransitionViewModel
 import com.yangsong.lizhang.ui.viewmodel.OnboardingViewModel
+import com.yangsong.lizhang.ui.viewmodel.PrivacyConsentViewModel
+import com.yangsong.lizhang.ui.privacy.PrivacyNoticeGate
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 import com.yangsong.lizhang.ui.component.BrandStartupOverlay
 import com.yangsong.lizhang.ui.component.StartupWindowGate
@@ -71,7 +73,8 @@ class MainActivity : AppCompatActivity() {
         handleReminderIntent(intent)
         val appContainer = app.appContainer
         val onboardingViewModel = ViewModelProvider(this, OnboardingViewModel.factory(appContainer.onboardingRepository))[OnboardingViewModel::class.java]
-        onboardingViewModel.enterApp()
+        val privacyViewModel = ViewModelProvider(this, PrivacyConsentViewModel.factory(appContainer.privacyConsentRepository))[PrivacyConsentViewModel::class.java]
+        onboardingViewModel.enterApp(appContainer.canProcessPersonalData)
         appearanceState = ViewModelProvider(this)[AppearanceTransitionViewModel::class.java]
         appearanceState.languagePreference = currentAppLanguage()
         appearanceHost = AppearanceTransitionHost(this, appearanceState)
@@ -83,13 +86,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.view.ViewGroup>(android.R.id.content).removeAllViews()
         setContent {
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
+            val privacyState by privacyViewModel.state.collectAsStateWithLifecycle()
             val startupVisible = startupState.visible
             SideEffect {
                 // 返回中断、关闭动画及正常播完共用清理，避免退出监听留到下一次打开。
                 if (!startupVisible && ::startupWindowGate.isInitialized) startupWindowGate.detach()
             }
-            LaunchedEffect(onboardingState.completed) {
-                if (onboardingState.completed) appContainer.startReminderCoordination()
+            LaunchedEffect(privacyState.canProcessPersonalData, onboardingState.completed) {
+                if (privacyState.canProcessPersonalData && onboardingState.completed) appContainer.startReminderCoordination()
             }
             val themeMode by appContainer.themeRepository.themeMode.collectAsStateWithLifecycle()
             val pendingReminder by reminderLaunchRequest.collectAsStateWithLifecycle()
@@ -114,7 +118,16 @@ class MainActivity : AppCompatActivity() {
                             Box(Modifier.fillMaxSize()) {
                                 Box(if (startupVisible) Modifier.fillMaxSize().clearAndSetSemantics { }
                                     else Modifier.fillMaxSize()) {
-                                    LiZhangNavGraph(
+                                    if (!privacyState.canProcessPersonalData) {
+                                        // 尚未确认时不挂载业务导航及 ViewModel，不读联系人、账本或提醒。
+                                        SideEffect { appearanceHost.navigationReady(!startupVisible) }
+                                        PrivacyNoticeGate(
+                                            consentViewModel = privacyViewModel,
+                                            legalDocumentRepository = appContainer.legalDocumentRepository,
+                                            onAccepted = { onboardingViewModel.enterApp(true) },
+                                            onExit = { finishAndRemoveTask() },
+                                        )
+                                    } else LiZhangNavGraph(
                                         appContainer = appContainer,
                                         onboardingViewModel = onboardingViewModel,
                                         reminderLaunchRequest = pendingReminder,

@@ -11,6 +11,8 @@ class LiZhangApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        if (appContainer.onboardingRepository.state.value.completed) appContainer.startReminderCoordination()
+        if (appContainer.canProcessPersonalData && appContainer.onboardingRepository.state.value.completed) {
+            appContainer.startReminderCoordination()
+        }
     }
 }

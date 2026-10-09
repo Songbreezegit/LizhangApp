@@ -21,7 +21,8 @@ import org.junit.Assert.*
 
 /** 只使用合成提醒，不创建联系人和礼金记录。 */
 class IndependentReminderInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val repository get() = (compose.activity.application as LiZhangApplication).appContainer.reminderRepository
     @Before fun 准备中文空提醒页() {

@@ -10,10 +10,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FeatureGuideViewModelTest {
-    @Test fun `首次打开直接进入首页记账介绍而不先展示三页`() {
+    @Test fun `隐私确认后进入首页记账介绍而不先展示三页`() {
         val vm = OnboardingViewModel(GuideRepository(OnboardingState()))
         assertNull(featureGuidePresentation(vm.state.value, AppDestination.Home.route))
-        vm.enterApp()
+        vm.enterApp(privacyAccepted = true)
         assertTrue(vm.state.value.completed)
         assertEquals(FeatureGuideTarget.ADD_RECORD, featureGuidePresentation(vm.state.value, AppDestination.Home.route)?.target)
         assertEquals(emptySet<FeatureGuidePage>(), vm.state.value.seenPageGuides)
@@ -112,7 +112,7 @@ class FeatureGuideViewModelTest {
             completePageGuide(FeatureGuidePage.SEARCH)
         }
         val rebuilt = OnboardingViewModel(repository)
-        rebuilt.enterApp()
+        rebuilt.enterApp(privacyAccepted = true)
         assertEquals(FeatureGuideStep.RECORD_AMOUNT, rebuilt.state.value.featureGuideStep)
         assertNull(featureGuidePresentation(rebuilt.state.value, AppDestination.Search.route))
         assertNotNull(featureGuidePresentation(rebuilt.state.value, AppDestination.Calendar.route))
@@ -158,7 +158,7 @@ class FeatureGuideViewModelTest {
         val vm = OnboardingViewModel(GuideRepository())
         vm.completeFeatureGuide()
         FeatureGuidePage.entries.forEach(vm::completePageGuide)
-        vm.enterApp()
+        vm.enterApp(privacyAccepted = true)
         assertFalse(vm.state.value.featureGuideVisible)
         assertFalse(vm.state.value.copy(homeRecordHintSeen = false, contactsHintSeen = false).featureGuideVisible)
         assertEquals(PermissionHistory(), vm.state.value.contactsPermission)

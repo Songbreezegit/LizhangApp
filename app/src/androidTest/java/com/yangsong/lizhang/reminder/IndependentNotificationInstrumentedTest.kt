@@ -27,6 +27,7 @@ import org.junit.*
 import org.junit.Assert.*
 
 class IndependentNotificationInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val repository get() = app.appContainer.reminderRepository

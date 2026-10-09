@@ -20,6 +20,7 @@ import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -29,6 +30,10 @@ class OnboardingPermissionInstrumentedTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val container get() = (context as LiZhangApplication).appContainer
+
+    @Before fun 已完成隐私告知后验证可选权限选择() {
+        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy())
+    }
 
     @Test fun 主动通讯录导入先说明暂不不会请求系统或读取联系人() {
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS))

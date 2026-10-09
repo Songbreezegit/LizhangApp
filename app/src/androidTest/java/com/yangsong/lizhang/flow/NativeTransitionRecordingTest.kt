@@ -33,7 +33,8 @@ import com.yangsong.lizhang.ui.component.AppearanceTransitionHost
 
 /** 无 Compose 测试时钟，使用正常应用渲染流程录制空白设备。 */
 class NativeTransitionRecordingTest {
-    @get:Rule val evidence = object : TestWatcher() {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val evidence = object : TestWatcher() {
         override fun failed(failure: Throwable, description: Description) {
             val folder = File(app.getExternalFilesDir(null), "transition-evidence").apply { mkdirs() }
             val name = "失败现场-${SystemClock.uptimeMillis()}"

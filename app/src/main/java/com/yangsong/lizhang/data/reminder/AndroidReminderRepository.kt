@@ -149,6 +149,8 @@ class ReminderNotificationReceiver : BroadcastReceiver() {
         // 旧礼金闹钟及未知来源不再发送通知。
         if (intent.data?.authority != "independent-reminder") return
         val app = context.applicationContext as? LiZhangApplication ?: return
+        // 更新后的政策尚未确认时，旧闹钟也不能读取提醒或发送通知。
+        if (!app.appContainer.canProcessPersonalData) return
         val repository = app.appContainer.reminderRepository
         if (!repository.settings.value.enabled) return
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
@@ -177,6 +179,7 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action !in rescheduleActions) return
         val application = context.applicationContext as? LiZhangApplication ?: return
+        if (!application.appContainer.canProcessPersonalData) return
         application.appContainer.startReminderCoordination()
         application.appContainer.refreshReminderSchedules()
     }

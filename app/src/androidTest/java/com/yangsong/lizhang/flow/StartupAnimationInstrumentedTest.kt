@@ -36,7 +36,8 @@ import java.io.File
 
 /** 每次以独立 instrumentation 进程执行；startupScenario 可为 launcher/notification/interrupt/background/back。 */
 class StartupAnimationInstrumentedTest {
-    @get:Rule val compose = createEmptyComposeRule()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createEmptyComposeRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val evidenceFolder by lazy {
@@ -71,7 +72,6 @@ class StartupAnimationInstrumentedTest {
         File(evidenceFolder, "运行前置.txt").writeText("场景=$entry\nPID=${Process.myPid()}\n进程启动机会尚未消费=$coldOpportunity\n")
         assertTrue("启动场景需要独立冷进程，不能复用已消费机会", coldOpportunity)
         if (entry == "notification" || entry == "interrupt") app.appContainer.onboardingRepository.complete()
-        val initialCompleted = app.appContainer.onboardingRepository.state.value.completed
         if (entry == "notification") {
             // 通知 action 会被业务消费并清除，ActivityScenario 的启动 Intent 匹配不适用于这个入口。
             instrumentation.runOnMainSync {
@@ -138,7 +138,8 @@ class StartupAnimationInstrumentedTest {
                     }
                     compose.mainClock.autoAdvance = true
                     compose.onNodeWithTag("品牌开屏").assertDoesNotExist()
-                    compose.onNodeWithTag(if (initialCompleted) "首页列表" else "引导页面1").assertIsDisplayed()
+                    compose.onNodeWithTag("首页列表").assertIsDisplayed()
+                    assertTrue("隐私已确认后沿用当前首页功能引导", app.appContainer.onboardingRepository.state.value.completed)
                     scenario.moveToState(Lifecycle.State.CREATED)
                     scenario.moveToState(Lifecycle.State.RESUMED)
                     scenario.onActivity { assertFalse("返回键中断后热返回不补播", it.startupState.visible) }
@@ -171,7 +172,8 @@ class StartupAnimationInstrumentedTest {
                     compose.mainClock.autoAdvance = true
                     compose.waitUntil(3000) { !startup.visible }
                     compose.onNodeWithTag("品牌开屏").assertDoesNotExist()
-                    compose.onNodeWithTag(if (initialCompleted) "首页列表" else "引导页面1").assertIsDisplayed()
+                    compose.onNodeWithTag("首页列表").assertIsDisplayed()
+                    assertTrue("隐私已确认后沿用当前首页功能引导", app.appContainer.onboardingRepository.state.value.completed)
                     scenario.moveToState(Lifecycle.State.CREATED)
                     scenario.moveToState(Lifecycle.State.RESUMED)
                     assertFalse("热返回不重复开屏", startup.visible)

@@ -17,6 +17,7 @@ import org.junit.Test
 
 /** 两个方法分别执行，中间由 adb 强制停止进程；localePersistenceTag 默认 ja，兼容原有调用。 */
 class LocalePersistenceInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private val localeTag get() = InstrumentationRegistry.getArguments().getString("localePersistenceTag") ?: "ja"
     private val targetLanguage get() = AppLanguage.fromLanguageTag(localeTag)
 

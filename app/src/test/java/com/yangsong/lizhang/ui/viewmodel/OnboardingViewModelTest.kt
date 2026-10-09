@@ -7,6 +7,35 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OnboardingViewModelTest {
+    @Test fun `未确认隐私不能由进入应用完成旧引导或消费记账介绍`() {
+        val repository = FakeOnboardingRepository()
+        val before = repository.state.value
+        OnboardingViewModel(repository).enterApp(privacyAccepted = false)
+        assertEquals(before, repository.state.value)
+        assertEquals(0, repository.completions)
+    }
+
+    @Test fun `明确确认后只完成旧引导并保留按页介绍和权限历史`() {
+        val repository = FakeOnboardingRepository()
+        val viewModel = OnboardingViewModel(repository)
+        repeat(2) { viewModel.enterApp(privacyAccepted = true) }
+        assertTrue(viewModel.state.value.completed)
+        assertEquals(1, repository.completions)
+        assertEquals(FeatureGuideStep.ADD_RECORD, viewModel.state.value.featureGuideStep)
+        assertTrue(viewModel.state.value.seenPageGuides.isEmpty())
+        assertEquals(PermissionHistory(), viewModel.state.value.contactsPermission)
+        assertEquals(PermissionHistory(), viewModel.state.value.notificationsPermission)
+    }
+
+    @Test fun `完成旧三页引导不构成隐私同意且不能改变隐私版本`() {
+        val consent = com.yangsong.lizhang.domain.privacy.PrivacyConsentState()
+        val repository = FakeOnboardingRepository()
+        OnboardingViewModel(repository).finish(OnboardingMode.FIRST_LAUNCH)
+        assertTrue(repository.state.value.completed)
+        assertFalse(consent.canProcessPersonalData)
+        assertNull(consent.acceptedVersion)
+    }
+
     @Test fun `全新安装默认展示引导`() {
         assertFalse(OnboardingPolicy.completed(null, ExistingInstallationEvidence()))
     }

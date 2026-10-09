@@ -32,8 +32,9 @@ import kotlin.math.max
 @OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class NavigationPageMotionInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private val durationScale = object : MotionDurationScale { override val scaleFactor = 1f }
-    @get:Rule val compose = createComposeRule(effectContext = durationScale)
+    @get:Rule(order = 1) val compose = createComposeRule(effectContext = durationScale)
     private val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val directory get() = File(app.getExternalFilesDir(null), "navigation-pages-v096").apply { mkdirs() }
     private val tabRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)

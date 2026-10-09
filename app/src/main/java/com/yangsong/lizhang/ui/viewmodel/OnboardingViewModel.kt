@@ -8,9 +8,9 @@ import com.yangsong.lizhang.domain.repository.OnboardingRepository
 class OnboardingViewModel(private val repository: OnboardingRepository) : ViewModel() {
     val state = repository.state
 
-    /** 首次打开直接进入首页，把最主要的记账操作放在真实页面中介绍。 */
-    fun enterApp() {
-        if (!state.value.completed) repository.complete()
+    /** 隐私版本已明确确认后，沿用首页真实记账引导，不把引导完成视为隐私同意。 */
+    fun enterApp(privacyAccepted: Boolean) {
+        if (privacyAccepted && !state.value.completed) repository.complete()
     }
 
     fun finish(mode: OnboardingMode) {

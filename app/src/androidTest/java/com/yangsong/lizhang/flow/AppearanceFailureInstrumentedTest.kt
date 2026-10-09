@@ -18,7 +18,8 @@ import org.junit.Test
 
 /** 专门控制异常回调顺序；原多语言后的真实触摸仍由 NativeTransitionRecordingTest 验收。 */
 class AppearanceFailureInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private val app get() = compose.activity.application as LiZhangApplication
     private class Captures {
         val pending = mutableListOf<Pair<Bitmap, (Int) -> Unit>>()

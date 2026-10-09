@@ -14,12 +14,29 @@ import org.junit.Test
 class OnboardingUpgradeInstrumentedTest {
     @get:Rule val compose = createEmptyComposeRule()
 
-    @Test fun 从旧版本覆盖安装后首次入口直接显示首页() {
+    @Test fun 从旧版本覆盖安装保留引导状态并在确认新告知后进入首页() {
         val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
-        assertTrue(app.appContainer.onboardingRepository.state.value.completed)
+        val container = app.appContainer
+        assertTrue(container.onboardingRepository.state.value.completed)
+        val before = container.onboardingRepository.state.value
+        assertFalse("旧安装不能自动视为同意新增的政策", container.canProcessPersonalData)
+        assertFalse(container.isBusinessDatabaseInitialized)
+        assertFalse(container.isReminderRepositoryInitialized)
         ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(8000) { compose.onAllNodesWithTag("首次隐私告知").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("首页列表").assertDoesNotExist()
+            compose.onNodeWithTag("隐私告知拒绝").performScrollTo().performClick()
+            compose.onNodeWithTag("隐私拒绝说明").assertIsDisplayed()
+            assertEquals(before, container.onboardingRepository.state.value)
+            assertFalse(container.isBusinessDatabaseInitialized)
+            assertFalse(container.isReminderRepositoryInitialized)
+            compose.onNodeWithTag("返回隐私告知").performScrollTo().performClick()
+            compose.onNodeWithTag("隐私告知同意").performScrollTo().performClick()
             compose.waitUntil(5000) { compose.onAllNodesWithTag("首页列表").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("引导页面1").assertDoesNotExist()
+            compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
+            assertEquals(before, container.onboardingRepository.state.value)
+            assertTrue(container.canProcessPersonalData)
             assertTrue(app.getSharedPreferences("onboarding_preferences", 0).getBoolean("onboarding_completed", false))
         }
     }

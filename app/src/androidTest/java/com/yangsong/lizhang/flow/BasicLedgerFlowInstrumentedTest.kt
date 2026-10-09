@@ -29,6 +29,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class BasicLedgerFlowInstrumentedTest {
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
     private val application: LiZhangApplication
         get() = ApplicationProvider.getApplicationContext()
     private val device: UiDevice

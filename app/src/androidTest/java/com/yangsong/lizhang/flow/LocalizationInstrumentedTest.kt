@@ -18,7 +18,8 @@ import org.junit.Test
 
 /** 只操作空白测试模拟器的语言设置，不创建或导出联系人数据。 */
 class LocalizationInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     @After
     fun 恢复系统语言() {

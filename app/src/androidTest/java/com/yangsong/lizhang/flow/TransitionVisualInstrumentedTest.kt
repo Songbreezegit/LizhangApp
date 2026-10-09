@@ -20,7 +20,8 @@ import java.io.File
 
 /** 空白测试设备的设置页证据；不读取或创建联系人、金额、备份。 */
 class TransitionVisualInstrumentedTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val app get() = compose.activity.application as LiZhangApplication
 

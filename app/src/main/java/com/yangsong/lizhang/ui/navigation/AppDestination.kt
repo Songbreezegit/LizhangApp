@@ -32,6 +32,8 @@ sealed class AppDestination(val route: String) {
     data object FontGuide : AppDestination("font_guide")
     data object About : AppDestination("about")
     data object Privacy : AppDestination("privacy")
+    data object Terms : AppDestination("terms")
+    data object Help : AppDestination("help")
     data object ReceivedRecords : AppDestination("records_received")
     data object GivenRecords : AppDestination("records_given")
     data object Calendar : AppDestination("calendar")

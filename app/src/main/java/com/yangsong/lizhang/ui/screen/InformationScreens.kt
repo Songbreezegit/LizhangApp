@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.SecondaryButton
+import com.yangsong.lizhang.domain.legal.LegalDocumentType
+import com.yangsong.lizhang.ui.viewmodel.LegalDocumentUiState
+import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
 
 @Composable
 fun FontGuideScreen(onBack: () -> Unit) {
@@ -70,24 +73,14 @@ fun AboutScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun PrivacyScreen(onBack: () -> Unit) {
-    PrivacyContent(onBack)
+fun PrivacyScreen(viewModel: LegalDocumentViewModel, onBack: () -> Unit) {
+    LegalDocumentScreen(viewModel, onBack)
 }
 
+/** 无仓库的内容入口用于预览和测试；生产页面由 ViewModel 加载完整本地正文。 */
 @Composable
-fun PrivacyContent(onBack: () -> Unit = {}) {
-    InformationPage(
-        title = stringResource(R.string.privacy_title),
-        onBack = onBack,
-        introduction = stringResource(R.string.privacy_introduction),
-        sections = listOf(
-            InformationSection(R.string.privacy_storage_title, R.string.privacy_storage_body),
-            InformationSection(R.string.privacy_network_title, R.string.privacy_network_body),
-            InformationSection(R.string.privacy_permission_title, R.string.privacy_permission_body),
-            InformationSection(R.string.privacy_file_title, R.string.privacy_file_body),
-            InformationSection(R.string.privacy_delete_title, R.string.privacy_delete_body),
-        ),
-    )
+fun PrivacyContent(onBack: () -> Unit = {}, state: LegalDocumentUiState = LegalDocumentUiState()) {
+    LegalDocumentContent(LegalDocumentType.PRIVACY, state, onBack)
 }
 
 private data class InformationSection(

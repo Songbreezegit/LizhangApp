@@ -23,7 +23,8 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ContactImportFlowInstrumentedTest {
-    @get:Rule val compose = createComposeRule()
+    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    @get:Rule(order = 1) val compose = createComposeRule()
 
     @Test fun 拒绝及永久拒绝显示对应操作且不影响返回() {
         val state = androidx.compose.runtime.mutableStateOf(ContactImportUiState(permissionState = ContactPermissionState.DENIED))
