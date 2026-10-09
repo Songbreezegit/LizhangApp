@@ -1,0 +1,45 @@
+# 仅供备案通过且用户批准后的人工配置审查；任何脚本都不会安装此文件。
+# 须先取得正式证书并确认对应路径、端口和安全组。
+# 不修改 songisle.xyz 的 Cloudflare Pages 项目或根域解析。
+server {
+    listen 80;
+    listen [::]:80;
+    server_name lizhang.songisle.xyz;
+    access_log off;
+    location /.well-known/acme-challenge/ {
+        root /var/lib/lizhang-acme;
+        try_files $uri =404;
+    }
+    location / { return 301 https://lizhang.songisle.xyz$request_uri; }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name lizhang.songisle.xyz;
+    ssl_certificate /etc/letsencrypt/live/lizhang.songisle.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/lizhang.songisle.xyz/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:LizhangTLS:5m;
+    ssl_session_timeout 1d;
+    root /srv/lizhang-docs/site/current;
+    index index.html;
+    access_log off;
+    server_tokens off;
+    client_max_body_size 1k;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Cache-Control "no-cache" always;
+    # 完成全部 HTTPS 验收后再评估启用 HSTS；不得使用 includeSubDomains。
+    # add_header Strict-Transport-Security "max-age=86400" always;
+    error_page 404 /404.html;
+    location = /404.html { internal; }
+    location / {
+        limit_except GET { deny all; }
+        try_files $uri $uri/ =404;
+    }
+    location ~ /\. { return 404; }
+    location ~* \.(md|map|sh|py|ps1|env|bak|tar|gz|zip|ya?ml)$ { return 404; }
+}

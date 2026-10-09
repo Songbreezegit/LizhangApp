@@ -1,0 +1,25 @@
+[Unit]
+Description=礼账备案前受限文档站
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/run/lizhang-docs/nginx.pid
+RuntimeDirectory=lizhang-docs
+RuntimeDirectoryMode=0755
+ExecStartPre=/usr/sbin/nginx -t -c /etc/lizhang-docs/nginx.conf
+ExecStart=/usr/sbin/nginx -c /etc/lizhang-docs/nginx.conf
+ExecReload=/usr/sbin/nginx -t -c /etc/lizhang-docs/nginx.conf
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -QUIT $MAINPID
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/srv/lizhang-docs
+ReadWritePaths=/run/lizhang-docs /var/lib/nginx
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
