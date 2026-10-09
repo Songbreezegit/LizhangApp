@@ -4,8 +4,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import kotlin.math.abs
+import androidx.compose.ui.graphics.PathOperation
 import kotlin.math.min
+import kotlin.math.sqrt
 
 /** 云朵保持浅暖白身份；颜色只在引导内部使用，不改变深色页面的主题。 */
 internal object GuideCloudPalette {
@@ -17,147 +18,104 @@ internal object GuideCloudPalette {
     val onAction = Color.White
 }
 
-/** 四边采用不等宽的宽缓凸起，尾根切入真实云边，整个主体只闭合一次。 */
-internal fun guideBubblePath(
-    body: Rect,
-    pointer: GuidePointer,
-    cornerRadius: Float,
-    rootCurve: Float,
-    tipRadius: Float,
-): Path {
-    val radius = min(cornerRadius, min(body.width, body.height) / 2f).coerceAtLeast(0f)
-    val unit = radius / 24f
-    val edgeInset = 8f * unit
-    val top = cloudEdge(Offset(body.left + radius, body.top), Offset(body.right - radius, body.top),
-        Offset(0f, unit), floatArrayOf(.18f, .30f, .28f, .24f),
-        floatArrayOf(8f, 10f, 8f, 9f, 8f), floatArrayOf(1f, 0f, 2f, 0f))
-    val right = cloudEdge(Offset(body.right, body.top + radius), Offset(body.right, body.bottom - radius),
-        Offset(-unit, 0f), floatArrayOf(.28f, .40f, .32f),
-        floatArrayOf(8f, 10f, 8f, 8f), floatArrayOf(0f, 3f, 1f))
-    val bottom = cloudEdge(Offset(body.right - radius, body.bottom), Offset(body.left + radius, body.bottom),
-        Offset(0f, -unit), floatArrayOf(.23f, .27f, .19f, .31f),
-        floatArrayOf(8f, 9f, 10f, 8f, 8f), floatArrayOf(2f, 0f, 1f, 0f))
-    val left = cloudEdge(Offset(body.left, body.bottom - radius), Offset(body.left, body.top + radius),
-        Offset(unit, 0f), floatArrayOf(.34f, .27f, .39f),
-        floatArrayOf(8f, 9f, 10f, 8f), floatArrayOf(1f, 0f, 2f))
-    val tailOnTop = pointer.baseLeft.y == body.top
-    return Path().apply {
-        moveTo(top.first().start.x, top.first().start.y)
-        appendCloudEdge(top, if (tailOnTop) pointer else null, rootCurve, tipRadius)
-        cubicTo(body.right - radius + 10f * unit, body.top + edgeInset,
-            body.right - edgeInset, body.top + radius - 10f * unit,
-            right.first().start.x, right.first().start.y)
-        appendCloudEdge(right)
-        cubicTo(body.right - edgeInset, body.bottom - radius + 10f * unit,
-            body.right - radius + 10f * unit, body.bottom - edgeInset,
-            bottom.first().start.x, bottom.first().start.y)
-        appendCloudEdge(bottom, if (!tailOnTop) pointer else null, rootCurve, tipRadius)
-        cubicTo(body.left + radius - 10f * unit, body.bottom - edgeInset,
-            body.left + edgeInset, body.bottom - radius + 10f * unit,
-            left.first().start.x, left.first().start.y)
-        appendCloudEdge(left)
-        cubicTo(body.left + edgeInset, body.top + radius - 10f * unit,
-            body.left + radius - 10f * unit, body.top + edgeInset,
-            top.first().start.x, top.first().start.y)
-        close()
+/** 文字安全区和圆团轮廓分别测量；椭圆只参与合并，不绘制各自的内部边框。 */
+internal data class GuideCloudGeometry(val body: Rect, val safeRect: Rect, val lobes: List<Rect>, val path: Path) {
+    fun boundaryY(x: Float, above: Boolean): Float {
+        val edges = lobes.mapNotNull { lobe ->
+            val radiusX = lobe.width / 2f
+            if (radiusX <= 0f || x < lobe.left || x > lobe.right) null
+            else {
+                val fraction = ((x - lobe.center.x) / radiusX).coerceIn(-1f, 1f)
+                val height = lobe.height / 2f * sqrt((1f - fraction * fraction).coerceAtLeast(0f))
+                lobe.center.y + if (above) -height else height
+            }
+        }.toMutableList()
+        if (x in safeRect.left..safeRect.right) edges += if (above) safeRect.top else safeRect.bottom
+        return if (above) edges.minOrNull() ?: body.top else edges.maxOrNull() ?: body.bottom
+    }
+
+    /** 保守检查整个圆的包围盒，圆泡不会擦入云团外弧。 */
+    fun clears(circle: GuideThoughtBubble, above: Boolean): Boolean {
+        val rangeLeft = circle.center.x - circle.radius
+        val rangeRight = circle.center.x + circle.radius
+        val edges = lobes.filter { it.right >= rangeLeft && it.left <= rangeRight }.map { lobe ->
+            boundaryForLobe(lobe, lobe.center.x.coerceIn(rangeLeft, rangeRight), above)
+        }.toMutableList()
+        if (rangeRight >= safeRect.left && rangeLeft <= safeRect.right) edges += if (above) safeRect.top else safeRect.bottom
+        val boundary = if (above) edges.minOrNull() ?: body.top else edges.maxOrNull() ?: body.bottom
+        return if (above) circle.center.y + circle.radius <= boundary else circle.center.y - circle.radius >= boundary
     }
 }
 
-private data class CloudCurve(val start: Offset, val control1: Offset, val control2: Offset, val end: Offset) {
-    fun appendTo(path: Path) = path.cubicTo(control1.x, control1.y, control2.x, control2.y, end.x, end.y)
-    fun split(t: Float): Pair<CloudCurve, CloudCurve> {
-        val first = interpolate(start, control1, t)
-        val middle = interpolate(control1, control2, t)
-        val last = interpolate(control2, end, t)
-        val before = interpolate(first, middle, t)
-        val after = interpolate(middle, last, t)
-        val point = interpolate(before, after, t)
-        return CloudCurve(start, first, before, point) to CloudCurve(point, after, last, end)
-    }
-    fun atX(x: Float): Float {
-        val increasing = end.x >= start.x
-        var low = 0f
-        var high = 1f
-        repeat(24) {
-            val t = (low + high) / 2f
-            val inverse = 1f - t
-            val position = start.x * inverse * inverse * inverse +
-                3f * control1.x * inverse * inverse * t + 3f * control2.x * inverse * t * t + end.x * t * t * t
-            if ((position < x) == increasing) low = t else high = t
-        }
-        return (low + high) / 2f
-    }
-    fun tangent(t: Float): Offset {
-        val inverse = 1f - t
-        val vector = (control1 - start) * (inverse * inverse) +
-            (control2 - control1) * (2f * inverse * t) + (end - control2) * (t * t)
-        val length = vector.getDistance()
-        return if (length > 0f) vector / length else Offset.Zero
-    }
+private fun boundaryForLobe(lobe: Rect, x: Float, above: Boolean): Float {
+    val fraction = ((x - lobe.center.x) / (lobe.width / 2f)).coerceIn(-1f, 1f)
+    val height = lobe.height / 2f * sqrt((1f - fraction * fraction).coerceAtLeast(0f))
+    return lobe.center.y + if (above) -height else height
 }
 
-private fun interpolate(from: Offset, to: Offset, fraction: Float) = from + (to - from) * fraction
-
-private fun cloudEdge(start: Offset, end: Offset, inward: Offset, widths: FloatArray,
-    valleys: FloatArray, crests: FloatArray): List<CloudCurve> {
-    val curves = mutableListOf<CloudCurve>()
-    val span = end - start
-    var fraction = 0f
-    widths.forEachIndexed { index, width ->
-        val before = start + span * fraction + inward * valleys[index]
-        val crest = start + span * (fraction + width / 2f) + inward * crests[index]
-        val after = start + span * (fraction + width) + inward * valleys[index + 1]
-        val control = span * (width * .20f)
-        curves += CloudCurve(before, before + control, crest - control, crest)
-        curves += CloudCurve(crest, crest + control, after - control, after)
-        fraction += width
+/** 三颗明显的顶部大圆团、两侧大弧和三颗底团组成经典云朵，不再沿四边铺小波。 */
+internal fun guideCloudGeometry(body: Rect, unit: Float): GuideCloudGeometry {
+    val scaleX = body.width / 360f
+    // 只有极小的可用高度才压缩云团留白；普通短文仍按至少 208dp 自然测量。
+    val scaleY = min(unit, body.height / 160f).coerceAtLeast(0f)
+    val height = body.height / scaleY.coerceAtLeast(.001f)
+    fun oval(cx: Float, cy: Float, rx: Float, ry: Float) = Rect(
+        body.left + (cx - rx) * scaleX, body.top + (cy - ry) * scaleY,
+        body.left + (cx + rx) * scaleX, body.top + (cy + ry) * scaleY,
+    )
+    val lobes = listOf(
+        oval(88f, 80f, 66f, 54f), oval(186f, 68f, 82f, 68f), oval(280f, 80f, 60f, 52f),
+        oval(58f, (height + 48f) / 2f, 58f, (height - 76f) / 2f),
+        oval(304f, (height + 36f) / 2f, 56f, (height - 68f) / 2f),
+        oval(94f, height - 46f, 69f, 42f), oval(186f, height - 47f, 82f, 47f),
+        oval(278f, height - 48f, 66f, 42f),
+    )
+    val safe = Rect(body.left + 36f * scaleX, body.top + 48f * scaleY,
+        body.right - 36f * scaleX, body.bottom - 28f * scaleY)
+    var contour = Path().apply { addRect(safe) }
+    lobes.forEach { lobe ->
+        contour = Path.combine(PathOperation.Union, contour, Path().apply { addOval(lobe) })
     }
-    return curves
+    return GuideCloudGeometry(body, safe, lobes, contour)
 }
 
-private fun Path.appendCloudEdge(edge: List<CloudCurve>, pointer: GuidePointer? = null,
-    rootCurve: Float = 0f, tipRadius: Float = 0f) {
-    if (pointer == null) {
-        edge.forEach { it.appendTo(this) }
-        return
-    }
-    val increasing = edge.last().end.x >= edge.first().start.x
-    val direction = if (increasing) 1f else -1f
-    val firstX = if (increasing) pointer.baseLeft.x else pointer.baseRight.x
-    val lastX = if (increasing) pointer.baseRight.x else pointer.baseLeft.x
-    fun curveAt(x: Float) = edge.first { x >= minOf(it.start.x, it.end.x) - .01f &&
-        x <= maxOf(it.start.x, it.end.x) + .01f }
-    val firstCurve = curveAt(firstX)
-    val lastCurve = curveAt(lastX)
-    val firstT = firstCurve.atX(firstX)
-    val lastT = lastCurve.atX(lastX)
-    val firstPoint = firstCurve.split(firstT).first.end
-    val lastPoint = lastCurve.split(lastT).first.end
-    appendCloudPortion(edge, edge.first().start.x, firstX, direction)
-    val outward = if (increasing) -1f else 1f
-    val root = min(rootCurve, abs(lastX - firstX) / 2f)
-    val cap = min(tipRadius, min(abs(pointer.tip.y - firstPoint.y), abs(pointer.tip.y - lastPoint.y)) / 3f)
-    val capBefore = Offset(pointer.tip.x - direction * cap, pointer.tip.y - outward * cap)
-    val capAfter = Offset(pointer.tip.x + direction * cap, pointer.tip.y - outward * cap)
-    val firstControl = firstPoint + firstCurve.tangent(firstT) * root
-    val lastControl = lastPoint - lastCurve.tangent(lastT) * root
-    cubicTo(firstControl.x, firstControl.y, capBefore.x, pointer.tip.y - outward * (cap + root / 2f), capBefore.x, capBefore.y)
-    quadraticBezierTo(capBefore.x, pointer.tip.y, pointer.tip.x, pointer.tip.y)
-    quadraticBezierTo(capAfter.x, pointer.tip.y, capAfter.x, capAfter.y)
-    cubicTo(capAfter.x, pointer.tip.y - outward * (cap + root / 2f), lastControl.x, lastControl.y, lastPoint.x, lastPoint.y)
-    appendCloudPortion(edge, lastX, edge.last().end.x, direction)
+internal data class GuideThoughtBubble(val center: Offset, val radius: Float) {
+    val bounds: Rect get() = Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius)
 }
 
-/** 用德卡斯特里奥分割保留云边原曲线；只移除尾根之间的边，不补穿过尾部的横线。 */
-private fun Path.appendCloudPortion(edge: List<CloudCurve>, fromX: Float, toX: Float, direction: Float) {
-    edge.forEach { curve ->
-        val start = maxOf(curve.start.x * direction, fromX * direction)
-        val end = minOf(curve.end.x * direction, toX * direction)
-        if (end - start > .001f) {
-            val firstT = curve.atX(start * direction)
-            val lastT = curve.atX(end * direction)
-            val beforeEnd = curve.split(lastT).first
-            beforeEnd.split((firstT / lastT).coerceIn(0f, 1f)).second.appendTo(this)
+/** 两个独立圆泡沿真实云边到目标相邻边的方向排列；没有三角尾或连接线。 */
+internal fun guideThoughtBubbles(anchor: Rect, cloud: GuideCloudGeometry, cat: Rect?, safe: Rect,
+    cloudAbove: Boolean, unit: Float): List<GuideThoughtBubble> {
+    val target = Offset(anchor.center.x, if (cloudAbove) anchor.top else anchor.bottom)
+    val inset = 24f * unit
+    val nearX = target.x.coerceIn(cloud.body.left + min(inset, cloud.body.width / 2f),
+        cloud.body.right - min(inset, cloud.body.width / 2f))
+    val candidates = if (cloudAbove) listOf(nearX) else listOf(nearX,
+        cloud.body.left + cloud.body.width * .18f, cloud.body.right - cloud.body.width * .18f,
+        cloud.body.left + cloud.body.width * .08f, cloud.body.right - cloud.body.width * .08f)
+        .distinct().sortedBy { kotlin.math.abs(it - target.x) }
+    for (radiusScale in listOf(1f, .85f, .65f, .45f)) {
+        val largeRadius = 8f * unit * radiusScale
+        val smallRadius = 4.5f * unit * radiusScale
+        for (startX in candidates) {
+            val source = Offset(startX, cloud.boundaryY(startX, above = !cloudAbove))
+            val vector = target - source
+            val length = vector.getDistance()
+            if (length <= largeRadius + smallRadius + 8f * unit) continue
+            val direction = vector / length
+            val largeDistance = if (cloudAbove) largeRadius + 4f * unit else maxOf(largeRadius + 4f * unit, length * .30f)
+            val smallDistance = if (cloudAbove) length - smallRadius - 4.5f * unit
+                else minOf(length - smallRadius - 4.5f * unit, length * .75f)
+            if (smallDistance - largeDistance < largeRadius + smallRadius + 3f * unit) continue
+            val dots = listOf(GuideThoughtBubble(source + direction * largeDistance, largeRadius),
+                GuideThoughtBubble(source + direction * smallDistance, smallRadius))
+            if (dots.all { dot ->
+                val bounds = dot.bounds.inflate(.5f * unit)
+                bounds.left >= safe.left && bounds.right <= safe.right && bounds.top >= safe.top && bounds.bottom <= safe.bottom &&
+                    !bounds.overlaps(anchor) && (cat == null || !bounds.inflate(4f * unit).overlaps(cat)) &&
+                    cloud.clears(dot.copy(radius = dot.radius + .5f * unit), above = !cloudAbove)
+            }) return dots
         }
     }
+    return emptyList()
 }

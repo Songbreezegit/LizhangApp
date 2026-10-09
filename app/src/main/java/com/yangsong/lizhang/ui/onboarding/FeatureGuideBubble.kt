@@ -29,7 +29,7 @@ import com.yangsong.lizhang.ui.component.GlassTextButton
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FeatureGuideBubble(step: FeatureGuideStep, onNext: () -> Unit, onSkip: () -> Unit, modifier: Modifier = Modifier,
-    decorationScale: Float = 1f, catOnLeft: Boolean = false) {
+    decorationScale: Float = 1f, widthScale: Float = 1f, cloudVerticalScale: Float = 1f) {
     val (title, body) = when (step) {
         FeatureGuideStep.ADD_RECORD -> R.string.feature_guide_add_title to R.string.feature_guide_add_body
         FeatureGuideStep.RECORD_CONTACT -> R.string.feature_guide_record_contact_title to R.string.feature_guide_record_contact_body
@@ -51,6 +51,8 @@ fun FeatureGuideBubble(step: FeatureGuideStep, onNext: () -> Unit, onSkip: () ->
         onSurfaceVariant = GuideCloudPalette.body, outlineVariant = GuideCloudPalette.outline,
     )
     val decoration = decorationScale.coerceIn(0f, 1f)
+    val vertical = cloudVerticalScale.coerceIn(0f, 1f)
+    val sideInset = 36.dp * widthScale
     // 浅暖白云和深色文字只覆盖本气泡；外部深色页面继续沿用应用主题。
     MaterialTheme(colorScheme = localColors) {
     Box(modifier.testTag("功能引导气泡").semantics {
@@ -61,18 +63,20 @@ fun FeatureGuideBubble(step: FeatureGuideStep, onNext: () -> Unit, onSkip: () ->
         // 仅气泡空白处消费触摸；子按钮优先处理，屏幕其余区域保持原有点击。
         detectTapGestures { }
     }) {
-        // 顶部装饰区域也参与完整气泡的测量，猫咪趴在云沿并与标题保留间距。
-        Column(Modifier.fillMaxWidth().padding(top = 40.dp * decoration)) {
-        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
-            .padding(start = 18.dp, end = 18.dp, top = 28.dp, bottom = 12.dp),
+        // 云团外轮廓与文字内区分开：先保留猫咪槽，再测量完整主体和安全内边距。
+        Column(Modifier.fillMaxWidth().padding(top = 40.dp * decoration)
+            .heightIn(min = 208.dp)
+            .padding(start = sideInset, end = sideInset, top = 48.dp * vertical, bottom = 28.dp * vertical)) {
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(title), color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(stringResource(body), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium)
         }
-        // 窄屏或大字体时按钮自然换行，说明可滚动，操作始终留在气泡内。
-        FlowRow(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+        Spacer(Modifier.height(12.dp))
+        // 滚动视口被限定在云体安全区，窄屏或大字体时按钮在同一安全区自然换行。
+        FlowRow(Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             GlassTextButton(onSkip, Modifier.testTag("功能引导跳过")) { Text(stringResource(R.string.feature_guide_skip)) }
             GlassButton(onNext, Modifier.testTag("功能引导下一步")) {
@@ -87,8 +91,10 @@ fun FeatureGuideBubble(step: FeatureGuideStep, onNext: () -> Unit, onSkip: () ->
         }
         if (decoration > 0f) {
             Image(painterResource(R.drawable.guide_lounging_cat), contentDescription = null,
-                modifier = Modifier.align(if (catOnLeft) AbsoluteAlignment.TopLeft else AbsoluteAlignment.TopRight)
-                    .padding(horizontal = 18.dp).size(width = 128.dp * decoration, height = 64.dp * decoration)
+                // 使用物理位置让猫咪的爪子落在最高中团，不随 RTL 镜像到另一云团。
+                modifier = Modifier.align(AbsoluteAlignment.TopLeft)
+                    .absoluteOffset(x = 186.dp * widthScale - 64.dp * decoration)
+                    .size(width = 128.dp * decoration, height = 64.dp * decoration)
                     .testTag("功能引导猫咪装饰").clearAndSetSemantics { })
         }
     }
