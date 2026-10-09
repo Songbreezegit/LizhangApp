@@ -192,17 +192,7 @@
     <string name="about_scope_title">目前功能</string>
     <string name="about_scope_body">支援禮金與聯絡人管理、搜尋、日曆、統計、日期提醒、CSV/Excel 匯出，以及一般或密碼加密的本機備份還原。</string>
     <string name="privacy_title">隱私說明</string>
-    <string name="privacy_introduction">禮帳目前不包含帳號、廣告、統計分析 SDK、雲端同步或圖片辨識服務。</string>
-    <string name="privacy_storage_title">資料儲存在本機</string>
-    <string name="privacy_storage_body">聯絡人、手機號碼、禮金金額、日期和備註儲存在裝置本機資料庫中。應用程式不會將這些業務資料上傳至伺服器，也不會交由系統自動備份或換機移轉；如需移轉，請主動建立本機備份檔案。</string>
-    <string name="privacy_network_title">不申請連網權限</string>
-    <string name="privacy_network_body">目前版本不申請網際網路存取權限，也不包含雲端辨識功能。應用程式的核心記帳、搜尋、統計和備份功能皆可離線使用。</string>
-    <string name="privacy_permission_title">通訊錄、通知與系統權限</string>
-    <string name="privacy_permission_body">當使用者主動使用通訊錄匯入功能時，禮帳會讀取裝置通訊錄資訊，僅將使用者選取的資訊用於在本機建立聯絡人記錄。相關資訊不會上傳至伺服器。預覽資料只在記憶體中處理，不會產生通訊錄快取檔案。只有在主動開啟日期提醒時，應用程式才會要求通知權限。裝置重新啟動、日期或時區變更後，應用程式會重新安排已開啟的本機提醒。</string>
-    <string name="privacy_file_title">匯出和備份檔案</string>
-    <string name="privacy_file_body">只有在主動匯出或備份時，應用程式才會將檔案寫入你選擇的位置；只有在主動選擇還原檔案時，應用程式才會讀取該檔案。可以選擇密碼加密備份，密碼不會儲存在應用程式中，忘記密碼後無法還原。</string>
-    <string name="privacy_delete_title">刪除與解除安裝</string>
-    <string name="privacy_delete_body">可在應用程式內刪除聯絡人和禮金記錄。解除安裝或在系統設定中清除應用程式資料會刪除本機資料庫，但先前匯出的檔案和備份不會被自動刪除。</string>
+
     <string name="event_wedding">婚禮</string>
     <string name="event_full_month">滿月</string>
     <string name="event_birthday">生日</string>

@@ -7,7 +7,9 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test scripts/site.test.mjs",
+    "test": "node --test scripts/site.test.mjs scripts/legal-consistency.test.mjs",
+    "legal:check": "node scripts/legal-consistency.mjs",
+    "legal:sync": "node scripts/legal-consistency.mjs --sync",
     "test:http": "node scripts/http-check.mjs",
     "preview": "node scripts/preview.mjs"
   }

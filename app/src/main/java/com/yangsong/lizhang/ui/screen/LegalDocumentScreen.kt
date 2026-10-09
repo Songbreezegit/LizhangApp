@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
 import com.yangsong.lizhang.domain.legal.LegalPolicy
 import com.yangsong.lizhang.ui.component.AppScaffold
@@ -74,8 +75,10 @@ fun LegalDocumentContent(
         ) {
             item(key = "status") {
                 LegalCard {
-                    Text(stringResource(R.string.legal_candidate_notice), fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium)
+                    if (!BuildConfig.IS_OFFICIAL_RELEASE) {
+                        Text(stringResource(R.string.legal_candidate_notice), fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium)
+                    }
                     Text(stringResource(R.string.legal_language_fallback),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -83,11 +86,13 @@ fun LegalDocumentContent(
                         style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            if (state.isLoading) item { CircularProgressIndicator() }
+            if (state.isLoading) item { CircularProgressIndicator(Modifier.testTag("legal_loading")) }
             if (state.failed) item {
                 LegalCard {
-                    Text(stringResource(R.string.legal_read_failed), style = MaterialTheme.typography.bodyLarge)
-                    SecondaryButton(stringResource(R.string.legal_retry), onRetry, Modifier.fillMaxWidth())
+                    Text(stringResource(R.string.legal_read_failed), Modifier.testTag("legal_read_failed"),
+                        style = MaterialTheme.typography.bodyLarge)
+                    SecondaryButton(stringResource(R.string.legal_retry), onRetry,
+                        Modifier.fillMaxWidth().testTag("legal_retry"))
                 }
             }
             state.document?.sections?.forEachIndexed { index, section ->

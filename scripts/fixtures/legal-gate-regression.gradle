@@ -1,0 +1,94 @@
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+
+// 仅在 build/ 下独立 Gradle 工程运行：全为合成资料，不编译 App 或改变生产批准状态。
+apply from: rootProject.file('release/legal-release.gradle')
+def sha = { byte[] value -> MessageDigest.getInstance('SHA-256').digest(value).encodeHex().toString() }
+def write = { File target, String value -> target.parentFile.mkdirs(); target.setText(value, 'UTF-8') }
+def propertiesText = { Map values -> values.collect { key, value -> "$key=$value\n" }.join('') }
+def locales = ['values', 'values-b+zh+Hant', 'values-en', 'values-ja', 'values-ko', 'values-es', 'values-fr']
+def approval
+def metadata
+def site
+def base = {
+    metadata = [approval_status:'approved', operator_name:'合成主体', contact_email:'fixture@example.invalid',
+        effective_date:'2026-10-10', policy_version:'1.0.0-policy-v1', filing_record:'合成备案适用性说明',
+        reviewed_by:'合成审阅者', minors_arrangement:'合成未成年人安排']
+    approval = metadata + [approved_at:'2026-10-10', filing_status:'confirmed', app_filing_status:'confirmed', app_filing_material:'合成单机适用材料', signing_identity_status:'confirmed',
+        signing_certificate_sha256:'a' * 64, version_code:'24', highest_distributed_version_code:'23', distribution_history_status:'confirmed']
+    site = [domain:'lizhang.songisle.xyz', reviewStatus:'approved', icpApproved:true, appVersion:'1.0.0', appVersionCode:24,
+        operator:metadata.operator_name, contactEmail:metadata.contact_email, effectiveDate:metadata.effective_date,
+        icpNumber:metadata.filing_record, policyVersion:metadata.policy_version]
+    ['privacy.md', 'terms.md', 'help.md'].each { name -> write(file("src/main/assets/legal/$name"), "# 完整合成正文\n\n## 正文\n数据在设备保存。\n") }
+    locales.each { locale ->
+        ['privacy_notice.xml', 'legal_strings.xml'].each { name -> write(file("src/main/res/$locale/$name"), '<resources><string name="message">中文完整法律正文</string></resources>\n') }
+        write(file("src/main/res/$locale/candidate_release_strings.xml"), '<resources><string name="message">候选尚未批准</string></resources>\n')
+    }
+    write(file('src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt'), 'val CURRENT_VERSION = BuildConfig.LEGAL_POLICY_VERSION\n')
+}
+def sync = {
+    write(file('src/main/assets/legal/metadata.properties'), propertiesText(metadata))
+    def inputs = (fileTree(file('src/main/assets/legal')).files + fileTree(file('src/main/res')).files).sort { a,b -> relativePath(a).replace('\\','/') <=> relativePath(b).replace('\\','/') }
+    def manifestInputs = inputs.collect { [path:relativePath(it).replace('\\','/'), sha256:sha(it.bytes)] }
+    def digest = sha(manifestInputs.collect { "${it.path}\n${it.sha256}\n" }.join('').getBytes('UTF-8'))
+    approval.approved_content_sha256 = digest
+    ['privacy.md','terms.md','help.md'].each { name -> write(rootProject.file("website/content/$name"), file("src/main/assets/legal/$name").getText('UTF-8')) }
+    write(rootProject.file('website/content/faq.md'), '# 合成帮助\n\n数据在本机保存。\n')
+    write(rootProject.file('website/content/contact.md'), '# 合成联系页\n\nfixture@example.invalid\n')
+    write(rootProject.file('website/site.config.json'), JsonOutput.toJson(site) + '\n')
+    def websiteInputs = (fileTree(rootProject.file('website/content')).files + [rootProject.file('website/site.config.json')]).sort { a,b -> rootProject.relativePath(a).replace('\\','/') <=> rootProject.relativePath(b).replace('\\','/') }
+    approval.website_content_sha256 = sha(websiteInputs.collect { "${rootProject.relativePath(it).replace('\\','/')}\n${sha(it.bytes)}\n" }.join('').getBytes('UTF-8'))
+    write(rootProject.file('release/legal-approval.properties'), propertiesText(approval))
+    write(rootProject.file('website/legal/legal-approval.properties'), propertiesText(approval))
+    write(rootProject.file('website/legal/metadata.properties'), propertiesText(metadata))
+    write(rootProject.file('website/legal/android-content-manifest.json'), JsonOutput.toJson([schemaVersion:1,algorithm:'sha256',androidLegalContentSha256:digest,inputs:manifestInputs]) + '\n')
+}
+tasks.register('gateRegression') {
+    doLast {
+        def cases = [
+            ['合成完整批准通过', true, null, { }],
+            ['真实批准未完成', false, 'approval_status', { approval.approval_status='pending'; sync() }],
+            ['两侧主体不一致', false, 'operator_name', { approval.operator_name='其他合成主体'; sync() }],
+            ['未成年人未确认', false, 'minors_arrangement', { approval.minors_arrangement='pending'; sync() }],
+            ['邮箱格式错误', false, '邮箱', { metadata.contact_email='invalid'; approval.contact_email='invalid'; sync() }],
+            ['日期格式错误', false, 'YYYY-MM-DD', { approval.approved_at='2026-99-99'; sync() }],
+            ['分发历史未确认', false, 'distribution_history_status', { approval.distribution_history_status='pending'; sync() }],
+            ['APP备案适用材料未确认', false, 'app_filing_status', { approval.app_filing_status='pending'; sync() }],
+            ['版本代码未递增', false, 'versionCode', { approval.highest_distributed_version_code='24'; sync() }],
+            ['版本代码与命令不一致', false, 'versionCode', { approval.version_code='25'; sync() }],
+            ['证书指纹不完整', false, 'SHA-256', { approval.signing_certificate_sha256='a'; sync() }],
+            ['候选政策不能正式发布', false, '候选编号', { approval.policy_version='1.0.0-rc3-policy-v1'; metadata.policy_version=approval.policy_version; sync() }],
+            ['中文全文仍为草稿', false, '未批准文案', { write(file('src/main/assets/legal/privacy.md'),'# 政策\n\n草稿待本人批准\n'); sync() }],
+            ['英文正式告知仍为草稿', false, '未批准文案', { write(file('src/main/res/values-en/privacy_notice.xml'), '<resources><string name="message">draft</string></resources>\n'); sync() }],
+            ['法语RC3草稿不能发布', false, '未批准文案', { write(file('src/main/res/values-fr/privacy_notice.xml'), '<resources><string name="message">projet RC3</string></resources>\n'); sync() }],
+            ['缺少完整协议', false, 'terms.md', { file('src/main/assets/legal/terms.md').delete() }],
+            ['缺少七语言资源', false, 'values-ko', { file('src/main/res/values-ko/legal_strings.xml').delete() }],
+            ['批准后内容改变', false, '重新批准', { write(file('src/main/assets/legal/help.md'), '# 帮助\n\n## 修改\n新的内容。\n') }],
+            ['网站隐私镜像偏离', false, '不一致', { write(rootProject.file('website/content/privacy.md'), '# 不一致\n') }],
+            ['网站帮助未获新批准', false, '网站内容摘要', { write(rootProject.file('website/content/faq.md'), '# 新说明\n') }],
+            ['网站真实草稿不能发布', false, '未批准文案', { write(rootProject.file('website/content/faq.md'), '# 说明\n\n尚未生效\n');
+                def files=(fileTree(rootProject.file('website/content')).files+[rootProject.file('website/site.config.json')]).sort{ a,b -> rootProject.relativePath(a).replace('\\','/') <=> rootProject.relativePath(b).replace('\\','/') }
+                approval.website_content_sha256=sha(files.collect{"${rootProject.relativePath(it).replace('\\','/')}\n${sha(it.bytes)}\n"}.join('').getBytes('UTF-8'))
+                write(rootProject.file('release/legal-approval.properties'),propertiesText(approval)); write(rootProject.file('website/legal/legal-approval.properties'),propertiesText(approval)) }],
+            ['网站版本偏离', false, '网站正式配置', { site.appVersion='0.9.12'; sync() }],
+            ['网站域名偏离', false, '网站正式配置', { site.domain='wrong.example.invalid'; sync() }],
+        ]
+        def results = []
+        cases.each { scenario ->
+            base(); sync(); scenario[3]()
+            def succeeded = false
+            def reason = ''
+            try {
+                def verifier = tasks.named('verifyOfficialReleaseContent').get()
+                verifier.actions.each { it.execute(verifier) }
+                succeeded = true
+            } catch (Exception error) { reason = error.message ?: error.class.name }
+            if (succeeded != scenario[1] || (!succeeded && !reason.contains(scenario[2])))
+                throw new GradleException("门禁回归失败：${scenario[0]}；成功=$succeeded；原因=$reason")
+            results.add([name:scenario[0], expected_accepted:scenario[1], passed:true, reason:reason])
+            logger.lifecycle("门禁用例通过：${scenario[0]}")
+        }
+        write(rootProject.file('gate-results.json'), JsonOutput.prettyPrint(JsonOutput.toJson([synthetic:true, apk_built:false, cases:results]))+'\n')
+        logger.lifecycle("门禁合成回归：${results.size()}/${results.size()}；未改变真实批准状态，未构建正式 APK。")
+    }
+}

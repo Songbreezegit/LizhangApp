@@ -12,3 +12,23 @@ captures/
 # Android Studio 本机状态（.idea/ 已整体忽略，以下规则用于明确约束）
 .idea/workspace.xml
 .idea/caches/
+
+# 正式签名材料与本机私有配置不得入库。
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+*.pem
+keystore.properties
+signing.properties
+local-signing.properties
+*.password
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+*signing*.properties
+*keystore*.properties

@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">礼帳は、入力またはインポートした連絡先、礼金記録、リマインダーを端末内に保存し、記帳、検索、端末内の通知に使用します。アプリからサーバーへの送信、OCR、画像アップロード、クラウド認識は行いません。</string>
     <string name="privacy_notice_permissions">自分で連絡先のインポートを選び、権限を許可した場合のみ、名前、完全な電話番号、システム識別子をプレビュー用に読み取ります。確認後は名前と電話番号だけを端末内に保存します。通知権限はリマインダーを有効にするときに要求し、内容を Android に渡して表示します。これらの任意権限を拒否しても記帳できます。</string>
     <string name="privacy_notice_exports">バックアップ、復元、CSV／Excel 出力は自分で操作し、ファイルの保存先を選びます。CSV、Excel、暗号化されていないバックアップには読める個人情報が含まれます。適切に保管してください。バックアップはパスワードで暗号化できます。</string>
-    <string name="privacy_notice_candidate">これは RC2 候補版のテスト用文面です。運営者情報、施行日、正式なポリシーバージョンは開発者の承認待ちです。この確認は法的文面の承認を意味しません。</string>
+
     <string name="privacy_notice_version">通知の内容 ID：%1$s</string>
     <string name="privacy_notice_read_privacy">プライバシーポリシーをオフラインで読む</string>
     <string name="privacy_notice_read_terms">利用規約をオフラインで読む</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">説明に戻って再度選択するか、礼帳を終了できます。ここでは連絡先や通知の権限を要求せず、既存の帳簿も削除しません。</string>
     <string name="privacy_notice_return">説明と選択に戻る</string>
     <string name="privacy_notice_exit">礼帳を終了</string>
+    <string name="privacy_notice_documents_required">同意する前に、プライバシーポリシーと利用規約の全文を開き、読み込みを完了してください。読み込めない場合は戻って再試行するか終了できます。</string>
 </resources>

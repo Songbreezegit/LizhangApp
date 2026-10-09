@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">LiZhang conserve sur cet appareil les contacts, opérations de cadeaux et rappels que vous saisissez ou importez, pour les comptes, les recherches et les rappels locaux. L’application ne les envoie pas à un serveur et ne propose ni OCR, ni envoi d’images, ni reconnaissance dans le cloud.</string>
     <string name="privacy_notice_permissions">Les noms, numéros complets et identifiants système sont lus pour aperçu uniquement quand vous demandez l’import et accordez la permission. Après confirmation, seuls les noms et numéros sont conservés localement. Activer les rappels demande la permission et transmet leur contenu à Android pour affichage. Refuser ces permissions facultatives ne bloque pas les comptes.</string>
     <string name="privacy_notice_exports">Vous lancez la sauvegarde, la restauration et l’export CSV ou Excel, et choisissez l’emplacement du fichier. Les CSV, Excel et sauvegardes non chiffrées contiennent des données personnelles lisibles. Protégez vos fichiers ; les sauvegardes peuvent être chiffrées par mot de passe.</string>
-    <string name="privacy_notice_candidate">Ce texte sert aux tests du candidat RC2. Les coordonnées de l’opérateur, la date d’effet et la version officielle attendent encore l’approbation du développeur. Cette confirmation ne signifie pas que le texte juridique est approuvé.</string>
+
     <string name="privacy_notice_version">Identifiant du contenu de l’avis : %1$s</string>
     <string name="privacy_notice_read_privacy">Lire la politique hors ligne</string>
     <string name="privacy_notice_read_terms">Lire les conditions hors ligne</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">Vous pouvez revenir lire et choisir ou quitter LiZhang. Aucune permission de contacts ou de notification n’est demandée ici et vos livres existants sont conservés.</string>
     <string name="privacy_notice_return">Revenir lire et choisir</string>
     <string name="privacy_notice_exit">Quitter LiZhang</string>
+    <string name="privacy_notice_documents_required">Ouvrez et chargez le texte intégral de la Politique de confidentialité et de l\'Accord utilisateur avant d\'accepter. En cas d\'échec, revenez pour réessayer ou quittez l\'application.</string>
 </resources>

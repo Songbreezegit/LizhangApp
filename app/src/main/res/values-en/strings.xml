@@ -194,17 +194,7 @@
     <string name="about_scope_title">Features</string>
     <string name="about_scope_body">Manage gifts and contacts, search, view calendars and statistics, set date reminders, export CSV/Excel, and back up or restore locally with optional password encryption.</string>
     <string name="privacy_title">Privacy</string>
-    <string name="privacy_introduction">Lizhang has no accounts, ads, analytics SDKs, cloud sync, or image recognition services.</string>
-    <string name="privacy_storage_title">Data Stays on Your Device</string>
-    <string name="privacy_storage_body">Contacts, phone numbers, gift amounts, dates, and notes are stored in a local database. They are not uploaded or included in automatic system backups or device transfers. Create a local backup to move your data.</string>
-    <string name="privacy_network_title">No Internet Permission</string>
-    <string name="privacy_network_body">This version does not request internet access or include cloud recognition. Recording gifts, searching, statistics, and backups work offline.</string>
-    <string name="privacy_permission_title">Contacts, Notifications, and Permissions</string>
-    <string name="privacy_permission_body">Contacts are read only when you choose to import them. Only selected entries are saved locally; nothing is uploaded. Preview data stays in memory without cache files. Notification permission is requested only when you enable reminders. Enabled local reminders are rescheduled after a restart or a date or time zone change.</string>
-    <string name="privacy_file_title">Exports and Backups</string>
-    <string name="privacy_file_body">Files are written only when you export or back up, to a location you choose. Files are read only when you select one to restore. Encrypted backups are optional. Passwords are not stored and cannot be recovered if forgotten.</string>
-    <string name="privacy_delete_title">Deleting and Uninstalling</string>
-    <string name="privacy_delete_body">You can delete contacts and gift records in the app. Uninstalling or clearing app data removes the local database, but does not delete files you previously exported or backed up.</string>
+
     <string name="event_wedding">Wedding</string>
     <string name="event_full_month">Baby Celebration</string>
     <string name="event_birthday">Birthday</string>

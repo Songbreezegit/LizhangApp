@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,39 +21,35 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
 import com.yangsong.lizhang.domain.legal.LegalPolicy
-import com.yangsong.lizhang.domain.repository.LegalDocumentRepository
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.GlassButton
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassTextButton
-import com.yangsong.lizhang.ui.screen.LegalDocumentScreen
-import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
+import com.yangsong.lizhang.ui.screen.LegalDocumentContent
 import com.yangsong.lizhang.ui.viewmodel.PrivacyConsentViewModel
 
 /** 告知和离线文档在业务导航挂载之前展示；拒绝不会请求权限或消费功能引导。 */
 @Composable
 fun PrivacyNoticeGate(
     consentViewModel: PrivacyConsentViewModel,
-    legalDocumentRepository: LegalDocumentRepository,
     onAccepted: () -> Unit,
     onExit: () -> Unit,
 ) {
     var documentName by rememberSaveable { mutableStateOf<String?>(null) }
     var declined by rememberSaveable { mutableStateOf(false) }
     val saveFailed by consentViewModel.saveFailed.collectAsStateWithLifecycle()
+    val documents by consentViewModel.documents.collectAsStateWithLifecycle()
     val documentType = documentName?.let { name -> LegalDocumentType.entries.firstOrNull { it.name == name } }
     if (documentType != null) {
-        val documentViewModel: LegalDocumentViewModel = viewModel(
-            key = "隐私告知文档-${documentType.name}",
-            factory = LegalDocumentViewModel.factory(legalDocumentRepository, documentType),
-        )
+        LaunchedEffect(documentType) { consentViewModel.loadDocument(documentType) }
         BackHandler { documentName = null }
-        LegalDocumentScreen(documentViewModel, onBack = { documentName = null })
+        LegalDocumentContent(documentType, documents.forType(documentType), onBack = { documentName = null },
+            onRetry = { consentViewModel.loadDocument(documentType, retry = true) })
     } else if (declined) {
         BackHandler { declined = false }
         PrivacyDeclinedScreen(onReturn = { declined = false }, onExit = onExit)
@@ -64,6 +61,7 @@ fun PrivacyNoticeGate(
         BackHandler(onBack = decline)
         PrivacyNoticeScreen(
             saveFailed = saveFailed,
+            canAgree = documents.canAgree,
             onAgree = { if (consentViewModel.accept()) onAccepted() },
             onDecline = decline,
             onPrivacy = { documentName = LegalDocumentType.PRIVACY.name },
@@ -75,6 +73,7 @@ fun PrivacyNoticeGate(
 @Composable
 fun PrivacyNoticeScreen(
     saveFailed: Boolean = false,
+    canAgree: Boolean = false,
     onAgree: () -> Unit,
     onDecline: () -> Unit,
     onPrivacy: () -> Unit,
@@ -91,8 +90,10 @@ fun PrivacyNoticeScreen(
                     Text(stringResource(R.string.privacy_notice_exports), style = MaterialTheme.typography.bodyLarge)
                 }
             }
-            Text(stringResource(R.string.privacy_notice_candidate), style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!BuildConfig.IS_OFFICIAL_RELEASE) {
+                Text(stringResource(R.string.privacy_notice_candidate), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(stringResource(R.string.privacy_notice_version, LegalPolicy.CURRENT_VERSION),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             GlassTextButton(onPrivacy, Modifier.fillMaxWidth().testTag("告知隐私政策")) {
@@ -101,9 +102,12 @@ fun PrivacyNoticeScreen(
             GlassTextButton(onTerms, Modifier.fillMaxWidth().testTag("告知用户协议")) {
                 Text(stringResource(R.string.privacy_notice_read_terms))
             }
+            if (!canAgree) Text(stringResource(R.string.privacy_notice_documents_required),
+                Modifier.testTag("隐私全文未就绪"), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (saveFailed) Text(stringResource(R.string.privacy_notice_save_failed),
                 Modifier.testTag("隐私确认保存失败"), color = MaterialTheme.colorScheme.error)
-            GlassButton(onAgree, Modifier.fillMaxWidth().testTag("隐私告知同意")) {
+            GlassButton(onAgree, Modifier.fillMaxWidth().testTag("隐私告知同意"), enabled = canAgree) {
                 Text(stringResource(R.string.privacy_notice_agree))
             }
             GlassTextButton(onDecline, Modifier.fillMaxWidth().testTag("隐私告知拒绝")) {

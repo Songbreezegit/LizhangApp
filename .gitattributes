@@ -1,0 +1,9 @@
+# 法律内容以原始字节批准；跨平台检出必须保持同一换行。
+app/src/main/assets/legal/* text eol=lf
+app/src/main/res/values*/legal*.xml text eol=lf
+app/src/main/res/values*/privacy*.xml text eol=lf
+app/src/main/res/values*/candidate_release_strings.xml text eol=lf
+release/* text eol=lf
+website/content/*.md text eol=lf
+website/legal/* text eol=lf
+website/site.config.json text eol=lf

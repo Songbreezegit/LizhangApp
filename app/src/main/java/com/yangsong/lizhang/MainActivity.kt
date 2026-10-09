@@ -73,7 +73,8 @@ class MainActivity : AppCompatActivity() {
         handleReminderIntent(intent)
         val appContainer = app.appContainer
         val onboardingViewModel = ViewModelProvider(this, OnboardingViewModel.factory(appContainer.onboardingRepository))[OnboardingViewModel::class.java]
-        val privacyViewModel = ViewModelProvider(this, PrivacyConsentViewModel.factory(appContainer.privacyConsentRepository))[PrivacyConsentViewModel::class.java]
+        val privacyViewModel = ViewModelProvider(this, PrivacyConsentViewModel.factory(
+            appContainer.privacyConsentRepository, appContainer.legalDocumentRepository))[PrivacyConsentViewModel::class.java]
         onboardingViewModel.enterApp(appContainer.canProcessPersonalData)
         appearanceState = ViewModelProvider(this)[AppearanceTransitionViewModel::class.java]
         appearanceState.languagePreference = currentAppLanguage()
@@ -123,7 +124,6 @@ class MainActivity : AppCompatActivity() {
                                         SideEffect { appearanceHost.navigationReady(!startupVisible) }
                                         PrivacyNoticeGate(
                                             consentViewModel = privacyViewModel,
-                                            legalDocumentRepository = appContainer.legalDocumentRepository,
                                             onAccepted = { onboardingViewModel.enterApp(true) },
                                             onExit = { finishAndRemoveTask() },
                                         )

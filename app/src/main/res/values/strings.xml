@@ -192,17 +192,7 @@
     <string name="about_scope_title">当前能力</string>
     <string name="about_scope_body">支持礼金与联系人管理、搜索、日历、统计、日期提醒、CSV/Excel 导出以及普通或密码加密的本地备份恢复。</string>
     <string name="privacy_title">隐私说明</string>
-    <string name="privacy_introduction">礼账当前不包含账号、广告、统计分析 SDK、云同步或图片识别服务。</string>
-    <string name="privacy_storage_title">数据保存在本机</string>
-    <string name="privacy_storage_body">联系人、手机号、礼金金额、日期和备注保存在设备本地数据库中。应用不会把这些业务数据上传到服务器，也不会交给系统自动备份或换机迁移；如需迁移，请主动创建本地备份文件。</string>
-    <string name="privacy_network_title">不申请联网权限</string>
-    <string name="privacy_network_body">当前版本不申请互联网访问权限，也不包含云端识别功能。应用的核心记账、搜索、统计和备份能力均可离线使用。</string>
-    <string name="privacy_permission_title">通讯录、通知与系统权限</string>
-    <string name="privacy_permission_body">当用户主动使用通讯录导入功能时，礼账会读取设备通讯录信息，仅将用户选中的信息用于在本机创建联系人记录。相关信息不会上传服务器。预览数据只在内存中处理，不生成通讯录缓存文件。只有在主动开启日期提醒时，应用才会请求通知权限。设备重启、日期或时区变化后，应用会重新安排已开启的本地提醒。</string>
-    <string name="privacy_file_title">导出和备份文件</string>
-    <string name="privacy_file_body">只有在主动导出或备份时，应用才会把文件写入你选择的位置；只有在主动选择恢复文件时，应用才会读取该文件。可以选择密码加密备份，密码不会保存在应用中，遗忘后无法恢复。</string>
-    <string name="privacy_delete_title">删除与卸载</string>
-    <string name="privacy_delete_body">应用内可以删除联系人和礼金记录。卸载或在系统设置中清除应用数据会删除本机数据库，但此前导出的文件和备份不会被自动删除。</string>
+
     <string name="event_wedding">婚礼</string>
     <string name="event_full_month">满月</string>
     <string name="event_birthday">生日</string>

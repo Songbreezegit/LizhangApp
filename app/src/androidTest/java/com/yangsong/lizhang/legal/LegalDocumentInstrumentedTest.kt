@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import com.yangsong.lizhang.R
+import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.data.legal.AssetLegalDocumentRepository
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
 import com.yangsong.lizhang.ui.screen.LegalDocumentContent
@@ -42,7 +43,8 @@ class LegalDocumentInstrumentedTest {
             val document = repository.load(type)
             assertEquals(type, document.type)
             assertTrue(document.sections.size >= 8)
-            assertTrue(document.sections.first().body.contains("尚未生效"))
+            assertEquals(type.name, !BuildConfig.IS_OFFICIAL_RELEASE,
+                document.sections.first().body.contains("尚未生效"))
         }
     }
 
@@ -88,7 +90,9 @@ class LegalDocumentInstrumentedTest {
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().performClick()
             compose.onNodeWithTag("legal_document_${type.name.lowercase()}").assertIsDisplayed()
             compose.runOnIdle { dark.value = !dark.value }
-            compose.onNodeWithText(compose.activity.getString(R.string.legal_candidate_notice)).assertIsDisplayed()
+            val candidateNotice = compose.onNodeWithText(compose.activity.getString(R.string.legal_candidate_notice))
+            if (BuildConfig.IS_OFFICIAL_RELEASE) candidateNotice.assertDoesNotExist()
+            else candidateNotice.assertIsDisplayed()
             compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
             compose.onNodeWithTag("设置列表").performScrollToNode(hasText(compose.activity.getString(stringId)))
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().assertIsDisplayed()

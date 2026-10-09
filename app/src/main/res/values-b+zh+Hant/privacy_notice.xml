@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">禮帳在本機儲存您主動填寫或匯入的聯絡人、禮金紀錄和提醒，用於記帳、查詢與本機提醒；App 不會上傳至伺服器，也沒有 OCR、圖片上傳或雲端識別。</string>
     <string name="privacy_notice_permissions">僅在您主動匯入並授權後，預覽讀取聯絡人姓名、完整號碼與系統識別碼；確認匯入後只在本機儲存姓名和號碼。啟用提醒時才申請通知權限，並交由 Android 系統顯示提醒內容。拒絕這兩項非必要權限仍可正常記帳。</string>
     <string name="privacy_notice_exports">備份、還原和 CSV／Excel 匯出由您主動操作並選擇檔案位置。CSV、Excel 和未加密備份包含可讀的個人資料；請妥善保管檔案，備份可選擇密碼加密。</string>
-    <string name="privacy_notice_candidate">這是 RC2 候選測試文案，營運者資訊、生效日期和正式政策版本仍待本人批准。本次確認不代表法律文字已審核通過。</string>
+
     <string name="privacy_notice_version">本次告知內容編號：%1$s</string>
     <string name="privacy_notice_read_privacy">離線閱讀隱私政策</string>
     <string name="privacy_notice_read_terms">離線閱讀使用者協議</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">您可以返回閱讀並重新選擇，或退出禮帳。我們不會在此請求通訊錄或通知權限，不會清空已有帳本。</string>
     <string name="privacy_notice_return">返回閱讀與選擇</string>
     <string name="privacy_notice_exit">退出禮帳</string>
+    <string name="privacy_notice_documents_required">請先開啟並成功載入完整隱私政策和使用者協議，再作出同意選擇。載入失敗時可返回重試或退出。</string>
 </resources>

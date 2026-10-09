@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.onboarding
 
+import com.yangsong.lizhang.fixtures.loadedConsentDocuments
+
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.*
@@ -23,7 +25,8 @@ class OnboardingLegacyUpgradeInstrumentedTest {
         val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
         val container = app.appContainer
         // 建样阶段明确同意，仅准备隔离测试数据；验收阶段禁止预置同意。
-        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy())
+        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy(
+            loadedConsentDocuments(container.legalDocumentRepository)))
         val id = container.contactRepository.create(Contact(name = "引导升级合成样本", createdTime = 1_700_000_000_000L))
         container.giftRecordRepository.create(GiftRecord(contactId = id, amountInCents = 100,
             eventType = EventType.OTHER, eventDate = 1_700_000_000_000L, direction = GiftDirection.RECEIVED,

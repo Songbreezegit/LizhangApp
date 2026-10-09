@@ -17,7 +17,8 @@ class AcceptedPrivacyRule : TestRule {
         override fun evaluate() {
             val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
             assertTrue("业务测试前置：当前隐私告知已明确确认且同步写盘成功",
-                app.appContainer.privacyConsentRepository.acceptCurrentPolicy())
+                app.appContainer.privacyConsentRepository.acceptCurrentPolicy(
+                    loadedConsentDocuments(app.appContainer.legalDocumentRepository)))
             assertTrue(app.appContainer.canProcessPersonalData)
             base.evaluate()
         }

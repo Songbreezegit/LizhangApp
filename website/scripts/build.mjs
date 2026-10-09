@@ -2,6 +2,7 @@ import { readFile, mkdir, writeFile, copyFile, rm, readdir } from 'node:fs/promi
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { verifyRepositoryIfAvailable, assertApprovedLegal } from './legal-consistency.mjs';
 
 export const root = fileURLToPath(new URL('../', import.meta.url));
 export const pages = [
@@ -67,7 +68,7 @@ function home(config) {
   return `<main id="main"><section class="hero"><div class="hero-copy"><span class="eyebrow">礼账使用指南</span><h1>把人情记好，<br>把安心留住<span class="coral">。</span></h1><p>收礼、送礼、联系人与日期提醒。<br>这里有使用方法，也有关于您的数据的清楚说明。</p><div class="hero-actions"><a class="button" href="/help/">开始了解 <span aria-hidden="true">↗</span></a><a class="text-link" href="/privacy/">阅读隐私政策 <span aria-hidden="true">→</span></a></div><p class="hero-caption">无需账号 · 核心功能可离线使用</p></div><img class="hero-art" src="/assets/ledger.svg" alt="账本与本地保护标记的示意插画" width="560" height="460"></section><section class="principles" aria-label="数据处理概要"><div><span>01 / 本机存储</span><p>账本留在您的设备中。</p></div><div><span>02 / 自主选择</span><p>通讯录导入由您确认。</p></div><div><span>03 / 主动备份</span><p>迁移前，先保存好账本。</p></div></section><section class="directory"><div class="section-intro"><span class="eyebrow">您需要的说明</span><h2>从这里找到答案。</h2><p>每一份文档都依据应用实际行为编写，<br>让操作步骤和数据去向更容易理解。</p></div><div class="directory-list">${pages.map(([slug,title,description], i) => `<a href="/${slug}/" class="directory-row"><span class="row-number">0${i+1}</span><div><h3>${title}</h3><p>${description}</p></div><span class="row-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section><section class="backup-callout"><div><span class="eyebrow">换手机之前</span><h2>先备份，再迁移。</h2><p>普通备份和密码加密备份都需要您主动保存。<br>独立提醒及应用设置不在账本备份中，恢复后请另行检查。</p></div><a class="text-link" href="/help/">查看备份与恢复说明 <span aria-hidden="true">→</span></a></section></main>`;
 }
 // 正式正文须由开发者审核定稿；拒绝草稿，不能通过自动删掉状态词伪造确认。
-const reviewMarkers = /审核稿|审阅稿|草稿|初稿|本稿|未确认|未定稿|(?:尚)?未生效|(?:尚)?未(?:完成|通过)[^。\n]{0,40}审核|供(?:开发者|运营者)(?:审核|确认)|本地审阅|尚未公开上线|待(?:确认|填写|补充|补齐|审核|核实|开发者审核|运营者确认)|尚待|【待|\b(?:TODO|TBD)\b/iu;
+const reviewMarkers = /审核稿|审阅稿|草稿|初稿|本稿|候选|候選|未确认|未定稿|(?:尚)?未生效|(?:尚)?未(?:完成|通过)[^。\n]{0,40}审核|供(?:开发者|运营者)(?:审核|确认)|本地审阅|尚未公开上线|待.{0,8}(?:确认|確認|填写|填寫|批准|审核|審核)|待(?:补充|补齐|核实)|尚待|【待|\b(?:TODO|TBD|pending|draft|candidate)\b/iu;
 function assertFinalText(text, label) {
   const match = reviewMarkers.exec(text);
   if (match) throw new Error(`正式构建已停止：${label} 仍有审核状态或待确认内容（${match[0]}）。`);
@@ -88,6 +89,8 @@ export async function build({ isPublic = false, projectRoot = root } = {}) {
   const sourceRoot = path.resolve(projectRoot);
   const config = JSON.parse(await readFile(path.join(sourceRoot, 'site.config.json'), 'utf8'));
   if (isPublic) assertPublicConfig(config);
+  const legal = await verifyRepositoryIfAvailable({ projectRoot: sourceRoot });
+  if (isPublic) assertApprovedLegal(legal, config);
   // 先读齐、渲染并检查所有页面，拒绝时不删除旧产物或留下半套正式页面。
   const output = new Map();
   output.set('index.html', layout(config,'','文档与帮助','礼账应用的隐私政策、用户协议与中文使用指南。',home(config),isPublic));
@@ -120,7 +123,7 @@ export async function build({ isPublic = false, projectRoot = root } = {}) {
     }
   }
   await walk(dist);
-  await writeFile(path.join(dist,'release-manifest.json'), JSON.stringify({appVersion:config.appVersion,auditCommit:config.auditCommit,mode:isPublic?'public':'review',files},null,2)+'\n');
+  await writeFile(path.join(dist,'release-manifest.json'), JSON.stringify({appVersion:config.appVersion,appVersionCode:config.appVersionCode,policyVersion:config.policyVersion,auditCommit:config.auditCommit,androidLegalContentSha256:legal.manifest.androidLegalContentSha256,websiteContentSha256:legal.websiteContentSha256,mode:isPublic?'public':'review',files},null,2)+'\n');
   return {dist, fileCount:Object.keys(files).length + 1};
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

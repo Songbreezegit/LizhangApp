@@ -196,17 +196,7 @@
     <string name="about_scope_title">Funciones disponibles</string>
     <string name="about_scope_body">Gestión de regalos y contactos, búsqueda, calendario, estadísticas, recordatorios de fechas, exportación a CSV/Excel y copias locales con restauración y cifrado opcional mediante contraseña.</string>
     <string name="privacy_title">Privacidad</string>
-    <string name="privacy_introduction">Lizhang no incluye cuentas, anuncios, SDK de análisis, sincronización en la nube ni servicios de reconocimiento de imágenes.</string>
-    <string name="privacy_storage_title">Los datos se guardan en tu dispositivo</string>
-    <string name="privacy_storage_body">Los contactos, teléfonos móviles, importes de regalos, fechas y notas se guardan en una base de datos local. La aplicación no envía estos datos a servidores ni los incluye en las copias automáticas del sistema o en transferencias a otro dispositivo. Para migrarlos, crea una copia de seguridad local.</string>
-    <string name="privacy_network_title">Sin permiso de acceso a Internet</string>
-    <string name="privacy_network_body">Esta versión no solicita acceso a Internet ni incluye reconocimiento en la nube. El registro de regalos, la búsqueda, las estadísticas y las copias de seguridad funcionan sin conexión.</string>
-    <string name="privacy_permission_title">Contactos, notificaciones y permisos</string>
-    <string name="privacy_permission_body">Lizhang solo lee los contactos del dispositivo cuando decides importarlos. Solo los contactos seleccionados se guardan localmente; no se envían a servidores. Los datos de la vista previa se procesan en memoria, sin crear archivos de caché de contactos. El permiso de notificaciones solo se solicita cuando activas los recordatorios de fechas. Los recordatorios locales activados se reprograman tras reiniciar el dispositivo o cambiar la fecha o la zona horaria.</string>
-    <string name="privacy_file_title">Archivos exportados y copias de seguridad</string>
-    <string name="privacy_file_body">La aplicación solo escribe archivos cuando decides exportar o crear una copia, en la ubicación que eliges. Solo lee un archivo cuando lo seleccionas para restaurarlo. Puedes cifrar las copias con contraseña. La aplicación no guarda la contraseña y, si la olvidas, no podrás restaurar la copia.</string>
-    <string name="privacy_delete_title">Eliminación y desinstalación</string>
-    <string name="privacy_delete_body">Puedes eliminar contactos y registros de regalos en la aplicación. Desinstalarla o borrar sus datos desde los ajustes del sistema elimina la base de datos local, pero no los archivos exportados ni las copias guardadas anteriormente.</string>
+
     <string name="event_wedding">Boda</string>
     <string name="event_full_month">Primer mes del bebé</string>
     <string name="event_birthday">Cumpleaños</string>

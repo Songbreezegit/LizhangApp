@@ -192,17 +192,7 @@
     <string name="about_scope_title">주요 기능</string>
     <string name="about_scope_body">경조금 및 연락처 관리, 검색, 달력, 통계, 날짜 알림, CSV/Excel 내보내기, 일반 또는 암호화 로컬 백업 및 복원을 지원합니다.</string>
     <string name="privacy_title">개인정보 안내</string>
-    <string name="privacy_introduction">Lizhang에는 계정, 광고, 분석 SDK, 클라우드 동기화 및 이미지 인식 서비스가 없습니다.</string>
-    <string name="privacy_storage_title">데이터는 기기에 저장됩니다</string>
-    <string name="privacy_storage_body">연락처, 전화번호, 경조금 금액, 날짜 및 메모는 기기 내 데이터베이스에 저장됩니다. 서버로 전송하거나 시스템 자동 백업 및 기기 이전에 포함하지 않습니다. 데이터를 옮기려면 직접 로컬 백업을 만들어 주세요.</string>
-    <string name="privacy_network_title">인터넷 권한을 요청하지 않습니다</string>
-    <string name="privacy_network_body">현재 버전은 인터넷 권한을 요청하지 않으며 클라우드 인식 기능이 없습니다. 기록, 검색, 통계 및 백업 기능은 오프라인에서 사용할 수 있습니다.</string>
-    <string name="privacy_permission_title">연락처, 알림 및 시스템 권한</string>
-    <string name="privacy_permission_body">사용자가 연락처 가져오기를 시작할 때만 기기 연락처를 읽고, 선택한 정보만 기기에 저장합니다. 서버로 전송하지 않습니다. 미리보기 데이터는 메모리에서만 처리하며 캐시 파일을 만들지 않습니다. 날짜 알림을 켤 때만 알림 권한을 요청합니다. 기기 재시작 또는 날짜·시간대 변경 후에는 켜진 로컬 알림을 다시 예약합니다.</string>
-    <string name="privacy_file_title">내보내기 및 백업 파일</string>
-    <string name="privacy_file_body">내보내기나 백업을 실행할 때만 선택한 위치에 파일을 저장하고, 복원 파일을 직접 선택할 때만 읽습니다. 암호화 백업을 선택할 수 있습니다. 비밀번호는 저장되지 않으며 잊어버리면 복원할 수 없습니다.</string>
-    <string name="privacy_delete_title">삭제 및 앱 제거</string>
-    <string name="privacy_delete_body">앱에서 연락처와 경조금 기록을 삭제할 수 있습니다. 앱을 제거하거나 시스템 설정에서 앱 데이터를 지우면 로컬 데이터베이스가 삭제되지만, 이전에 내보낸 파일과 백업은 자동으로 삭제되지 않습니다.</string>
+
     <string name="event_wedding">결혼</string>
     <string name="event_full_month">출생 축하</string>
     <string name="event_birthday">생일</string>

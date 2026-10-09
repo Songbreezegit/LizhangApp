@@ -196,17 +196,7 @@
     <string name="about_scope_title">Fonctionnalités</string>
     <string name="about_scope_body">Gestion des cadeaux et contacts, recherche, calendrier, statistiques, rappels de date, export CSV/Excel et sauvegarde locale avec restauration, avec ou sans chiffrement par mot de passe.</string>
     <string name="privacy_title">Confidentialité</string>
-    <string name="privacy_introduction">Lizhang ne propose ni comptes, ni publicités, ni SDK de suivi statistique, ni synchronisation cloud, ni reconnaissance d\'images.</string>
-    <string name="privacy_storage_title">Les données restent sur votre appareil</string>
-    <string name="privacy_storage_body">Les contacts, téléphones, montants des cadeaux, dates et notes sont stockés dans une base locale. Ils ne sont ni envoyés à un serveur, ni inclus dans les sauvegardes automatiques du système ou les transferts vers un autre appareil. Pour déplacer vos données, créez une sauvegarde locale.</string>
-    <string name="privacy_network_title">Aucun accès à Internet demandé</string>
-    <string name="privacy_network_body">Cette version ne demande pas d\'accès à Internet et ne propose pas de reconnaissance cloud. La saisie, la recherche, les statistiques et les sauvegardes fonctionnent hors ligne.</string>
-    <string name="privacy_permission_title">Contacts, notifications et autorisations</string>
-    <string name="privacy_permission_body">Le carnet d\'adresses est lu uniquement lorsque vous choisissez d\'importer des contacts. Seules les informations sélectionnées sont enregistrées localement, sans envoi à un serveur. Les aperçus restent en mémoire, sans fichier cache. L\'autorisation de notification est demandée uniquement lorsque vous activez les rappels. Les rappels locaux activés sont reprogrammés après un redémarrage ou un changement de date ou de fuseau horaire.</string>
-    <string name="privacy_file_title">Exports et sauvegardes</string>
-    <string name="privacy_file_body">Les fichiers sont écrits uniquement lorsque vous lancez un export ou une sauvegarde, à l\'emplacement de votre choix. Ils sont lus uniquement lorsque vous sélectionnez un fichier à restaurer. Le chiffrement par mot de passe est facultatif. Le mot de passe n\'est pas conservé : si vous l\'oubliez, la sauvegarde ne pourra pas être restaurée.</string>
-    <string name="privacy_delete_title">Suppression et désinstallation</string>
-    <string name="privacy_delete_body">Vous pouvez supprimer des contacts et des cadeaux dans l\'application. La désinstallation ou l\'effacement des données dans les paramètres du système supprime la base locale, mais pas les fichiers exportés ou les sauvegardes déjà créées.</string>
+
     <string name="event_wedding">Mariage</string>
     <string name="event_full_month">Premier mois du bébé</string>
     <string name="event_birthday">Anniversaire</string>

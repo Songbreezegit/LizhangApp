@@ -5,6 +5,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.yangsong.lizhang.data.preferences.SharedPreferencesOnboardingRepository
 import com.yangsong.lizhang.data.preferences.SharedPreferencesPrivacyConsentRepository
 import com.yangsong.lizhang.domain.legal.LegalPolicy
+import com.yangsong.lizhang.domain.legal.LegalDocumentType
+import com.yangsong.lizhang.domain.legal.LoadedConsentDocuments
+import com.yangsong.lizhang.data.legal.AssetLegalDocumentRepository
+import com.yangsong.lizhang.fixtures.loadedConsentDocuments
+import kotlinx.coroutines.runBlocking
 import com.yangsong.lizhang.domain.onboarding.ExistingInstallationEvidence
 import com.yangsong.lizhang.domain.onboarding.FeatureGuidePage
 import com.yangsong.lizhang.domain.onboarding.FeatureGuideStep
@@ -34,7 +39,7 @@ class PrivacyConsentPreferencesInstrumentedTest {
     @Test fun 明确确认版本同步写盘后新实例继续放行() {
         val first = SharedPreferencesPrivacyConsentRepository(context)
         first.declineCurrentPolicy()
-        assertTrue(first.acceptCurrentPolicy())
+        assertTrue(first.acceptCurrentPolicy(loadedConsentDocuments(context)))
         val rebuilt = SharedPreferencesPrivacyConsentRepository(context)
         assertTrue(rebuilt.state.value.canProcessPersonalData)
         assertEquals(LegalPolicy.CURRENT_VERSION, rebuilt.state.value.acceptedVersion)
@@ -62,7 +67,17 @@ class PrivacyConsentPreferencesInstrumentedTest {
         assertFalse(consent.state.value.canProcessPersonalData)
         assertTrue(consent.declineCurrentPolicy())
         assertEquals(before, SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence(upgradedInstallation = true)).state.value)
-        assertTrue(consent.acceptCurrentPolicy())
+        assertTrue(consent.acceptCurrentPolicy(loadedConsentDocuments(context)))
         assertEquals(before, SharedPreferencesOnboardingRepository(context, ExistingInstallationEvidence(upgradedInstallation = true)).state.value)
+    }
+
+    @Test fun 旧版本全文加载凭据不能写入当前同意偏好() = runBlocking {
+        val documents = AssetLegalDocumentRepository(context)
+        val old = requireNotNull(LoadedConsentDocuments.verify(documents.load(LegalDocumentType.PRIVACY),
+            documents.load(LegalDocumentType.TERMS), policyVersion = "旧政策合成版本"))
+        val consent = SharedPreferencesPrivacyConsentRepository(context)
+        assertFalse(consent.acceptCurrentPolicy(old))
+        assertFalse(consent.state.value.canProcessPersonalData)
+        assertFalse(preferences.contains(SharedPreferencesPrivacyConsentRepository.ACCEPTED_VERSION))
     }
 }

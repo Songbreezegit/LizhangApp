@@ -3,12 +3,12 @@
     <string name="legal_help_title">도움말 문서</string>
     <string name="legal_terms_description">전체 약관을 오프라인으로 읽기</string>
     <string name="legal_help_description">기록, 권한, 백업 및 복원 안내</string>
-    <string name="legal_candidate_notice">RC2 검토용 초안 · 아직 미시행</string>
-    <string name="legal_language_fallback">오프라인 검토용 전문은 중국어 간체로 제공됩니다. 모든 앱 언어에서 같은 전문을 표시합니다. 다른 언어의 전체 번역은 검토 대기 중이며 중요한 데이터 처리 설명을 요약으로 대체하지 않습니다.</string>
-    <string name="legal_content_version">후보 내용 ID: %1$s (정식 정책 버전은 개발자 확인 대기 중)</string>
+
+    <string name="legal_language_fallback">오프라인 전문은 중국어 간체이며 모든 앱 언어에서 같은 전문을 표시합니다. 화면 번역은 앱 사용을 돕기 위한 것으로 중국어 법률 문서를 대체하지 않습니다. 다른 언어의 정책 전문 번역은 현재 제공하지 않습니다.</string>
+    <string name="legal_content_version">내용 버전: %1$s</string>
     <string name="legal_read_failed">오프라인 문서를 불러올 수 없습니다. 다시 시도하여 고지를 확인하기 전에 전문을 읽어 주세요.</string>
     <string name="legal_retry">다시 불러오기</string>
-    <string name="legal_online_explanation">공식 웹사이트용 예약 주소입니다. 누르면 시스템 브라우저에서 인터넷으로 열립니다. 웹사이트 내용과 이용 가능 여부는 승인 대기 중이며 이 페이지의 전문은 인터넷이 필요 없습니다.</string>
+    <string name="legal_online_explanation">누르면 시스템 브라우저에서 공식 웹사이트를 인터넷으로 엽니다. 이 페이지의 전문은 오프라인으로 읽을 수 있습니다.</string>
     <string name="legal_open_official_site">브라우저에서 공식 웹사이트 열기</string>
     <string name="legal_browser_failed">시스템 브라우저를 열 수 없습니다. 이 페이지에서 전문을 오프라인으로 읽을 수 있습니다.</string>
 </resources>

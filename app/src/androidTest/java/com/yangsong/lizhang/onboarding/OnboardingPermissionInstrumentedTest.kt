@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.onboarding
 
+import com.yangsong.lizhang.fixtures.loadedConsentDocuments
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -32,7 +34,8 @@ class OnboardingPermissionInstrumentedTest {
     private val container get() = (context as LiZhangApplication).appContainer
 
     @Before fun 已完成隐私告知后验证可选权限选择() {
-        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy())
+        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy(
+            loadedConsentDocuments(container.legalDocumentRepository)))
     }
 
     @Test fun 主动通讯录导入先说明暂不不会请求系统或读取联系人() {

@@ -11,16 +11,16 @@ $inputs = & (Join-Path $PSScriptRoot 'legal-content-digest.ps1')
 $findings = @()
 foreach ($relativePath in $inputs.inputs) {
     $content = [IO.File]::ReadAllText((Join-Path $appRoot $relativePath), [Text.Encoding]::UTF8)
-    if ($matcher.IsMatch($content)) { $findings += $relativePath }
+    # 候选专用提示仅在候选 UI 展示；仍纳入摘要，不能据此放过正式正文中的草稿。
+    if ([IO.Path]::GetFileName($relativePath) -ne 'candidate_release_strings.xml' -and $matcher.IsMatch($content)) { $findings += $relativePath }
 }
 $checkedCandidateStrings = 0
 if ($VerifyCandidateCoverage) {
     foreach ($locale in @('values', 'values-b+zh+Hant', 'values-en', 'values-ja', 'values-ko', 'values-es', 'values-fr')) {
-        foreach ($resourceFile in @('privacy_notice.xml', 'legal_strings.xml')) {
+        foreach ($resourceFile in @('candidate_release_strings.xml')) {
             $sourcePath = Join-Path $appRoot "src\main\res\$locale\$resourceFile"
             [xml]$xml = [IO.File]::ReadAllText($sourcePath, [Text.Encoding]::UTF8)
-            $candidateNames = if ($resourceFile -eq 'privacy_notice.xml') { @('privacy_notice_candidate') } else {
-                @('legal_candidate_notice', 'legal_language_fallback', 'legal_content_version', 'legal_online_explanation') }
+            $candidateNames = @('privacy_notice_candidate', 'legal_candidate_notice')
             foreach ($name in $candidateNames) {
                 $node = $xml.SelectSingleNode("/resources/string[@name='$name']")
                 if (!$node -or !$matcher.IsMatch($node.InnerText)) {

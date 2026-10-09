@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "androidLegalContentSha256": "b803fc0f34e996f26dc802e794c51abba5297860e1807794d9e1716a9ea4d337",
+  "inputs": [
+    {
+      "path": "src/main/assets/legal/help.md",
+      "sha256": "1daecb13dbd23f8962902855ed9bdae7b3aa5c66ed9abf6b313ea5d7ae57e02d"
+    },
+    {
+      "path": "src/main/assets/legal/metadata.properties",
+      "sha256": "edbbefe5f71dc9766a433cc6bf27574fd0edc5a2fc7d7aae583c0a074ff32613"
+    },
+    {
+      "path": "src/main/assets/legal/privacy.md",
+      "sha256": "c6121d913e542e0a079b166a86ede501f7bfdbad15316cb4dacf243173c654ba"
+    },
+    {
+      "path": "src/main/assets/legal/terms.md",
+      "sha256": "7115364069e327fac823d83bea0cfeb99a9bee65d46ddd27335b0acb93d34445"
+    },
+    {
+      "path": "src/main/res/values-b+zh+Hant/candidate_release_strings.xml",
+      "sha256": "91b18b7df96b2f6f959c7cc06395e974aa41269258d7de9263e0a27aee282bed"
+    },
+    {
+      "path": "src/main/res/values-b+zh+Hant/legal_strings.xml",
+      "sha256": "f4852b4c700e59c0a265cf21fa4cf1d25d4a8033d9dcfbc9188316cb7ea01712"
+    },
+    {
+      "path": "src/main/res/values-b+zh+Hant/privacy_notice.xml",
+      "sha256": "05b85d266cc89bb97f3d7e7e7319685fb5bde695fa4a52e25fa6e590c9b3ff3e"
+    },
+    {
+      "path": "src/main/res/values-en/candidate_release_strings.xml",
+      "sha256": "f4b704b1caa50cdb89aa42bdf518adaff1428c3e4dfb4ace008814eb415cda3b"
+    },
+    {
+      "path": "src/main/res/values-en/legal_strings.xml",
+      "sha256": "69c8c49a40c54eda84dbc328e6d4645ee081a7bb7df393702cb2d5da0354beaf"
+    },
+    {
+      "path": "src/main/res/values-en/privacy_notice.xml",
+      "sha256": "e1c159436c09306938233e9b5efd3704fdf3d00a2b3bab06b58050692e3b09c6"
+    },
+    {
+      "path": "src/main/res/values-es/candidate_release_strings.xml",
+      "sha256": "17220eb51fde68084ef2ce45cf95616f247a75a7a79eef5a5444cd027254e315"
+    },
+    {
+      "path": "src/main/res/values-es/legal_strings.xml",
+      "sha256": "f0dd882fa4eb0164717a90a59b9cb6dac2e2e0605c97bb6b447d883854bb3488"
+    },
+    {
+      "path": "src/main/res/values-es/privacy_notice.xml",
+      "sha256": "0bdd01b5cfd9e73d72a33e8761541999a702b4ee0f5b708924d7123acbe9ae3b"
+    },
+    {
+      "path": "src/main/res/values-fr/candidate_release_strings.xml",
+      "sha256": "2a92025413b989d68ca73447c2dfb09df4c986e699399cc8d36eded880438c97"
+    },
+    {
+      "path": "src/main/res/values-fr/legal_strings.xml",
+      "sha256": "462a39692225d30223435819dd321d396677817279872f7b2c16ec081ab57d5f"
+    },
+    {
+      "path": "src/main/res/values-fr/privacy_notice.xml",
+      "sha256": "4bc6517cae93294f78dd00ac59175355e9c5077e052a6d9926bf292350026e15"
+    },
+    {
+      "path": "src/main/res/values-ja/candidate_release_strings.xml",
+      "sha256": "1ae6c98601e07021f55a64ded57f4888f610120a4b7949027e813248189244ff"
+    },
+    {
+      "path": "src/main/res/values-ja/legal_strings.xml",
+      "sha256": "d2d5b9a1ba7f6cafdda11bb0070b01a6aefde2f3559c6f5cb9e05555d4c02a53"
+    },
+    {
+      "path": "src/main/res/values-ja/privacy_notice.xml",
+      "sha256": "2c33e7ec6354a94370991ec4ccb74da353d82fc54aceceae5dbbfeffb1c6124a"
+    },
+    {
+      "path": "src/main/res/values-ko/candidate_release_strings.xml",
+      "sha256": "b7aba0051c141465bf26bd0e1f7c73a9de8afa2c9d6f36832702a0b556e8bde1"
+    },
+    {
+      "path": "src/main/res/values-ko/legal_strings.xml",
+      "sha256": "3bfe52e9ea709853b8712962c0aaa1d86ad7ccb8161e10abc47625a9e92dbf77"
+    },
+    {
+      "path": "src/main/res/values-ko/privacy_notice.xml",
+      "sha256": "8c29e4959401a5128e48d316e435a90bc2914d40dcc0f8e1dfb9b7609f3b6e94"
+    },
+    {
+      "path": "src/main/res/values/candidate_release_strings.xml",
+      "sha256": "6590a50b955d6d170fb7246cb83229578ead98a4725c6951e908cd1249f500ad"
+    },
+    {
+      "path": "src/main/res/values/legal_strings.xml",
+      "sha256": "bb13df9c2a6b4e374e69f039bafa4bd1cf2a6ec612c49bd0048e2ee275333ebd"
+    },
+    {
+      "path": "src/main/res/values/privacy_notice.xml",
+      "sha256": "3bf8ede587b65d29b863fb27e5ece6050f95db8b3991fd1eb189240a2153beea"
+    }
+  ]
+}

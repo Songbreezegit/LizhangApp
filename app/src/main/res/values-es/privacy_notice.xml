@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">LiZhang guarda en este dispositivo los contactos, registros de regalos y recordatorios que introduce o importa para registrar, consultar y emitir recordatorios locales. La app no los sube a servidores ni ofrece OCR, carga de imágenes o reconocimiento en la nube.</string>
     <string name="privacy_notice_permissions">Solo al solicitar importar contactos y conceder permiso se leen los nombres, números completos e identificadores del sistema para la vista previa. Tras confirmar, solo se guardan nombres y números localmente. Al activar recordatorios se solicita permiso de notificación y se entrega el contenido a Android para mostrarlo. Rechazar estos permisos opcionales no impide llevar cuentas.</string>
     <string name="privacy_notice_exports">Usted inicia las copias de seguridad, la restauración y la exportación CSV o Excel y elige la ubicación del archivo. Los CSV, Excel y las copias sin cifrar contienen datos personales legibles. Proteja los archivos; las copias pueden cifrarse con contraseña.</string>
-    <string name="privacy_notice_candidate">Este texto es para pruebas del candidato RC2. Los datos del operador, la fecha de entrada en vigor y la versión oficial siguen pendientes de aprobación del desarrollador. Esta confirmación no significa que el texto legal esté aprobado.</string>
+
     <string name="privacy_notice_version">ID del contenido del aviso: %1$s</string>
     <string name="privacy_notice_read_privacy">Leer la política sin conexión</string>
     <string name="privacy_notice_read_terms">Leer el acuerdo sin conexión</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">Puede volver a leer y elegir o salir de LiZhang. Aquí no se solicitan permisos de contactos ni notificaciones y se conservan los libros existentes.</string>
     <string name="privacy_notice_return">Volver a leer y elegir</string>
     <string name="privacy_notice_exit">Salir de LiZhang</string>
+    <string name="privacy_notice_documents_required">Abre y carga completamente la Política de privacidad y el Acuerdo de usuario antes de aceptar. Si falla la carga, vuelve a intentarlo o sal de la aplicación.</string>
 </resources>

@@ -1,8 +1,10 @@
 package com.yangsong.lizhang.domain.legal
 
-/** 候选内容标识，不代表政策已生效或已获批准。重大内容更新必须变更此标识。 */
+import com.yangsong.lizhang.BuildConfig
+
+/** 当前已打包内容标识；正式版本还须通过开发者内容批准门禁。重大内容更新必须变更。 */
 object LegalPolicy {
-    const val CURRENT_VERSION = "1.0.0-rc2-policy-v1"
+    const val CURRENT_VERSION = BuildConfig.LEGAL_POLICY_VERSION
 }
 
 enum class LegalDocumentType(val assetName: String, val officialUrl: String) {
@@ -14,6 +16,27 @@ enum class LegalDocumentType(val assetName: String, val officialUrl: String) {
 data class LegalDocumentSection(val heading: String?, val body: String)
 
 data class LegalDocument(val type: LegalDocumentType, val sections: List<LegalDocumentSection>)
+
+/** 只有两份正确类型且非空的完整离线文档加载成功，才能形成当前版本的确认凭据。 */
+class LoadedConsentDocuments private constructor(val policyVersion: String) {
+    fun matchesPolicy(requiredVersion: String): Boolean =
+        requiredVersion.isNotBlank() && policyVersion == requiredVersion
+
+    companion object {
+        fun verify(
+            privacy: LegalDocument?,
+            terms: LegalDocument?,
+            policyVersion: String = LegalPolicy.CURRENT_VERSION,
+        ): LoadedConsentDocuments? {
+            if (policyVersion.isBlank() || !privacy.isReadable(LegalDocumentType.PRIVACY) ||
+                !terms.isReadable(LegalDocumentType.TERMS)) return null
+            return LoadedConsentDocuments(policyVersion)
+        }
+
+        private fun LegalDocument?.isReadable(expected: LegalDocumentType): Boolean =
+            this != null && type == expected && sections.isNotEmpty() && sections.all { it.body.isNotBlank() }
+    }
+}
 
 /** 所有语言读取同一完整中文正文；翻译获内容批准后才可替换，不能回退为摘要。 */
 object LegalDocumentLanguage {

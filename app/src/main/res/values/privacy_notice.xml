@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">礼账在本机保存您主动填写或导入的联系人、礼金记录和提醒，用于记账、查询与本地提醒；不会由 App 上传到服务器，也没有 OCR、图片上传或云端识别。</string>
     <string name="privacy_notice_permissions">仅在您主动导入并授权后，预览读取联系人姓名、完整号码与系统标识；确认导入后只在本机保存姓名和号码。启用提醒时才申请通知权限，并交由 Android 系统显示提醒内容。拒绝这两项非必要权限仍可正常记账。</string>
     <string name="privacy_notice_exports">备份、恢复和 CSV／Excel 导出由您主动操作并选择文件位置。CSV、Excel 和未加密备份包含可读的个人数据；请妥善保管文件，备份可选择密码加密。</string>
-    <string name="privacy_notice_candidate">这是 RC2 候选测试文案，运营者信息、生效日期和正式政策版本仍待本人批准。本次确认不代表法律文本已审核通过。</string>
+
     <string name="privacy_notice_version">本次告知内容编号：%1$s</string>
     <string name="privacy_notice_read_privacy">离线阅读隐私政策</string>
     <string name="privacy_notice_read_terms">离线阅读用户协议</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">您可以返回阅读并重新选择，或退出礼账。我们不会在此请求通讯录或通知权限，不会清空已有账本。</string>
     <string name="privacy_notice_return">返回阅读与选择</string>
     <string name="privacy_notice_exit">退出礼账</string>
+    <string name="privacy_notice_documents_required">请先打开并成功加载完整隐私政策和用户协议，再作出同意选择。加载失败时可返回重试或退出。</string>
 </resources>

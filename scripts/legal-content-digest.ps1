@@ -12,7 +12,7 @@ $resourceRoot = Join-Path $appRoot 'src\main\res'
 $inputFiles += @(Get-ChildItem -LiteralPath $resourceRoot -Recurse -File | Where-Object {
     $_.Directory.Name.StartsWith('values', [StringComparison]::Ordinal) -and
     $_.Extension -eq '.xml' -and ($_.Name.StartsWith('legal', [StringComparison]::Ordinal) -or
-        $_.Name.StartsWith('privacy', [StringComparison]::Ordinal))
+        $_.Name.StartsWith('privacy', [StringComparison]::Ordinal) -or $_.Name -eq 'candidate_release_strings.xml')
 })
 $relativePaths = [string[]]@($inputFiles | ForEach-Object { $_.FullName.Substring($appRoot.Length + 1).Replace('\', '/') })
 [Array]::Sort($relativePaths, [StringComparer]::Ordinal)

@@ -1,0 +1,150 @@
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+import java.time.LocalDate
+
+// 生产工程和隔离合成测试应用同一门禁；没有替代批准文件或跳过检查的构建参数。
+def assetDirectory = file('src/main/assets/legal')
+def approvalFile = rootProject.file('release/legal-approval.properties')
+def readProperties = { File source ->
+    if (!source.isFile()) throw new GradleException("缺少发布批准资料：${source.name}")
+    def result = new Properties()
+    source.withReader('UTF-8') { result.load(it) }
+    result
+}
+def digestBytes = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+def contentInputs = {
+    def inputs = fileTree(assetDirectory).files + fileTree(file('src/main/res')).files.findAll {
+        it.parentFile.name.startsWith('values') && it.name.endsWith('.xml') &&
+            (it.name.startsWith('legal') || it.name.startsWith('privacy') || it.name == 'candidate_release_strings.xml')
+    }
+    inputs.sort { a, b -> project.relativePath(a).replace('\\', '/') <=> project.relativePath(b).replace('\\', '/') }
+}
+def contentDigest = {
+    digestBytes(contentInputs().collect {
+        "${project.relativePath(it).replace('\\', '/')}\n${digestBytes(it.bytes)}\n"
+    }.join('').getBytes('UTF-8'))
+}
+def websiteContentDigest = {
+    def website = rootProject.file('website')
+    def inputs = (fileTree(new File(website, 'content')).matching { include '**/*.md' }.files +
+        [new File(website, 'site.config.json')]).sort { a, b -> rootProject.relativePath(a).replace('\\', '/') <=> rootProject.relativePath(b).replace('\\', '/') }
+    digestBytes(inputs.collect { "${rootProject.relativePath(it).replace('\\', '/')}\n${digestBytes(it.bytes)}\n" }.join('').getBytes('UTF-8'))
+}
+def unapproved = java.util.regex.Pattern.compile(rootProject.file('release/unapproved-content-pattern.txt').getText('UTF-8').trim(),
+    java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE)
+def locales = ['values', 'values-b+zh+Hant', 'values-en', 'values-ja', 'values-ko', 'values-es', 'values-fr']
+
+def verifyConsistency = {
+    def website = rootProject.file('website')
+    ['privacy.md', 'terms.md', 'help.md'].each { name ->
+        def source = new File(assetDirectory, name)
+        def mirror = new File(website, "content/$name")
+        if (!source.isFile() || !mirror.isFile() || !Arrays.equals(source.bytes, mirror.bytes))
+            throw new GradleException("内容一致性检查失败：App 与网站的 $name 不一致。请审查后执行网站 legal:sync。")
+    }
+    [[new File(assetDirectory, 'metadata.properties'), new File(website, 'legal/metadata.properties')],
+     [approvalFile, new File(website, 'legal/legal-approval.properties')]].each { pair ->
+        if (!pair[0].isFile() || !pair[1].isFile() || !Arrays.equals(pair[0].bytes, pair[1].bytes))
+            throw new GradleException("内容一致性检查失败：${pair[0].name} 镜像不一致。")
+    }
+    def manifestFile = new File(website, 'legal/android-content-manifest.json')
+    if (!manifestFile.isFile()) throw new GradleException('缺少网站法律内容摘要清单。')
+    def manifest = new JsonSlurper().parse(manifestFile, 'UTF-8')
+    if (manifest.androidLegalContentSha256 != contentDigest())
+        throw new GradleException('网站绑定的 Android 法律内容摘要已过期。')
+}
+
+tasks.register('verifyLegalContentConsistency') {
+    group = 'verification'
+    description = '离线正文、网站镜像和待审内容摘要必须一致；不授予批准。'
+    doLast { verifyConsistency() }
+}
+tasks.register('printLegalContentDigest') {
+    group = 'verification'
+    description = '输出当前完整法律内容和七语言资源的待审摘要。'
+    doLast { logger.lifecycle("legal_content_sha256=${contentDigest()}") }
+}
+tasks.register('generateReleaseContentBinding') {
+    def output = layout.buildDirectory.file('generated/releaseContentBinding/release-content-binding.properties')
+    inputs.files(provider { contentInputs() })
+    inputs.files(rootProject.file('website/site.config.json'), fileTree(rootProject.file('website/content')))
+    inputs.property('officialRelease', project.findProperty('officialRelease') ?: 'false')
+    inputs.property('officialVersionCode', project.findProperty('officialVersionCode') ?: '23')
+    outputs.file(output)
+    doLast {
+        def official = project.findProperty('officialRelease') == 'true'
+        def metadata = readProperties(new File(assetDirectory, 'metadata.properties'))
+        def target = output.get().asFile
+        target.parentFile.mkdirs()
+        target.setText("legal_content_sha256=${contentDigest()}\nwebsite_content_sha256=${websiteContentDigest()}\nis_official_release=$official\nversion_name=${official ? '1.0.0' : '1.0.0-rc3'}\nversion_code=${official ? project.findProperty('officialVersionCode') : '23'}\npolicy_version=${official ? metadata.getProperty('policy_version') : '1.0.0-rc3-policy-v1'}\n", 'UTF-8')
+    }
+}
+def verifyOfficialContent = {
+        def approval = readProperties(approvalFile)
+        def metadata = readProperties(new File(assetDirectory, 'metadata.properties'))
+        def approvedValue = { String key ->
+            def value = approval.getProperty(key, '').trim()
+            if (!value || unapproved.matcher(value).find()) throw new GradleException("正式发布被阻止：$key 尚未由开发者本人确认。")
+            value
+        }
+        if (approvedValue('approval_status') != 'approved' || metadata.getProperty('approval_status') != 'approved')
+            throw new GradleException('正文和批准文件必须同时明确标记 approved。')
+        ['operator_name', 'contact_email', 'effective_date', 'policy_version', 'filing_record', 'reviewed_by', 'minors_arrangement'].each { key ->
+            if (approvedValue(key) != metadata.getProperty(key, '').trim())
+                throw new GradleException("正式发布被阻止：批准与正文元数据的 $key 不一致。")
+        }
+        if (!(approvedValue('contact_email') ==~ /^[^\s@]+@[^\s@]+\.[^\s@]+$/)) throw new GradleException('联系邮箱格式不完整。')
+        ['effective_date', 'approved_at'].each { key ->
+            try { LocalDate.parse(approvedValue(key)) } catch (Exception ignored) { throw new GradleException("$key 必须是 YYYY-MM-DD 日期。") }
+        }
+        ['filing_status', 'app_filing_status', 'signing_identity_status', 'distribution_history_status'].each { key ->
+            if (approvedValue(key) != 'confirmed') throw new GradleException("$key 尚未本人确认。")
+        }
+        approvedValue('app_filing_material')
+        if (!(approvedValue('signing_certificate_sha256') ==~ /[a-fA-F0-9]{64}/)) throw new GradleException('缺少本人确认的正式证书 SHA-256。')
+        def requestedCode = project.findProperty('officialVersionCode')?.toString()
+        def approvedCode = approvedValue('version_code')
+        def highestCode = approvedValue('highest_distributed_version_code')
+        if (!(requestedCode ==~ /[1-9][0-9]*/) || !(approvedCode ==~ /[1-9][0-9]*/) || !(highestCode ==~ /[0-9]+/) ||
+            requestedCode != approvedCode || new BigInteger(requestedCode) > 2100000000 || new BigInteger(requestedCode) < 23 ||
+            new BigInteger(requestedCode) <= new BigInteger(highestCode))
+            throw new GradleException('正式 versionCode 须显式指定、与批准记录一致并大于本人核实的历史最大分发代码。')
+        if (!(approvedValue('policy_version') ==~ /[A-Za-z0-9._-]+/) || approvedValue('policy_version').toLowerCase().contains('rc'))
+            throw new GradleException('正式政策版本不能继续使用候选编号。')
+        ['privacy.md', 'terms.md', 'help.md'].each { name ->
+            if (!new File(assetDirectory, name).isFile()) throw new GradleException("缺少完整正文 $name。")
+        }
+        locales.each { locale ->
+            ['privacy_notice.xml', 'legal_strings.xml', 'candidate_release_strings.xml'].each { name ->
+                if (!file("src/main/res/$locale/$name").isFile()) throw new GradleException("缺少 $locale/$name。")
+            }
+        }
+        // 仅候选显示的独立资源保持真实候选提示，也纳入批准摘要；正式告知和全文仍须定稿。
+        contentInputs().findAll { it.name != 'candidate_release_strings.xml' }.each { source ->
+            if (unapproved.matcher(source.getText('UTF-8')).find()) throw new GradleException("${project.relativePath(source)} 仍包含未批准文案。")
+        }
+        def policySource = file('src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt')
+        if (!policySource.isFile() || !(policySource.getText('UTF-8') =~ /(?m)^\s*(?:const\s+)?val\s+CURRENT_VERSION\s*=\s*BuildConfig\.LEGAL_POLICY_VERSION\s*$/).find())
+            throw new GradleException('隐私告知版本必须使用构建绑定的政策版本。')
+        if (approvedValue('approved_content_sha256') != contentDigest()) throw new GradleException('法律内容或任一语言已改变，须重新批准当前摘要。')
+        verifyConsistency()
+        def website = rootProject.file('website')
+        def websiteInputs = (fileTree(new File(website, 'content')).matching { include '**/*.md' }.files +
+            [new File(website, 'site.config.json')]).sort { a, b -> rootProject.relativePath(a).replace('\\', '/') <=> rootProject.relativePath(b).replace('\\', '/') }
+        def websiteDigest = websiteContentDigest()
+        if (approvedValue('website_content_sha256') != websiteDigest) throw new GradleException('网站说明、帮助或配置已改变，须本人重新批准当前网站内容摘要。')
+        websiteInputs.each { source ->
+            if (unapproved.matcher(source.getText('UTF-8')).find()) throw new GradleException("网站 ${source.name} 仍有未批准文案。")
+        }
+        def site = new JsonSlurper().parse(rootProject.file('website/site.config.json'), 'UTF-8')
+        if (site.domain != 'lizhang.songisle.xyz' || site.reviewStatus != 'approved' || site.icpApproved != true || site.appVersion != '1.0.0' ||
+            site.appVersionCode?.toString() != approvedCode || site.operator != approvedValue('operator_name') ||
+            site.contactEmail != approvedValue('contact_email') || site.effectiveDate != approvedValue('effective_date') ||
+            site.icpNumber != approvedValue('filing_record') || site.policyVersion != approvedValue('policy_version')) throw new GradleException('网站正式配置与本人批准资料不一致。')
+        logger.lifecycle('正式发布内容批准检查通过；没有生成签名或授予商店批准。')
+}
+tasks.register('verifyOfficialReleaseContent') {
+    group = 'verification'
+    description = '核验本人内容、分发历史、备案及签名身份批准；拒绝真实草稿。'
+    doLast { verifyOfficialContent() }
+}

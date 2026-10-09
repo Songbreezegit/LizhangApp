@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="legal_candidate_notice">RC3 審査用草案 · 未発効</string>
+    <string name="privacy_notice_candidate">これは RC3 候補版のテスト用文面です。運営者情報、施行日、正式なポリシーバージョンは開発者の承認待ちです。この確認は法的文面の承認を意味しません。</string>
+</resources>

@@ -3,12 +3,12 @@
     <string name="legal_help_title">ヘルプ文書</string>
     <string name="legal_terms_description">利用規約全文をオフラインで読む</string>
     <string name="legal_help_description">記帳、権限、バックアップと復元の説明</string>
-    <string name="legal_candidate_notice">RC2 審査用草案 · 未発効</string>
-    <string name="legal_language_fallback">オフラインの審査用全文は簡体字中国語です。すべてのアプリ言語で同じ全文を表示します。他言語の全文翻訳は審査待ちです。重要なデータ処理の説明を要約に置き換えることはありません。</string>
-    <string name="legal_content_version">候補内容 ID：%1$s（正式な方針バージョンは開発者の確認待ち）</string>
+
+    <string name="legal_language_fallback">オフラインの全文は簡体字中国語で、すべてのアプリ言語で同じ全文を表示します。画面の翻訳は操作を補助するもので、中国語の法律文書に代わるものではありません。他言語の方針全文は現在提供していません。</string>
+    <string name="legal_content_version">内容バージョン：%1$s</string>
     <string name="legal_read_failed">オフライン文書を読み込めません。再試行し、通知を確認する前に全文をお読みください。</string>
     <string name="legal_retry">再読み込み</string>
-    <string name="legal_online_explanation">公式サイト用に予約したアドレスです。タップするとシステムブラウザーでオンライン表示します。サイト内容と利用可能性は承認待ちです。このページの全文は通信不要です。</string>
+    <string name="legal_online_explanation">タップするとシステムブラウザーで公式サイトをオンライン表示します。このページの全文はオフラインで読めます。</string>
     <string name="legal_open_official_site">ブラウザーで公式サイトを開く</string>
     <string name="legal_browser_failed">システムブラウザーを開けません。このページで全文をオフラインで読めます。</string>
 </resources>

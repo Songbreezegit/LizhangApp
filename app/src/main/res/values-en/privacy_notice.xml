@@ -5,7 +5,7 @@
     <string name="privacy_notice_local_data">LiZhang stores contacts, gift records and reminders you enter or import on this device for bookkeeping, searches and local reminders. The app does not upload them to a server and offers no OCR, image upload or cloud recognition.</string>
     <string name="privacy_notice_permissions">Only when you request contact import and grant permission are names, full phone numbers and system IDs read for preview. After confirmation, only names and numbers are stored locally. Enabling reminders requests notification permission and gives reminder content to Android to display. Declining either optional permission does not prevent bookkeeping.</string>
     <string name="privacy_notice_exports">You initiate backup, restore and CSV or Excel export and select the file location. CSV, Excel and unencrypted backups contain readable personal data. Keep files secure; backups can be encrypted with a password.</string>
-    <string name="privacy_notice_candidate">This is RC2 candidate test wording. Operator details, effective date and the official policy version still require developer approval. This confirmation does not mean the legal text has been approved.</string>
+
     <string name="privacy_notice_version">Notice content ID: %1$s</string>
     <string name="privacy_notice_read_privacy">Read Privacy Policy offline</string>
     <string name="privacy_notice_read_terms">Read User Agreement offline</string>
@@ -16,4 +16,5 @@
     <string name="privacy_notice_declined_body">Return to read and choose again, or exit LiZhang. No contact or notification permission is requested here, and existing ledgers will be kept.</string>
     <string name="privacy_notice_return">Return to read and choose</string>
     <string name="privacy_notice_exit">Exit LiZhang</string>
+    <string name="privacy_notice_documents_required">Open and successfully load the complete Privacy Policy and User Agreement before agreeing. If loading fails, return to retry or exit.</string>
 </resources>

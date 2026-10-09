@@ -192,17 +192,7 @@
     <string name="about_scope_title">主な機能</string>
     <string name="about_scope_body">贈答・連絡先の管理、検索、カレンダー、集計、日付の通知、CSV・Excelへの書き出し、通常またはパスワード付きのローカルバックアップと復元に対応しています。</string>
     <string name="privacy_title">プライバシー</string>
-    <string name="privacy_introduction">Lizhangにはアカウント、広告、アクセス解析SDK、クラウド同期、画像認識サービスはありません。</string>
-    <string name="privacy_storage_title">データは端末内に保存</string>
-    <string name="privacy_storage_body">連絡先、電話番号、金額、日付、メモは端末内のデータベースに保存されます。サーバーへの送信やシステムの自動バックアップ・端末移行は行いません。移行する場合は、ご自身でローカルバックアップを作成してください。</string>
-    <string name="privacy_network_title">インターネット権限は不要</string>
-    <string name="privacy_network_body">現在のバージョンはインターネット権限を要求せず、クラウド認識も行いません。記録、検索、集計、バックアップはオフラインで利用できます。</string>
-    <string name="privacy_permission_title">連絡先・通知・システム権限</string>
-    <string name="privacy_permission_body">連絡先のインポートを開始した場合のみ端末の連絡先を読み取り、選択した情報だけを端末内に保存します。サーバーには送信しません。プレビューはメモリ内で処理し、キャッシュファイルは作りません。通知権限はリマインダーを有効にした場合のみ要求します。端末の再起動や日付・タイムゾーンの変更後は、有効な通知を再設定します。</string>
-    <string name="privacy_file_title">書き出しとバックアップ</string>
-    <string name="privacy_file_body">書き出しやバックアップを実行した場合のみ、選択した保存先にファイルを書き込みます。復元用のファイルを選択した場合のみ読み込みます。暗号化バックアップも選べます。パスワードは保存されず、忘れると復元できません。</string>
-    <string name="privacy_delete_title">削除とアンインストール</string>
-    <string name="privacy_delete_body">アプリ内で連絡先と贈答記録を削除できます。アンインストールやシステム設定からのデータ消去で端末内のデータベースは削除されますが、書き出したファイルやバックアップは残ります。</string>
+
     <string name="event_wedding">結婚祝い</string>
     <string name="event_full_month">赤ちゃんのお祝い</string>
     <string name="event_birthday">誕生日</string>

@@ -12,6 +12,7 @@ import com.yangsong.lizhang.data.local.LiZhangDatabase
 import com.yangsong.lizhang.data.local.entity.ContactEntity
 import com.yangsong.lizhang.data.preferences.SharedPreferencesPrivacyConsentRepository
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
+import com.yangsong.lizhang.fixtures.loadedConsentDocuments
 import com.yangsong.lizhang.domain.repository.DeviceContactRepository
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -72,7 +73,8 @@ class PrivacyProcessingGateInstrumentedTest {
         assertFalse(container.isBusinessDatabaseInitialized)
         container.privacyConsentRepository.declineCurrentPolicy()
         assertEquals(before, database.contactDao().getAllForBackup())
-        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy())
+        assertTrue(container.privacyConsentRepository.acceptCurrentPolicy(
+            loadedConsentDocuments(container.legalDocumentRepository)))
         assertEquals(before, database.contactDao().getAllForBackup())
         assertFalse(container.isBusinessDatabaseInitialized)
         database.close()

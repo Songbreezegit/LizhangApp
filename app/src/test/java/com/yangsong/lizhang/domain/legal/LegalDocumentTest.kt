@@ -1,5 +1,6 @@
 package com.yangsong.lizhang.domain.legal
 
+import com.yangsong.lizhang.BuildConfig
 import java.io.File
 import java.util.Properties
 import javax.xml.parsers.DocumentBuilderFactory
@@ -18,7 +19,7 @@ class LegalDocumentTest {
             LegalDocumentType.TERMS to listOf("手动添加联系人", "密码遗失", "替换当前联系人和礼金", "关联的礼金记录",
                 "锁屏", "不承诺", "第三方", "未成年人"),
             LegalDocumentType.HELP to listOf("拒绝通知权限不影响记账", "当前礼金备份不包含独立提醒", "替换当前全部联系人",
-                "不能通过礼账的恢复入口导入", "完整译文待审核", "数据备份与恢复"),
+                "不能通过礼账的恢复入口导入", "数据备份与恢复"),
         )
         required.forEach { (type, phrases) ->
             val text = File(sourceRoot, "assets/legal/${type.assetName}").readText()
@@ -26,6 +27,8 @@ class LegalDocumentTest {
             val displayed = document.sections.joinToString("\n") { "${it.heading.orEmpty()}\n${it.body}" }
             phrases.forEach { assertTrue("${type.name} 缺失完整说明：$it", displayed.contains(it)) }
             assertTrue(type.name, document.sections.size >= 8)
+            if (!BuildConfig.IS_OFFICIAL_RELEASE && type == LegalDocumentType.HELP)
+                assertTrue("候选帮助仍明确完整译文状态", displayed.contains("完整译文待审核"))
         }
     }
 
@@ -68,18 +71,22 @@ class LegalDocumentTest {
         }
     }
 
-    @Test fun `候选元数据仍待本人批准且与再次告知标识一致`() {
+    @Test fun `元数据与再次告知标识一致且候选与正式状态区分`() {
         val metadata = Properties().apply {
             File(sourceRoot, "assets/legal/metadata.properties").reader(Charsets.UTF_8).use(::load)
         }
         assertEquals(LegalPolicy.CURRENT_VERSION, metadata.getProperty("policy_version"))
-        assertEquals("待批准", metadata.getProperty("approval_status"))
-        for (key in listOf("operator_name", "contact_email", "effective_date", "filing_record", "reviewed_by"))
-            assertEquals(key, "待本人确认", metadata.getProperty(key))
+        assertEquals(if (BuildConfig.IS_OFFICIAL_RELEASE) "approved" else "待批准", metadata.getProperty("approval_status"))
+        for (key in listOf("operator_name", "contact_email", "effective_date", "filing_record", "reviewed_by", "minors_arrangement")) {
+            if (BuildConfig.IS_OFFICIAL_RELEASE) {
+                assertTrue(key, metadata.getProperty(key).isNotBlank())
+                assertFalse(key, metadata.getProperty(key).contains("待本人确认"))
+            } else assertEquals(key, "待本人确认", metadata.getProperty(key))
+        }
         LegalDocumentType.entries.forEach { type ->
             val text = File(sourceRoot, "assets/legal/${type.assetName}").readText()
             assertTrue(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
-            assertTrue(type.name, text.contains("尚未生效"))
+            assertEquals(type.name, !BuildConfig.IS_OFFICIAL_RELEASE, text.contains("尚未生效"))
         }
     }
 

@@ -2,6 +2,7 @@ package com.yangsong.lizhang.data.preferences
 
 import android.content.Context
 import com.yangsong.lizhang.domain.legal.LegalPolicy
+import com.yangsong.lizhang.domain.legal.LoadedConsentDocuments
 import com.yangsong.lizhang.domain.privacy.PrivacyConsentState
 import com.yangsong.lizhang.domain.repository.PrivacyConsentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +17,8 @@ class SharedPreferencesPrivacyConsentRepository(context: Context) : PrivacyConse
     ))
     override val state = mutableState.asStateFlow()
 
-    @Synchronized override fun acceptCurrentPolicy(): Boolean {
+    @Synchronized override fun acceptCurrentPolicy(documents: LoadedConsentDocuments): Boolean {
+        if (!documents.matchesPolicy(LegalPolicy.CURRENT_VERSION)) return false
         val saved = preferences.edit().putString(ACCEPTED_VERSION, LegalPolicy.CURRENT_VERSION)
             .remove(DECLINED_VERSION).commit()
         if (saved) mutableState.value = PrivacyConsentState(acceptedVersion = LegalPolicy.CURRENT_VERSION)
