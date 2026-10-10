@@ -10,16 +10,22 @@ import com.yangsong.lizhang.domain.reminder.IndependentReminder
 import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
 import com.yangsong.lizhang.domain.repository.ReminderRepository
 import java.util.Calendar
-import java.util.TimeZone
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlin.coroutines.coroutineContext
 
 data class DirectionRecordsUiState(
     val records: List<GiftRecordWithContact> = emptyList(),
@@ -67,6 +73,28 @@ data class CalendarUiState(
 
 private data class CalendarSelection(val monthStart: Long, val selectedDay: Int)
 
+/** 每次月数据变化只建立一次日期索引，选日直接读取对应列表。 */
+private data class CalendarMonthData(
+    val monthStart: Long,
+    val year: Int,
+    val month: Int,
+    val daysInMonth: Int,
+    val firstDayOffset: Int,
+    val recordDays: Set<Int>,
+    val recordsByDay: Map<Int, List<GiftRecordWithContact>>,
+) {
+    fun selectedState(day: Int) = CalendarUiState(
+        year = year,
+        month = month,
+        daysInMonth = daysInMonth,
+        firstDayOffset = firstDayOffset,
+        selectedDay = day,
+        recordDays = recordDays,
+        selectedRecords = recordsByDay[day].orEmpty(),
+        isLoading = false,
+    )
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
     private val selection = MutableStateFlow(initialSelection())
@@ -74,11 +102,15 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
 
     val uiState: StateFlow<CalendarUiState> = retrySignal.flow(
         source = {
-            selection.flatMapLatest { selected ->
-                repository.observeBetween(selected.monthStart, nextMonthStart(selected.monthStart))
-                    .map { records -> records to selected }
-            }.map { (records, selected) ->
-                buildCalendarState(records, selected)
+            selection.map { it.monthStart }.distinctUntilChanged().flatMapLatest { monthStart ->
+                repository.observeBetween(monthStart, nextMonthStart(monthStart))
+                    .mapLatest { records -> buildCalendarMonth(records, monthStart) }
+                    .flowOn(Dispatchers.Default)
+                    .combine(selection) { month, selected ->
+                        // 翻月期间旧查询结果不能与新月份的选日拼接。
+                        if (month.monthStart == selected.monthStart) month.selectedState(selected.selectedDay) else null
+                    }
+                    .filterNotNull()
             }
         },
         onError = { CalendarUiState(isLoading = false, error = true) },
@@ -107,31 +139,29 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
             return CalendarSelection(now.timeInMillis, day)
         }
 
-        private fun buildCalendarState(
+        private suspend fun buildCalendarMonth(
             records: List<GiftRecordWithContact>,
-            selection: CalendarSelection,
-        ): CalendarUiState {
-            val month = monthCalendar(selection.monthStart)
+            monthStart: Long,
+        ): CalendarMonthData {
+            val month = monthCalendar(monthStart)
             val year = month.get(Calendar.YEAR)
             val monthIndex = month.get(Calendar.MONTH)
-            val recordDays = mutableSetOf<Int>()
-            val selectedRecords = ArrayList<GiftRecordWithContact>()
+            val recordsByDay = linkedMapOf<Int, MutableList<GiftRecordWithContact>>()
             val recordCalendar = Calendar.getInstance()
             records.forEach { item ->
+                coroutineContext.ensureActive()
                 recordCalendar.timeInMillis = item.record.eventDate
                 val day = recordCalendar.get(Calendar.DAY_OF_MONTH)
-                recordDays += day
-                if (day == selection.selectedDay) selectedRecords += item
+                recordsByDay.getOrPut(day) { ArrayList() }.add(item)
             }
-            return CalendarUiState(
+            return CalendarMonthData(
+                monthStart = monthStart,
                 year = year,
                 month = monthIndex + 1,
                 daysInMonth = month.getActualMaximum(Calendar.DAY_OF_MONTH),
                 firstDayOffset = (month.get(Calendar.DAY_OF_WEEK) + 5) % 7,
-                selectedDay = selection.selectedDay,
-                recordDays = recordDays,
-                selectedRecords = selectedRecords,
-                isLoading = false,
+                recordDays = recordsByDay.keys.toSet(),
+                recordsByDay = recordsByDay,
             )
         }
 

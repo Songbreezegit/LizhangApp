@@ -104,15 +104,24 @@ internal fun aggregateStatistics(
     val contacts = LinkedHashMap<String, Long>()
     var received = 0L
     var given = 0L
+    var hasPreviousDate = false
+    var previousDate = 0L
+    var recordYear = 0
+    var monthIndex = 0
 
     records.forEach { item ->
-        calendar.timeInMillis = item.record.eventDate
-        val recordYear = calendar.get(Calendar.YEAR)
+        // 连续相同事件时间戳只解析一次年月。
+        if (!hasPreviousDate || previousDate != item.record.eventDate) {
+            calendar.timeInMillis = item.record.eventDate
+            recordYear = calendar.get(Calendar.YEAR)
+            monthIndex = if (recordYear == year) calendar.get(Calendar.MONTH) else 0
+            previousDate = item.record.eventDate
+            hasPreviousDate = true
+        }
         if (recordYear in 1..currentYear) knownYears += recordYear
         if (recordYear != year) return@forEach
 
         val amount = item.record.amountInCents
-        val monthIndex = calendar.get(Calendar.MONTH)
         val eventAmounts = events.getOrPut(item.record.eventType) { LongArray(2) }
         if (item.record.direction == GiftDirection.RECEIVED) {
             received += amount
@@ -137,10 +146,21 @@ internal fun aggregateStatistics(
         events = events
             .map { (eventType, amounts) -> EventStat(eventType, amounts[0], amounts[1]) }
             .sortedByDescending(EventStat::total),
-        contacts = contacts
-            .map { (name, amount) -> name to amount }
-            .sortedByDescending { it.second }
-            .take(5),
+        contacts = topContacts(contacts),
         isLoading = false,
     )
+}
+
+private fun topContacts(contacts: LinkedHashMap<String, Long>): List<Pair<String, Long>> {
+    // 页面只展示前五名，无需为所有联系人创建中间列表并全量排序。
+    val top = ArrayList<Pair<String, Long>>(5)
+    contacts.forEach { (name, amount) ->
+        val firstSmaller = top.indexOfFirst { it.second < amount }
+        val position = if (firstSmaller >= 0) firstSmaller else top.size
+        if (position < 5) {
+            top.add(position, name to amount)
+            if (top.size > 5) top.removeAt(5)
+        }
+    }
+    return top
 }

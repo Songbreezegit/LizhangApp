@@ -24,6 +24,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.testTag
@@ -80,21 +81,20 @@ fun DirectionRecordsScreen(
             else -> LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                item {
+                item(key = "记录数量", contentType = "标题") {
                     SectionHeader(androidx.compose.ui.res.pluralStringResource(R.plurals.records_count, state.records.size, state.records.size))
+                    Spacer(Modifier.height(14.dp))
                 }
                 if (state.records.isEmpty()) {
                     item { EmptyState(stringResource(R.string.records_empty, title), image = R.drawable.page_add_cat) }
                 } else {
-                    item {
-                        GlassCard(shape = RoundedCornerShape(GlassTokens.Radius)) {
-                            Column(Modifier.padding(horizontal = 16.dp)) {
-                                state.records.forEachIndexed { index, record ->
-                                    GiftRecordListItem(record) { onRecordClick(record.record.id) }
-                                    if (index < state.records.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-                                }
+                    // 逐条组成可见记录，连续卡片轮廓和原有分隔线保持不变。
+                    itemsIndexed(state.records, key = { _, record -> record.record.id }, contentType = { _, _ -> "礼金记录" }) { index, record ->
+                        Column(Modifier.fillMaxWidth().continuousGlassCardRow(index, state.records.size).padding(horizontal = 16.dp)) {
+                            GiftRecordListItem(record) { onRecordClick(record.record.id) }
+                            if (index < state.records.lastIndex) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                             }
                         }
                     }
@@ -147,10 +147,13 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
                     Text(stringResource(it), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
                 }
             }
-            val cells = List(state.firstDayOffset) { 0 } + (1..state.daysInMonth).toList()
-            cells.chunked(7).forEach { week ->
+            val weeks = remember(state.firstDayOffset, state.daysInMonth) {
+                val cells = List(state.firstDayOffset) { 0 } + (1..state.daysInMonth).toList()
+                cells.chunked(7).map { week -> week + List(7 - week.size) { 0 } }
+            }
+            weeks.forEach { week ->
                 Row(Modifier.fillMaxWidth()) {
-                    (week + List(7 - week.size) { 0 }).forEach { day ->
+                    week.forEach { day ->
                         if (day == 0) Spacer(Modifier.weight(1f).aspectRatio(1f))
                         else DayCell(day, day == state.selectedDay, day in state.recordDays, { onDay(day) }, Modifier.weight(1f))
                     }

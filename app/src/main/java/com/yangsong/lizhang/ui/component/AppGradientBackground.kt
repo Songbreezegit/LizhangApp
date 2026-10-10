@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.ui.theme.*
 
@@ -16,10 +15,10 @@ import com.yangsong.lizhang.ui.theme.*
 fun AppGradientBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val fraction = LocalThemeDarkFraction.current
     Box(modifier.fillMaxSize()) {
-        if (fraction > 0f) Image(painterResource(R.drawable.blue_pink_indigo_gradient), contentDescription = null,
+        if (fraction > 0f) Image(resourceBitmapPainter(R.drawable.blue_pink_indigo_gradient), contentDescription = null,
             modifier = Modifier.matchParentSize(), contentScale = ContentScale.FillBounds)
         // 浅色背景逐渐淡出以揭示深色背景，主题切换继续沿用同一进度。
-        if (fraction < 1f) Image(painterResource(R.drawable.cream_periwinkle_gradient), contentDescription = null,
+        if (fraction < 1f) Image(resourceBitmapPainter(R.drawable.cream_periwinkle_gradient), contentDescription = null,
             modifier = Modifier.matchParentSize(), contentScale = ContentScale.FillBounds,
             alpha = (1f - fraction).coerceIn(0f, 1f))
         content()

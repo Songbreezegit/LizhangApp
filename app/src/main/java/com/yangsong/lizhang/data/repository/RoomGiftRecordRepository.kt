@@ -8,7 +8,9 @@ import com.yangsong.lizhang.domain.model.GiftRecordWithContact
 import com.yangsong.lizhang.domain.model.GiftDirection
 import com.yangsong.lizhang.domain.model.YearlyGiftSummary
 import com.yangsong.lizhang.domain.repository.GiftRecordRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
 class RoomGiftRecordRepository(private val giftRecordDao: GiftRecordDao) : GiftRecordRepository {
@@ -17,6 +19,7 @@ class RoomGiftRecordRepository(private val giftRecordDao: GiftRecordDao) : GiftR
 
     override fun observeAll(): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeAll().map { rows -> rows.map { it.toDomain() } }
+            .flowOn(Dispatchers.Default)
 
     override fun observeYearlySummaries(): Flow<List<YearlyGiftSummary>> =
         giftRecordDao.observeYearlySummaries().map { rows -> rows.map { it.toDomain() } }
@@ -26,9 +29,11 @@ class RoomGiftRecordRepository(private val giftRecordDao: GiftRecordDao) : GiftR
         endExclusive: Long,
     ): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeBetween(startInclusive, endExclusive).map { rows -> rows.map { it.toDomain() } }
+            .flowOn(Dispatchers.Default)
 
     override fun observeByDirection(direction: GiftDirection): Flow<List<GiftRecordWithContact>> =
         giftRecordDao.observeByDirection(direction).map { rows -> rows.map { it.toDomain() } }
+            .flowOn(Dispatchers.Default)
 
     override fun observeRecord(recordId: Long): Flow<GiftRecord?> =
         giftRecordDao.observeById(recordId).map { it?.toDomain() }

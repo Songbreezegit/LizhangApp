@@ -1,15 +1,14 @@
 package com.yangsong.lizhang.ui.component
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -49,15 +49,50 @@ fun Modifier.pressFeedback(
     pressedScale: Float = .975f,
     diagnosticName: String? = null,
 ): Modifier {
-    val pressed by interactionSource.collectIsPressedAsState()
-    val focused by interactionSource.collectIsFocusedAsState()
-    val hovered by interactionSource.collectIsHoveredAsState()
-    var origin by remember(interactionSource) { mutableStateOf(Offset.Unspecified) }
+    var interactions by remember(interactionSource) { mutableStateOf(PressFeedbackInteractions()) }
+    val currentDiagnosticName by rememberUpdatedState(diagnosticName)
     LaunchedEffect(interactionSource) {
+        val presses = mutableListOf<PressInteraction.Press>()
+        val focuses = mutableListOf<FocusInteraction.Focus>()
+        val hovers = mutableListOf<HoverInteraction.Enter>()
         var operation: com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.Operation? = null
         interactionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Press) origin = interaction.pressPosition
-            if (diagnosticName != null) {
+            when (interaction) {
+                is PressInteraction.Press -> {
+                    presses.add(interaction)
+                    interactions = interactions.copy(
+                        pressed = true,
+                        origin = interaction.pressPosition,
+                        hasInteracted = true,
+                    )
+                }
+                is PressInteraction.Release -> {
+                    presses.remove(interaction.press)
+                    interactions = interactions.copy(pressed = presses.isNotEmpty())
+                }
+                is PressInteraction.Cancel -> {
+                    presses.remove(interaction.press)
+                    interactions = interactions.copy(pressed = presses.isNotEmpty())
+                }
+                is FocusInteraction.Focus -> {
+                    focuses.add(interaction)
+                    interactions = interactions.copy(focused = true, hasInteracted = true)
+                }
+                is FocusInteraction.Unfocus -> {
+                    focuses.remove(interaction.focus)
+                    interactions = interactions.copy(focused = focuses.isNotEmpty())
+                }
+                is HoverInteraction.Enter -> {
+                    hovers.add(interaction)
+                    interactions = interactions.copy(hovered = true, hasInteracted = true)
+                }
+                is HoverInteraction.Exit -> {
+                    hovers.remove(interaction.enter)
+                    interactions = interactions.copy(hovered = hovers.isNotEmpty())
+                }
+            }
+            val name = currentDiagnosticName
+            if (name != null) {
                 if (interaction is PressInteraction.Press) operation =
                     com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.observedOperation
                 val stage = when (interaction) {
@@ -67,26 +102,26 @@ fun Modifier.pressFeedback(
                     else -> null
                 }
                 if (stage != null) com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record(
-                    "interaction.$diagnosticName.$stage", operation)
+                    "interaction.$name.$stage", operation)
             }
         }
     }
-    val active = enabled && pressed
-    val scale by animateFloatAsState(
-        if (active) pressedScale else 1f,
-        if (active) tween(90) else spring(dampingRatio = .72f, stiffness = 520f),
-        label = "控件按压回弹",
-    )
-    val light by animateFloatAsState(
-        if (active) 1f else if (enabled && hovered) .32f else 0f,
-        tween(if (active) 110 else 180), label = "触点光晕亮度",
-    )
-    val spread by animateFloatAsState(if (active) 1f else 0f, tween(260), label = "触点光晕扩散")
-    val focus by animateFloatAsState(if (enabled && focused) 1f else 0f, tween(120), label = "键盘焦点轮廓")
+    // 日历等密集控件只收集一次交互，第一次交互前不创建动画与光晕路径。
+    val animation = if (interactions.hasInteracted) rememberPressFeedbackAnimation(
+        interactionSource = interactionSource,
+        active = enabled && interactions.pressed,
+        hovered = enabled && interactions.hovered,
+        focused = enabled && interactions.focused,
+        pressedScale = pressedScale,
+    ) else null
+    val focused = interactions.focused
+    val origin = interactions.origin
     return graphicsLayer {
-        scaleX = if (enabled) scale else 1f
-        scaleY = if (enabled) scale else 1f
+        val scale = if (enabled) animation?.scale?.value ?: 1f else 1f
+        scaleX = scale
+        scaleY = scale
     }.drawWithCache {
+        if (animation == null) return@drawWithCache onDrawWithContent { drawContent() }
         val outline = shape.createOutline(size, layoutDirection, this)
         val clip = Path().apply {
             when (outline) {
@@ -97,6 +132,9 @@ fun Modifier.pressFeedback(
         }
         onDrawWithContent {
             drawContent()
+            val light = animation.light.value
+            val spread = animation.spread.value
+            val focus = animation.focus.value
             if (enabled && (light > .001f || focus > .001f)) {
                 val touchCenter = if (origin.x.isFinite() && origin.y.isFinite() && !(focused && origin == Offset.Zero)) {
                     Offset(origin.x.coerceIn(0f, size.width), origin.y.coerceIn(0f, size.height))
@@ -115,6 +153,48 @@ fun Modifier.pressFeedback(
             }
         }
     }
+}
+
+private data class PressFeedbackInteractions(
+    val pressed: Boolean = false,
+    val focused: Boolean = false,
+    val hovered: Boolean = false,
+    val origin: Offset = Offset.Unspecified,
+    val hasInteracted: Boolean = false,
+)
+
+private class PressFeedbackAnimation {
+    val scale = Animatable(1f)
+    val light = Animatable(0f)
+    val spread = Animatable(0f)
+    val focus = Animatable(0f)
+}
+
+@Composable
+private fun rememberPressFeedbackAnimation(
+    interactionSource: InteractionSource,
+    active: Boolean,
+    hovered: Boolean,
+    focused: Boolean,
+    pressedScale: Float,
+): PressFeedbackAnimation {
+    val animation = remember(interactionSource) { PressFeedbackAnimation() }
+    LaunchedEffect(animation, active, pressedScale) {
+        animation.scale.animateTo(
+            if (active) pressedScale else 1f,
+            if (active) tween(90) else spring(dampingRatio = .72f, stiffness = 520f),
+        )
+    }
+    LaunchedEffect(animation, active, hovered) {
+        animation.light.animateTo(if (active) 1f else if (hovered) .32f else 0f, tween(if (active) 110 else 180))
+    }
+    LaunchedEffect(animation, active) {
+        animation.spread.animateTo(if (active) 1f else 0f, tween(260))
+    }
+    LaunchedEffect(animation, focused) {
+        animation.focus.animateTo(if (focused) 1f else 0f, tween(120))
+    }
+    return animation
 }
 
 /** 仅替换视觉反馈，继续由 Foundation 处理点击、滚动竞争、键盘和无障碍。 */

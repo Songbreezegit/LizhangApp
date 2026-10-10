@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.ui.mapper
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import com.yangsong.lizhang.core.util.CurrencyFormatter
 import com.yangsong.lizhang.core.util.DateFormatter
@@ -38,8 +39,11 @@ fun displayMonth(month: Int): String = java.time.Month.of(month).getDisplayName(
 @Composable
 fun displayYearMonth(year: Int, month: Int): String {
     val locale = displayLocale()
-    val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "yMMMM")
-    return LocalDate.of(year, month, 1).format(DateTimeFormatter.ofPattern(pattern, locale))
+    val formatter = remember(locale) {
+        val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "yMMMM")
+        DateTimeFormatter.ofPattern(pattern, locale)
+    }
+    return remember(year, month, formatter) { LocalDate.of(year, month, 1).format(formatter) }
 }
 
 @Composable
