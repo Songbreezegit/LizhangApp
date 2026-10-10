@@ -2,9 +2,6 @@ package com.yangsong.lizhang.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Contacts
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -55,8 +52,8 @@ private fun FrostedFixture(surface: Int) {
                 0 -> BottomNavBar(AppDestination.Home, {}, Modifier.align(Alignment.BottomCenter), haze)
                 1, 2 -> Box(Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
                     GlassActionMenu(surface == 2, {}, {}, listOf(
-                        GlassAction("通讯录导入", Icons.Outlined.Contacts) {},
-                        GlassAction("手动添加", Icons.Outlined.PersonAdd) {},
+                        GlassAction("通讯录导入", LiZhangIcons.ContactRound) {},
+                        GlassAction("手动添加", LiZhangIcons.UserRoundPlus) {},
                     ), haze)
                 }
                 3 -> GiftSaveBar(false, {}, Modifier.align(Alignment.BottomCenter), hazeState = haze)
