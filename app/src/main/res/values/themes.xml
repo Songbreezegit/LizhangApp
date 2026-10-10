@@ -5,5 +5,9 @@
     </style>
     <style name="Theme.LiZhang.Starting" parent="Theme.LiZhang">
         <item name="android:windowBackground">@drawable/startup_window</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">@color/startup_background</item>
+        <item name="android:navigationBarColor">@color/startup_background</item>
     </style>
 </resources>

@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Rect
 import android.os.Build
 import android.os.Process
 import android.os.SystemClock
@@ -26,23 +27,45 @@ import com.yangsong.lizhang.ui.viewmodel.StartupDiagnosticSnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.rules.TestRule
+import org.junit.runners.model.Statement
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 /** 每轮必须独立冷进程执行；不安装 Compose 测试时钟，所有图片来自系统实际合成屏幕。 */
 class StartupRealFrameInstrumentedTest {
-    @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
+    private val destination get() = InstrumentationRegistry.getArguments().getString("startupDestination", "home").also {
+        require(it == "home" || it == "privacy") { "startupDestination只能为home或privacy" }
+    }
+    @get:org.junit.Rule(order = 0) val privacyPrecondition = TestRule { base, description ->
+        if (destination == "privacy") object : Statement() {
+            override fun evaluate() {
+                // 只允许专属全新安装；不删除偏好，也不通过业务前置规则写入同意。
+                val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
+                val consent = app.appContainer.privacyConsentRepository.state.value
+                assertNull("首次隐私启动必须使用从未同意的全新测试安装", consent.acceptedVersion)
+                assertNull("首次隐私启动必须使用从未拒绝的全新测试安装", consent.declinedVersion)
+                assertFalse("首次隐私场景不能提前挂载业务页面", app.appContainer.canProcessPersonalData)
+                base.evaluate()
+            }
+        } else com.yangsong.lizhang.fixtures.AcceptedPrivacyRule().apply(base, description)
+    }
     private data class Snapshot(
         val requestedNanos: Long,
         val receivedNanos: Long,
         val hostId: Int?,
         val density: Float,
+        val viewport: Rect,
         val state: StartupDiagnosticSnapshot?,
     ) {
         val active get() = state?.let { it.visible && it.ready } == true
@@ -59,6 +82,7 @@ class StartupRealFrameInstrumentedTest {
         val scalingEndNanos: Long,
         val originalBytes: Int,
         val density: Float,
+        val viewport: Rect,
         val bitmap: Bitmap,
         val stableFinal: Boolean = false,
         val interactionFinal: Boolean = false,
@@ -93,7 +117,8 @@ class StartupRealFrameInstrumentedTest {
         File(folder, "运行前置.txt").writeText(
             "runId=$runId\nPID=${Process.myPid()}\nAPI=${Build.VERSION.SDK_INT}\n" +
                 "首次引导已完成=$completedBefore\n进程启动机会尚未消费=$coldOpportunity\n" +
-                "设计时长=900ms\n品牌采样窗口=.20..78\n动画速度由设备清单记录\n" +
+                "最终入口=$destination\n设计时长=900ms；落地=260ms；圆渐变揭示=260..620ms；退场=620..900ms\n" +
+                "小猫采样窗口=.20..${FADE_START_PROGRESS}\n动画速度由设备清单记录\n" +
                 "时基=System.nanoTime；以下调用和状态均使用同一单调时钟\n",
         )
         assertTrue("本用例必须独立冷进程执行，启动机会不能被之前用例消耗", coldOpportunity)
@@ -103,9 +128,14 @@ class StartupRealFrameInstrumentedTest {
             var result: Snapshot? = null
             instrumentation.runOnMainSync {
                 val activity = current.get()
+                val decor = activity?.window?.decorView
+                val location = IntArray(2)
+                decor?.getLocationOnScreen(location)
                 // Activity 与全部 Compose 状态在主线程一次读取，采样线程只读取不可变值。
                 result = Snapshot(requested, System.nanoTime(), activity?.let(System::identityHashCode),
                     activity?.resources?.displayMetrics?.density ?: app.resources.displayMetrics.density,
+                    Rect(location[0], location[1], location[0] + (decor?.width ?: 0),
+                        location[1] + (decor?.height ?: 0)),
                     activity?.startupState?.diagnosticSnapshot())
             }
             return requireNotNull(result)
@@ -133,12 +163,16 @@ class StartupRealFrameInstrumentedTest {
             val scaled = Bitmap.createScaledBitmap(bitmap, width,
                 (bitmap.height * width.toFloat() / bitmap.width).roundToInt(), true)
             val density = before.density * width / bitmap.width
+            val screenScale = width.toFloat() / bitmap.width
+            val viewport = Rect((before.viewport.left * screenScale).roundToInt(),
+                (before.viewport.top * screenScale).roundToInt(), (before.viewport.right * screenScale).roundToInt(),
+                (before.viewport.bottom * screenScale).roundToInt())
             if (scaled !== bitmap) bitmap.recycle()
             val scaledAt = System.nanoTime()
-            // 保留旧规则的缩放后关联点，逐帧输出旧/新谓词对照，阈值完全相同。
+            // 保留缩放后关联点作采集对照；验收始终使用截图返回后的立即快照。
             val afterScaling = snapshot()
             return Frame(before, after, afterScaling, started, ended, scalingStarted, scaledAt,
-                originalBytes, density, scaled, stableFinal)
+                originalBytes, density, viewport, scaled, stableFinal)
         }
 
         val lifecycle = ActivityLifecycleCallback { activity, stage ->
@@ -197,13 +231,20 @@ class StartupRealFrameInstrumentedTest {
                 var interactionLabel = ""
                 var expectedAfterInteraction = ""
                 scenario.onActivity {
-                    pageTitle = it.getString(R.string.home_recent)
-                    interactionLabel = it.getString(R.string.nav_settings)
-                    expectedAfterInteraction = it.getString(R.string.settings_dark)
-                    assertTrue("隐私已确认后的当前入口使用首页功能引导", app.appContainer.onboardingRepository.state.value.completed)
+                    if (destination == "privacy") {
+                        pageTitle = it.getString(R.string.privacy_notice_title)
+                        interactionLabel = it.getString(R.string.action_back)
+                        expectedAfterInteraction = it.getString(R.string.privacy_notice_declined_title)
+                        assertFalse("开屏结束后仍由首次隐私告知阻止业务挂载", app.appContainer.canProcessPersonalData)
+                    } else {
+                        pageTitle = it.getString(R.string.home_recent)
+                        interactionLabel = it.getString(R.string.nav_settings)
+                        expectedAfterInteraction = it.getString(R.string.settings_dark)
+                        assertTrue("隐私已确认后的当前入口使用首页功能引导", app.appContainer.onboardingRepository.state.value.completed)
+                    }
                 }
                 val page = device.wait(Until.findObject(By.text(pageTitle)), 6000)
-                assertNotNull("启动结束后实际首页文字可见：$pageTitle", page)
+                assertNotNull("启动结束后实际目标页面文字可见：$pageTitle", page)
                 val bounds = requireNotNull(page).visibleBounds
                 pageVisible = bounds.width() > 0 && bounds.height() > 0
                 assertTrue("实际页面文字具有可见屏幕范围", pageVisible)
@@ -219,7 +260,10 @@ class StartupRealFrameInstrumentedTest {
                 device.click(targetBounds.centerX(), targetBounds.centerY())
                 interactionSucceeded = device.wait(Until.hasObject(By.text(expectedAfterInteraction)), 6000) == true
                 assertTrue("启动覆盖释放后真实触摸可以操作页面：$expectedAfterInteraction", interactionSucceeded)
-                scenario.onActivity { assertFalse("页面操作后品牌层不重新覆盖", it.startupState.visible) }
+                scenario.onActivity {
+                    assertFalse("页面操作后品牌层不重新覆盖", it.startupState.visible)
+                    if (destination == "privacy") assertFalse("真实返回触摸不会隐式同意", app.appContainer.canProcessPersonalData)
+                }
                 takeFrame(stableFinal = true)?.let { frames.add(it.copy(interactionFinal = true)) }
             }
         } catch (error: Throwable) {
@@ -241,8 +285,20 @@ class StartupRealFrameInstrumentedTest {
                 File(folder, name).outputStream().use { frame.bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             }
             val visible = captured.filter { exclusionReasons(it).isEmpty() }
-            val oldVisible = captured.filter { exclusionReasons(it, oldAssociation = true).isEmpty() }
-            val blank = captured.count { !it.stableFinal && it.before.active && it.before.progress < .64f && brandEdges(it) < 20 }
+            val scaledAssociation = captured.filter { exclusionReasons(it, scaledAssociation = true).isEmpty() }
+            val sceneMetrics = captured.associateWith { StartupScenePixels.background(it.bitmap, it.viewport, it.density) }
+            val rippleRays = captured.associateWith { StartupScenePixels.rippleRays(it.bitmap, it.viewport, it.density) }
+            val whiteStart = captured.filter { !it.stableFinal && it.before.active && it.after.active &&
+                it.before.hostId == it.after.hostId && it.before.viewport == it.after.viewport &&
+                it.after.progress < LANDING_PROGRESS && !it.viewport.isEmpty }
+            val revealFrames = visible.filter { it.before.progress >= LANDING_PROGRESS }
+            val revealGrowth = if (revealFrames.size >= 2) sceneMetrics.getValue(revealFrames.last()).coloredFraction -
+                sceneMetrics.getValue(revealFrames.first()).coloredFraction else 0f
+            val revealRadiusGrowth = if (revealFrames.size >= 2) sceneMetrics.getValue(revealFrames.last()).maximumColoredRadius -
+                sceneMetrics.getValue(revealFrames.first()).maximumColoredRadius else 0f
+            // 0进度白底是有意的起帧；小猫已经进入后的纯白或缺失仍按实际空帧失败。
+            val blank = captured.count { !it.stableFinal && it.before.active && it.after.active &&
+                it.before.progress >= .20f && it.after.progress <= FADE_START_PROGRESS && catPixels(it) < 12 }
             val trace = diagnostics.get()
             val animationCallbacks = trace.filter { it.frameNanos != null }
             val maximumDispatchGap = animationCallbacks.zipWithNext().maxOfOrNull {
@@ -260,23 +316,28 @@ class StartupRealFrameInstrumentedTest {
             val diagnosis = diagnoseStartupFrames(StartupFrameEvidence(visible.size, changed, span,
                 maximumCapture, maximumDispatchGap, startedBeforeContent, startedBeforeSplash)).description
             File(folder, "采样说明.txt").writeText(buildString {
-                appendLine("runId=$runId；旧/新均要求主线程快照可见且就绪、before>=.20、after<=.78、名称笔画>=12")
-                appendLine("新规则在截图返回后立即关联；旧规则对照在缩放结束后关联；不放宽进度或像素阈值")
+                appendLine("runId=$runId；目标入口=$destination；主线程快照可见且就绪、before>=.20、after<=${FADE_START_PROGRESS}、小猫特征像素>=12")
+                appendLine("已移除旧版应用名识别；系统层设计为纯白且无静止猫；0进度纯白允许，落地前背景必须纯白")
+                appendLine("采集从Activity创建开始；完整进程开头的系统启动层仍须独立连续系统录制，不以本组采集补全未见画面")
+                appendLine("实际DecorView屏幕范围确定猫下落区域与圆形中心；620ms退场后的底层页面不混入中间帧")
+                appendLine("验收在截图返回后立即关联；缩放结束后关联仅作采集对照，不放宽帧数、跨度或变化像素阈值")
                 appendLine("调用前后快照等待包含在各请求/收到时间中；capture 时长仅含系统截图；scaling 含缩放及原图回收")
-                appendLine("序号\t截图开始ms\t截图结束ms\t截图耗时ms\t缩放耗时ms\t快照前请求/收到ms\t快照后请求/收到ms\tprogress前/后/缩放后\t宿主前/后\t原图分配bytes\t保留图bytes\t额外固定休眠ms\t名称笔画\t旧规则排除\t新规则排除")
+                appendLine("序号\t截图开始ms\t截图结束ms\t截图耗时ms\t缩放耗时ms\t快照前请求/收到ms\t快照后请求/收到ms\tprogress前/后/缩放后\t宿主前/后\t原图分配bytes\t保留图bytes\t额外固定休眠ms\t实际窗口范围\t小猫特征像素\t渐变覆盖比例\t实际扩散半径dp\t细涟漪射线\t缩放后关联排除\t立即关联排除")
                 captured.forEachIndexed { index, frame ->
                     appendLine("$index\t${millis(frame.captureStartNanos - origin)}\t${millis(frame.captureEndNanos - origin)}\t" +
                         "${millis(frame.captureEndNanos - frame.captureStartNanos)}\t${millis(frame.scalingEndNanos - frame.scalingStartNanos)}\t" +
                         "${millis(frame.before.requestedNanos - origin)}/${millis(frame.before.receivedNanos - origin)}\t" +
                         "${millis(frame.after.requestedNanos - origin)}/${millis(frame.after.receivedNanos - origin)}\t" +
                         "${frame.before.progress}/${frame.after.progress}/${frame.afterScaling.progress}\t${frame.before.hostId}/${frame.after.hostId}\t" +
-                        "${frame.originalBytes}\t${frame.bitmap.allocationByteCount}\t0\t${nameEdges(frame)}\t" +
+                        "${frame.originalBytes}\t${frame.bitmap.allocationByteCount}\t0\t${frame.viewport}\t${catPixels(frame)}\t" +
+                        "${sceneMetrics.getValue(frame).coloredFraction}\t${sceneMetrics.getValue(frame).maximumColoredRadius / frame.density}\t${rippleRays.getValue(frame)}\t" +
                         "${exclusionReasons(frame, true).ifEmpty { listOf("有效") }.joinToString("；")}\t" +
                         exclusionReasons(frame).ifEmpty { listOf("有效") }.joinToString("；"))
                 }
-                appendLine("旧判定有效=${oldVisible.size}；新判定有效=${visible.size}；保守真实时间跨度ms=${millis(span)}；品牌变化像素=$changed；空帧=$blank")
+                appendLine("缩放后关联有效=${scaledAssociation.size}；立即关联有效=${visible.size}；保守真实时间跨度ms=${millis(span)}；品牌变化像素=$changed；小猫进入后空帧=$blank")
+                appendLine("落地前采样=${whiteStart.size}；揭示阶段采样=${revealFrames.size}；渐变覆盖增长=$revealGrowth；实际扩散半径增长px=$revealRadiusGrowth；细涟漪帧=${revealFrames.count { rippleRays.getValue(it) > 0 }}")
                 appendLine("最大截图耗时ms=${millis(maximumCapture)}；动画帧回调最大交付间隔ms=${millis(maximumDispatchGap)}；有界缓冲已耗尽=$bufferLimit")
-                appendLine("页面结束=$finished；真实页面可见=$pageVisible；真实触摸成功=$interactionSucceeded；诊断=$diagnosis")
+                appendLine("页面结束=$finished；真实页面可见=$pageVisible；真实触摸成功=$interactionSucceeded；基础帧覆盖诊断=$diagnosis；新增阶段契约仍以独立断言为准")
                 appendLine("场景异常=${scenarioFailure?.stackTraceToString() ?: "无"}")
                 appendLine("采样异常=${samplingFailure.get()?.stackTraceToString() ?: "无"}")
                 appendLine("空截图或截图异常记录=${captureNotes.joinToString("\n")}")
@@ -298,26 +359,34 @@ class StartupRealFrameInstrumentedTest {
             assertNotNull("记录实际动画起始帧时间", firstAnimation)
             if (Build.VERSION.SDK_INT >= 31) assertNotNull("记录系统启动层退出时间", splashRemove)
             assertFalse("动画必须在内容提交与系统启动层退出之后开始", startedBeforeContent || startedBeforeSplash)
-            assertTrue("系统启动图退场后至少采集三个带应用名的实际品牌中间帧，取得 ${visible.size} 帧；$diagnosis", visible.size >= 3)
+            assertTrue("系统启动层退场后至少采集三个带小猫的实际品牌中间帧，取得 ${visible.size} 帧；$diagnosis", visible.size >= 3)
             assertTrue("品牌中间帧保守覆盖至少 140.8ms 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
             assertTrue("系统画面中的图标或扩散圆环确实变化，取得 $changed 个变化像素", changed >= 60)
-            assertEquals("启动层有效期间没有实际纯色空帧", 0, blank)
+            assertTrue("至少采集一个260ms落地前的白底阶段，否则起帧证据不足", whiteStart.isNotEmpty())
+            assertTrue("落地前实际背景必须纯白", whiteStart.all { sceneMetrics.getValue(it).coloredFraction < .005f })
+            assertTrue("至少采集两个620ms退场前的圆渐变揭示帧，否则扩散证据不足", revealFrames.size >= 2)
+            assertTrue("落地后的实际渐变区域和外沿继续扩大，覆盖增长=$revealGrowth；半径增长px=$revealRadiusGrowth",
+                revealGrowth > .02f && revealRadiusGrowth > 12f * (revealFrames.firstOrNull()?.density ?: 1f))
+            assertTrue("实际揭示帧存在中心向外的细涟漪；缺少该阶段采样不能声明通过",
+                revealFrames.any { rippleRays.getValue(it) > 0 })
+            assertEquals("小猫实际进入后的有效动画期间没有纯白或小猫缺失帧", 0, blank)
             assertTrue("最终真实页面可见且启动层不再遮挡实际触摸", pageVisible && interactionSucceeded)
-            println("真实开屏 $runId：${captured.size} 帧；旧有效 ${oldVisible.size}，新有效 ${visible.size}；空帧 $blank；$diagnosis")
+            println("真实开屏 $runId：${captured.size} 帧；缩放后关联 ${scaledAssociation.size}，立即关联 ${visible.size}；空帧 $blank；$diagnosis")
         } finally {
             if (!observer.isAlive) captured.forEach { it.bitmap.recycle() }
         }
     }
 
-    private fun exclusionReasons(frame: Frame, oldAssociation: Boolean = false): List<String> {
-        val after = if (oldAssociation) frame.afterScaling else frame.after
+    private fun exclusionReasons(frame: Frame, scaledAssociation: Boolean = false): List<String> {
+        val after = if (scaledAssociation) frame.afterScaling else frame.after
         return buildList {
             if (frame.stableFinal) add("稳定终帧，不作为品牌中间帧")
             if (frame.before.hostId != after.hostId) add("截图跨越宿主重建")
+            if (frame.viewport.isEmpty || frame.before.viewport != after.viewport) add("实际窗口范围未就绪或截图跨越窗口变化")
             if (!frame.before.active || !after.active) add("截图关联窗口并非两端均为可播放品牌层")
             if (frame.before.progress < .20f) add("调用前进度低于.20")
-            if (after.progress > .78f) add("关联后进度高于.78")
-            if (nameEdges(frame) < 12) add("系统画面未显示足够应用名笔画")
+            if (after.progress > FADE_START_PROGRESS) add("关联后已进入620ms退场，不混入底层页面")
+            if (catPixels(frame) < 12) add("小猫下落区域没有实际小猫特征")
         }
     }
 
@@ -326,34 +395,15 @@ class StartupRealFrameInstrumentedTest {
     private fun contrast(a: Int, b: Int): Int = maxOf(abs(Color.red(a) - Color.red(b)),
         abs(Color.green(a) - Color.green(b)), abs(Color.blue(a) - Color.blue(b)))
 
-    private fun edges(frame: Frame, leftDp: Float, topDp: Float, rightDp: Float, bottomDp: Float): Int {
-        val image = frame.bitmap
-        val left = (image.width / 2f + leftDp * frame.density).roundToInt().coerceIn(0, image.width - 2)
-        val right = (image.width / 2f + rightDp * frame.density).roundToInt().coerceIn(left + 1, image.width - 1)
-        val top = (image.height / 2f + topDp * frame.density).roundToInt().coerceIn(0, image.height - 2)
-        val bottom = (image.height / 2f + bottomDp * frame.density).roundToInt().coerceIn(top + 1, image.height - 1)
-        var edges = 0
-        for (y in top until bottom) for (x in left until right) {
-            val pixel = image.getPixel(x, y)
-            if (maxOf(contrast(pixel, image.getPixel(x + 1, y)), contrast(pixel, image.getPixel(x, y + 1))) >= 22) edges++
-        }
-        return edges
-    }
-
-    /** 系统启动图没有下方应用名；真实笔画证明屏幕已经显示 Compose 品牌画面。 */
-    private fun nameEdges(frame: Frame) = edges(frame, -90f, 77f, 90f, 139f)
-    private fun brandEdges(frame: Frame) = edges(frame, -120f, -125f, 120f, 139f)
+    private fun catPixels(frame: Frame) = StartupScenePixels.catPixels(frame.bitmap, frame.viewport, frame.density)
 
     private fun changedBrandPixels(first: Frame, last: Frame): Int {
         val image = first.bitmap
         if (image.width != last.bitmap.width || image.height != last.bitmap.height) return 0
-        val radius = (120f * first.density).roundToInt()
-        val left = (image.width / 2 - radius).coerceAtLeast(0)
-        val right = (image.width / 2 + radius).coerceAtMost(image.width)
-        val top = (image.height / 2 - radius).coerceAtLeast(0)
-        val bottom = (image.height / 2 + 70f * first.density).roundToInt().coerceAtMost(image.height)
+        // 相同实际窗口内同时覆盖纵向小猫和向四角扩散的背景，排除系统栏图标。
+        val bounds = StartupScenePixels.contentBounds(image, first.viewport, first.density)
         var changed = 0
-        for (y in top until bottom) for (x in left until right) {
+        for (y in bounds.top until bounds.bottom) for (x in bounds.left until bounds.right) {
             if (contrast(image.getPixel(x, y), last.bitmap.getPixel(x, y)) >= 8) changed++
         }
         return changed
@@ -361,5 +411,118 @@ class StartupRealFrameInstrumentedTest {
 
     companion object {
         private const val MINIMUM_SPAN_NANOS = 140_800_000L
+        private const val LANDING_PROGRESS = 260f / 900f
+        private const val FADE_START_PROGRESS = 620f / 900f
     }
+}
+
+/** 两组设备测试只分析实际图片；不调用生产运动插值，避免以状态值代替屏幕证据。 */
+internal object StartupScenePixels {
+    data class Background(val coloredFraction: Float, val maximumColoredRadius: Float)
+
+    fun contentBounds(image: Bitmap, viewport: Rect, density: Float): Rect {
+        // 顶底32dp仅排除系统栏符号；圆形中心始终取完整DecorView，不能取扣除栏后的中心。
+        val inset = (32f * density).roundToInt()
+        return Rect(viewport.left.coerceIn(0, image.width), (viewport.top + inset).coerceIn(0, image.height),
+            viewport.right.coerceIn(0, image.width), (viewport.bottom - inset).coerceIn(0, image.height))
+    }
+
+    fun catPixels(image: Bitmap, viewport: Rect, density: Float, falling: Boolean = true): Int {
+        if (viewport.isEmpty) return 0
+        val bounds = contentBounds(image, viewport, density)
+        val centerX = viewport.exactCenterX()
+        val centerY = viewport.exactCenterY()
+        // 原图112dp；76dp半宽覆盖轻压缩、抗锯齿以及落地的12dp回弹。
+        val radius = 76f * density
+        val left = (centerX - radius).roundToInt().coerceIn(bounds.left, bounds.right)
+        val right = (centerX + radius).roundToInt().coerceIn(bounds.left, bounds.right)
+        val top = if (falling) bounds.top else (centerY - radius).roundToInt().coerceIn(bounds.top, bounds.bottom)
+        val bottom = (centerY + radius).roundToInt().coerceIn(bounds.top, bounds.bottom)
+        var pixels = 0
+        for (y in top until bottom) for (x in left until right) {
+            val pixel = image.getPixel(x, y)
+            // 原小猫红包与棕毛的饱和暖色；纸纹、淡色涟漪和深色渐变均不能冒充小猫。
+            val red = Color.red(pixel)
+            val green = Color.green(pixel)
+            val blue = Color.blue(pixel)
+            if (red > green + 24 && red > blue + 24 && green < 180) pixels++
+        }
+        return pixels
+    }
+
+    fun background(image: Bitmap, viewport: Rect, density: Float): Background {
+        if (viewport.isEmpty) return Background(0f, 0f)
+        val bounds = contentBounds(image, viewport, density)
+        val centerX = viewport.exactCenterX()
+        val centerY = viewport.exactCenterY()
+        val catRadius = 76f * density
+        var total = 0
+        var colored = 0
+        var maximumRadius = 0f
+        for (y in bounds.top until bounds.bottom step 2) for (x in bounds.left until bounds.right step 2) {
+            // 从屏幕顶部到落点的窄列排除下落中的猫，只度量实际背景揭示。
+            if (abs(x - centerX) < catRadius && y < centerY + catRadius) continue
+            total++
+            if (whiteDistance(image.getPixel(x, y)) >= 10) {
+                colored++
+                maximumRadius = maxOf(maximumRadius, hypot(x - centerX, y - centerY))
+            }
+        }
+        return Background(if (total > 0) colored.toFloat() / total else 0f, maximumRadius)
+    }
+
+    /** 在实际窗口中心的16条射线上找“白底间隔、细色带、外侧白底”，不把大片渐变算作涟漪。 */
+    fun rippleRays(image: Bitmap, viewport: Rect, density: Float): Int {
+        if (viewport.isEmpty) return 0
+        val bounds = contentBounds(image, viewport, density)
+        val centerX = viewport.exactCenterX()
+        val centerY = viewport.exactCenterY()
+        val minimumGap = maxOf(2, (3f * density).roundToInt())
+        val maximumBand = maxOf(3, (6f * density).roundToInt())
+        val minimumOutside = maxOf(3, (6f * density).roundToInt())
+        var rays = 0
+        for (index in 0 until 16) {
+            val angle = index * Math.PI / 8.0
+            val dx = cos(angle).toFloat()
+            val dy = sin(angle).toFloat()
+            var radius = (80f * density).roundToInt()
+            var whiteBefore = 0
+            var band = 0
+            var whiteAfter = 0
+            var bandHasColor = false
+            while (true) {
+                val x = (centerX + radius * dx).roundToInt()
+                val y = (centerY + radius * dy).roundToInt()
+                if (!bounds.contains(x, y)) break
+                val distance = whiteDistance(image.getPixel(x, y))
+                if (band == 0) {
+                    if (distance <= 6) whiteBefore++ else if (whiteBefore >= minimumGap) {
+                        band = 1
+                        bandHasColor = distance >= 10
+                    } else whiteBefore = 0
+                } else if (distance <= 6) {
+                    whiteAfter++
+                    if (whiteAfter >= minimumOutside) {
+                        if (bandHasColor && band <= maximumBand) {
+                            rays++
+                            break
+                        }
+                        whiteBefore = whiteAfter
+                        band = 0
+                        whiteAfter = 0
+                        bandHasColor = false
+                    }
+                } else {
+                    // 短暂抗锯齿间隙仍归同一条细带；大片连续渐变会超过最大带宽而被排除。
+                    band += whiteAfter + 1
+                    whiteAfter = 0
+                    bandHasColor = bandHasColor || distance >= 10
+                }
+                radius++
+            }
+        }
+        return rays
+    }
+
+    private fun whiteDistance(pixel: Int) = maxOf(255 - Color.red(pixel), 255 - Color.green(pixel), 255 - Color.blue(pixel))
 }

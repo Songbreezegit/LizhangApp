@@ -3,6 +3,7 @@ package com.yangsong.lizhang.flow
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.os.Process
 import android.os.SystemClock
 import androidx.appcompat.app.AppCompatDelegate
@@ -118,15 +119,44 @@ class StartupAnimationInstrumentedTest {
             compose.mainClock.advanceTimeByFrame()
             compose.onNodeWithTag("品牌开屏").assertIsDisplayed()
             compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
-            val first = frame("${entry}_起始")
-            compose.mainClock.advanceTimeBy(240)
-            val middle = frame("${entry}_中间")
+            val first = frame("${entry}_纯白起始")
+            var density = 1f
+            scenario.onActivity { density = it.resources.displayMetrics.density }
+            val viewport = Rect(0, 0, first.width, first.height)
+            assertTrue("应用内时间轨从纯白开始，允许小猫尚在屏幕顶部之外",
+                StartupScenePixels.background(first, viewport, density).coloredFraction < .005f)
+            compose.mainClock.advanceTimeBy(220)
+            val falling = frame("${entry}_下落220ms")
+            assertTrue("落地前小猫实际进入画面", StartupScenePixels.catPixels(falling, viewport, density) >= 12)
+            assertTrue("260ms落地前背景仍是纯白",
+                StartupScenePixels.background(falling, viewport, density).coloredFraction < .005f)
+            compose.mainClock.advanceTimeBy(100)
+            val landed = frame("${entry}_落地扩散320ms")
+            val landingBackground = StartupScenePixels.background(landed, viewport, density)
+            assertTrue("小猫落地后位于实际画面中心",
+                StartupScenePixels.catPixels(landed, viewport, density, falling = false) >= 12)
+            assertTrue("落地后渐变已经从小猫周围向外揭示", landingBackground.coloredFraction > .02f)
+            assertTrue("落地阶段实际画面含白底间隔两侧的细涟漪",
+                StartupScenePixels.rippleRays(landed, viewport, density) > 0)
+            compose.mainClock.advanceTimeBy(180)
+            val middle = frame("${entry}_渐变展开500ms")
+            val middleBackground = StartupScenePixels.background(middle, viewport, density)
+            assertTrue("渐变揭示继续向外扩大",
+                middleBackground.coloredFraction > landingBackground.coloredFraction + .02f &&
+                    middleBackground.maximumColoredRadius > landingBackground.maximumColoredRadius + 12f * density)
             var changed = 0
             for (y in 0 until first.height step 3) for (x in 0 until first.width step 3) {
                 if (first.getPixel(x, y) != middle.getPixel(x, y)) changed++
             }
-            assertTrue("实际品牌画面有入场和圆环扩散变化", changed > 100)
+            assertTrue("实际小猫下落和渐变扩散画面发生变化", changed > 100)
             assertTrue("中途仍在有限动画时间轴内", startup.progress > 0f && startup.progress < 1f)
+            File(evidenceFolder, "阶段采样.txt").writeText(
+                "本组使用Compose测试时钟，不替代系统真实帧验收\n" +
+                    "设计时长=900ms；落地=260ms；圆渐变揭示=260..620ms；退场=620..900ms\n" +
+                    "320ms背景覆盖=${landingBackground.coloredFraction}；500ms背景覆盖=${middleBackground.coloredFraction}\n" +
+                    "320ms实际扩散半径=${landingBackground.maximumColoredRadius / density}dp；" +
+                    "500ms实际扩散半径=${middleBackground.maximumColoredRadius / density}dp\n",
+            )
 
             when (entry) {
                 "back" -> {

@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.snapshotFlow
 import com.yangsong.lizhang.ui.component.LocalPendingDark
 import com.yangsong.lizhang.ui.component.LocalCurrentLanguage
 import androidx.core.view.WindowCompat
@@ -31,6 +32,7 @@ import com.yangsong.lizhang.ui.privacy.PrivacyNoticeGate
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 import com.yangsong.lizhang.ui.component.BrandStartupOverlay
 import com.yangsong.lizhang.ui.component.StartupWindowGate
+import com.yangsong.lizhang.ui.component.StartupDropMotion
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.ui.navigation.LiZhangNavGraph
@@ -103,10 +105,21 @@ class MainActivity : AppCompatActivity() {
                 AppThemeMode.LIGHT -> false
                 AppThemeMode.DARK -> true
             }
-            SideEffect {
-                WindowCompat.getInsetsController(window, window.decorView).apply {
-                    isAppearanceLightStatusBars = !darkTheme
-                    isAppearanceLightNavigationBars = !darkTheme
+            LaunchedEffect(darkTheme, startupState) {
+                // 只在白底与已揭示的暗色边缘之间切换栏图标，不随每帧重组主界面。
+                snapshotFlow {
+                    StartupDropMotion.darkSystemBarIcons(
+                        elapsedMs = startupState.progress * StartupAnimationViewModel.DURATION_MILLIS,
+                        viewportWidth = window.decorView.width.toFloat(),
+                        viewportHeight = window.decorView.height.toFloat(),
+                        startupVisible = startupState.visible,
+                        darkTheme = darkTheme,
+                    )
+                }.collect { darkIcons ->
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = darkIcons
+                        isAppearanceLightNavigationBars = darkIcons
+                    }
                 }
             }
             LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors) {

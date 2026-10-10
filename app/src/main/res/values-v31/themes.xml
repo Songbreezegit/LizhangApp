@@ -4,6 +4,11 @@
         <item name="android:windowBackground">@drawable/startup_window</item>
         <item name="android:windowSplashScreenBackground">@color/startup_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/startup_icon</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">@color/startup_background</item>
+        <item name="android:navigationBarColor">@color/startup_background</item>
     </style>
 </resources>

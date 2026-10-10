@@ -214,8 +214,11 @@ internal interface StartupWindowCallbacks {
     fun clearSplashExitListener()
 }
 
-private class AndroidStartupWindowCallbacks(private val activity: Activity) : StartupWindowCallbacks {
-    override val supportsSystemSplash = Build.VERSION.SDK_INT >= 31
+internal class AndroidStartupWindowCallbacks(
+    activity: Activity,
+    private val splashHost: StartupSplashHost = AndroidStartupSplashHost(activity),
+) : StartupWindowCallbacks {
+    override val supportsSystemSplash get() = splashHost.supported
     private var commitObserver: ViewTreeObserver? = null
     private var removeCurrentSplash: (() -> Unit)? = null
 
@@ -238,12 +241,15 @@ private class AndroidStartupWindowCallbacks(private val activity: Activity) : St
     }
 
     override fun setSplashExitListener(listener: (() -> Unit) -> Unit) {
-        if (Build.VERSION.SDK_INT >= 31) activity.splashScreen.setOnExitAnimationListener { splash ->
+        if (!supportsSystemSplash) return
+        // 同一窗口的新宿主会替换之前留下的迟到清理监听，始终只向系统登记一次。
+        splashHost.clearExitListener()
+        splashHost.setExitListener { removeSplash ->
             var removed = false
             val remove: () -> Unit = {
                 if (!removed) {
                     removed = true
-                    splash.remove()
+                    removeSplash()
                     removeCurrentSplash = null
                 }
             }
@@ -253,18 +259,48 @@ private class AndroidStartupWindowCallbacks(private val activity: Activity) : St
     }
 
     override fun clearSplashExitListener() {
-        if (Build.VERSION.SDK_INT >= 31) {
+        if (supportsSystemSplash) {
+            // 首帧很慢时，系统复制启动视图的事务可能晚于超时清理才进入主队列。
+            // 只清监听会使稍后转交到 Decor 的视图再也无人移除；保留不触碰状态的清理监听。
+            // 先清后注册，避免同一 SplashScreen 实例在系统管理器中重复登记。
+            splashHost.clearExitListener()
+            splashHost.setExitListener { removeSplash -> removeSplash() }
             removeCurrentSplash?.invoke()
             removeCurrentSplash = null
             // 系统可能已把启动 View 转交到 Decor，却尚未派发依赖绘制帧的退出回调。
             // 清除监听不会移除这种 View，必须通过公开 remove() 释放其窗口与 Surface。
-            val decor = activity.window.peekDecorView() as? ViewGroup
-            if (decor != null) {
-                for (index in decor.childCount - 1 downTo 0) {
-                    (decor.getChildAt(index) as? SplashScreenView)?.remove()
-                }
+            splashHost.removeAttachedViews()
+        }
+    }
+}
+
+/** 把系统转交与窗口子视图清理集中起来，允许回归注入迟到的非敏感覆盖视图。 */
+internal interface StartupSplashHost {
+    val supported: Boolean
+    fun setExitListener(listener: (() -> Unit) -> Unit)
+    fun clearExitListener()
+    fun removeAttachedViews()
+}
+
+private class AndroidStartupSplashHost(private val activity: Activity) : StartupSplashHost {
+    override val supported = Build.VERSION.SDK_INT >= 31
+
+    override fun setExitListener(listener: (() -> Unit) -> Unit) {
+        if (Build.VERSION.SDK_INT >= 31) activity.splashScreen.setOnExitAnimationListener { splash ->
+            listener { splash.remove() }
+        }
+    }
+
+    override fun clearExitListener() {
+        if (Build.VERSION.SDK_INT >= 31) activity.splashScreen.clearOnExitAnimationListener()
+    }
+
+    override fun removeAttachedViews() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val decor = activity.window.peekDecorView() as? ViewGroup ?: return
+            for (index in decor.childCount - 1 downTo 0) {
+                (decor.getChildAt(index) as? SplashScreenView)?.remove()
             }
-            activity.splashScreen.clearOnExitAnimationListener()
         }
     }
 }
