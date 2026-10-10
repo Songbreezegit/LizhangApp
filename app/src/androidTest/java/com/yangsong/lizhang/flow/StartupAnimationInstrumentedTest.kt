@@ -27,6 +27,7 @@ import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
@@ -125,6 +126,8 @@ class StartupAnimationInstrumentedTest {
             val viewport = Rect(0, 0, first.width, first.height)
             assertTrue("应用内时间轨从纯白开始，允许小猫尚在屏幕顶部之外",
                 StartupScenePixels.background(first, viewport, density).coloredFraction < .005f)
+            assertEquals("0进度纯白起帧没有提前静止在中央的小猫",
+                0, StartupScenePixels.catPixels(first, viewport, density))
             compose.mainClock.advanceTimeBy(220)
             val falling = frame("${entry}_下落220ms")
             assertTrue("落地前小猫实际进入画面", StartupScenePixels.catPixels(falling, viewport, density) >= 12)

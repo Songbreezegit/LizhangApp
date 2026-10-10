@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LiZhang" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">@color/startup_background</item>
-    </style>
+    <!-- Android 8.1 起支持白底上的深色导航栏图标。 -->
     <style name="Theme.LiZhang.Starting" parent="Theme.LiZhang">
         <item name="android:windowBackground">@drawable/startup_window</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:statusBarColor">@color/startup_background</item>
-        <item name="android:navigationBarColor">#292E35</item>
+        <item name="android:navigationBarColor">@color/startup_background</item>
     </style>
 </resources>
