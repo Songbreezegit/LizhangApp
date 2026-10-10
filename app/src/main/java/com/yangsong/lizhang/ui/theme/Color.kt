@@ -15,7 +15,7 @@ val AvatarText = InkPrimary
 // 保留旧常量名兼容引用，浅色实色按钮统一为指定的浅粉色与深色文字。
 val CoralPrimary = InkPrimary
 val CoralStrong = CoralPrimary
-val CoralContainer = Color(0xFFFECBCC)
+val CoralContainer = Color(0xFFFFCEE3)
 val BlushSurface = Color(0xFFFFF6F3)
 val MintPrimary = InkSecondary
 val MintContainer = Color(0xFFCBD7EF)
