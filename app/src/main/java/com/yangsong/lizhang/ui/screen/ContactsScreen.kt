@@ -1,5 +1,10 @@
 package com.yangsong.lizhang.ui.screen
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import com.yangsong.lizhang.ui.component.LocalBrightGradientHeader
+import com.yangsong.lizhang.ui.component.gradientHeaderColor
+
 import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
@@ -161,6 +166,8 @@ fun ContactsContent(
     AppScaffold(
         modifier = Modifier.hazeSource(hazeState),
         topBar = {
+            CompositionLocalProvider(LocalBrightGradientHeader provides true,
+                LocalContentColor provides gradientHeaderColor()) {
             if (state.isSelectionMode) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
@@ -176,6 +183,7 @@ fun ContactsContent(
                     Text(stringResource(R.string.contact_bulk_manage))
                 }
             })
+            }
         },
         bottomBar = {
             if (state.isSelectionMode) GlassSurface {

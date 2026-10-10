@@ -12,10 +12,12 @@ val InkSecondary = Color(0xFF4D545F)
 val SoftDivider = Color(0xFFDEE1E9)
 val AvatarBackground = Color(0xFFEAF0FA)
 val AvatarText = InkPrimary
-// 保留旧常量名兼容引用，浅色实色按钮统一为指定的浅粉色与深色文字。
+// 保留旧常量名兼容引用，开屏波体和语义容器沿用浅粉色。
 val CoralPrimary = InkPrimary
 val CoralStrong = CoralPrimary
 val CoralContainer = Color(0xFFFFCEE3)
+// 实体操作按钮采用浅杏色；开屏水波与其他语义容器继续使用各自色值。
+val ActionButtonContainer = Color(0xFFFFC8AE)
 val BlushSurface = Color(0xFFFFF6F3)
 val MintPrimary = InkSecondary
 val MintContainer = Color(0xFFCBD7EF)

@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.gradientTextStyle
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.glassSwitchColors
@@ -357,15 +358,15 @@ fun NotificationsContent(
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = gradientTextStyle(MaterialTheme.typography.titleMedium))
                         GlassTextButton(onAdd, Modifier.testTag("新增独立提醒").featureGuideTarget(FeatureGuideTarget.REMINDERS_PAGE)) {
                             Icon(LiZhangIcons.Plus, null, Modifier.size(18.dp), tint = featureIconColor())
-                            Text(stringResource(R.string.independent_add))
+                            Text(stringResource(R.string.independent_add), style = gradientTextStyle(MaterialTheme.typography.labelLarge))
                         }
                     }
-                    Text(stringResource(R.string.notifications_desc), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.notifications_desc), style = gradientTextStyle(MaterialTheme.typography.bodySmall),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(stringResource(R.string.independent_storage_notice), style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.independent_storage_notice), style = gradientTextStyle(MaterialTheme.typography.bodySmall),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (state.reminders.isEmpty()) {

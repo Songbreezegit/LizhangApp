@@ -27,6 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
+import com.yangsong.lizhang.ui.theme.ActionButtonContainer
+import com.yangsong.lizhang.ui.theme.CoralOnContainer
 
 data class GlassAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
 
@@ -38,8 +40,8 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
     val rotation by animateFloatAsState(if (expanded) 45f else 0f, tween(180), label = "添加按钮旋转")
     val actionShape = RoundedCornerShape(GlassTokens.ControlRadius)
     val actionFrame = if (LocalEffectiveDarkTheme.current) Modifier.frostedGlassFrame(hazeState, actionShape)
-        else Modifier.clip(actionShape).background(MaterialTheme.colorScheme.primaryContainer)
-    val actionTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
+        else Modifier.matteButtonFrame(ActionButtonContainer, actionShape)
+    val actionTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else CoralOnContainer
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         actions.forEachIndexed { index, action ->
             AnimatedVisibility(expanded,
@@ -54,7 +56,8 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
                         .padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary,
+                        LocalBrightGradientHeader provides !LocalEffectiveDarkTheme.current) {
                         Icon(action.icon, null, tint = featureIconColor())
                         Spacer(Modifier.width(10.dp))
                         Text(action.label, color = actionTextColor, style = MaterialTheme.typography.labelLarge)

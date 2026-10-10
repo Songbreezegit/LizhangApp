@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.onboarding
+import com.yangsong.lizhang.ui.component.gradientTextStyle
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -87,7 +88,7 @@ private fun OnboardingPage(page: Int) {
             0 -> R.string.onboarding_intro_title
             1 -> R.string.onboarding_features_title
             else -> R.string.onboarding_privacy_title
-        }), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        }), style = gradientTextStyle(MaterialTheme.typography.headlineSmall), textAlign = TextAlign.Center)
         if (page == 1) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {

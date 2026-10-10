@@ -11,6 +11,7 @@ class ThemeContrastTest {
         val pairs = listOf(
             InkOnIllustration to BlushSurface,
             CoralOnContainer to CoralContainer,
+            InkPrimary to ActionButtonContainer,
             MintOnContainer to MintContainer,
             ApricotOnContainer to ApricotContainer,
             LavenderOnContainer to LavenderContainer,

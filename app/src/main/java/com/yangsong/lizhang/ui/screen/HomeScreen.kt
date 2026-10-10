@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
@@ -149,10 +150,11 @@ fun HomeContent(
 
 @Composable
 private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
+    CompositionLocalProvider(LocalBrightGradientHeader provides true, LocalContentColor provides gradientHeaderColor()) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.app_tagline), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.app_tagline), color = gradientHeaderSecondaryColor(), style = MaterialTheme.typography.bodyLarge)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassIconButton(onSearch) { Icon(LiZhangIcons.Search, stringResource(R.string.action_search), Modifier.size(28.dp), tint = featureIconColor()) }
@@ -160,6 +162,7 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
                 Icon(LiZhangIcons.Bell, stringResource(R.string.nav_notifications), Modifier.size(28.dp), tint = featureIconColor())
             }
         }
+    }
     }
 }
 
@@ -333,14 +336,15 @@ private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar
 @Composable
 private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, tint: Color,
     onClick: () -> Unit, modifier: Modifier) {
+    val painter = rememberVectorPainter(icon)
     Column(modifier.clip(RoundedCornerShape(16.dp)).pressClickable(role = Role.Button, accent = tint, pressedScale = .96f, onClick = onClick).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(52.dp),
             contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(26.dp), tint = featureIconColor())
+            Icon(painter, null, Modifier.size(26.dp).gradientIconOutline(painter), tint = featureIconColor())
         }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(label), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
+        Text(stringResource(label), style = gradientTextStyle(MaterialTheme.typography.bodySmall), fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center)
     }
 }

@@ -41,6 +41,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import java.util.Calendar
 import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
+import com.yangsong.lizhang.ui.theme.ActionButtonContainer
+import com.yangsong.lizhang.ui.theme.CoralOnContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,8 +210,8 @@ fun GiftSaveBar(
     val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
     val saveFrame = if (LocalEffectiveDarkTheme.current || (!enabled && !isSaving))
         Modifier.frostedGlassFrame(hazeState, glassShape)
-        else Modifier.clip(glassShape).background(MaterialTheme.colorScheme.primaryContainer)
-    val saveTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
+        else Modifier.matteButtonFrame(ActionButtonContainer, glassShape)
+    val saveTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else CoralOnContainer
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
@@ -225,7 +227,7 @@ fun GiftSaveBar(
                     CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
                         strokeWidth = 2.dp, color = saveTextColor)
                 } else {
-                    Icon(LiZhangIcons.Check, null, tint = featureIconColor())
+                    Icon(LiZhangIcons.Check, null, tint = if (LocalEffectiveDarkTheme.current) featureIconColor() else androidx.compose.ui.graphics.Color.Black)
                     Spacer(Modifier.width(10.dp))
                     Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
                         color = saveTextColor, style = MaterialTheme.typography.titleMedium)

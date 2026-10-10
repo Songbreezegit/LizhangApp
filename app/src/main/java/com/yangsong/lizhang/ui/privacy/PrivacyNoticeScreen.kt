@@ -38,6 +38,8 @@ import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.GlassButton
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassTextButton
+import com.yangsong.lizhang.ui.component.gradientHeaderColor
+import com.yangsong.lizhang.ui.component.gradientTextStyle
 import com.yangsong.lizhang.ui.screen.LegalDocumentScreen
 import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
 import com.yangsong.lizhang.ui.viewmodel.PrivacyConsentViewModel
@@ -94,7 +96,8 @@ fun PrivacyNoticeScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
                 .padding(24.dp).testTag("首次隐私告知")) {
                 Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                    Text(stringResource(R.string.privacy_notice_intro), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.privacy_notice_intro), style = MaterialTheme.typography.bodyLarge,
+                        color = gradientHeaderColor())
                     GlassCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(stringResource(R.string.privacy_notice_local_data), style = MaterialTheme.typography.bodyLarge)
@@ -102,10 +105,10 @@ fun PrivacyNoticeScreen(
                             Text(stringResource(R.string.privacy_notice_exports), style = MaterialTheme.typography.bodyLarge)
                         }
                     }
-                    Text(stringResource(R.string.privacy_notice_candidate), style = MaterialTheme.typography.bodyMedium,
+                    Text(stringResource(R.string.privacy_notice_candidate), style = gradientTextStyle(MaterialTheme.typography.bodyMedium),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stringResource(R.string.privacy_notice_version, LegalPolicy.CURRENT_VERSION),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        style = gradientTextStyle(MaterialTheme.typography.bodySmall), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (saveFailed) Text(stringResource(R.string.privacy_notice_save_failed),
                         Modifier.testTag("隐私确认保存失败"), color = MaterialTheme.colorScheme.error)
                     GlassButton(onAgree, Modifier.fillMaxWidth().testTag("隐私告知同意")) {

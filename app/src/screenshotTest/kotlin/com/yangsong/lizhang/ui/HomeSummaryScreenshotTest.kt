@@ -24,6 +24,8 @@ fun AnnualSummaryScreenshot() {
 @Preview(name = "年度收支窄屏长金额", locale = "zh-rCN", widthDp = 320, heightDp = 915)
 @Preview(name = "年度收支法语大字体", locale = "fr", widthDp = 360, heightDp = 1080, fontScale = 1.5f)
 @Preview(name = "年度收支繁体大字体", locale = "b+zh+Hant", widthDp = 360, heightDp = 1080, fontScale = 1.3f)
+@Preview(name = "蓝粉深色窄屏大字体", locale = "zh-rCN", widthDp = 320, heightDp = 915, fontScale = 1.5f,
+    uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun AnnualSummaryLongAmountScreenshot() {
     LiZhangTheme {

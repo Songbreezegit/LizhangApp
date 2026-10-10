@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import com.yangsong.lizhang.ui.theme.LocalThemeDarkFraction
 import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
+import com.yangsong.lizhang.ui.theme.ActionButtonContainer
+import com.yangsong.lizhang.ui.theme.CoralOnContainer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 
@@ -88,27 +90,34 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     shape: Shape = RoundedCornerShape(GlassTokens.ControlRadius),
     colors: ButtonColors = ButtonDefaults.buttonColors(
-        containerColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+        containerColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else ActionButtonContainer,
         contentColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
         disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.DisabledAlpha),
     ),
     content: @Composable RowScope.() -> Unit,
 ) {
-    // 浅色实体按钮统一粉色与深色文字，危险操作及调用方的禁用态保持原语义。
+    // 浅色实体按钮统一浅杏色与深色文字，危险操作及调用方的禁用态保持原语义。
     val scheme = MaterialTheme.colorScheme
     val actionColors = if (LocalEffectiveDarkTheme.current || colors.containerColor == scheme.error ||
         colors.containerColor == scheme.errorContainer) colors else colors.copy(
-        containerColor = scheme.primaryContainer,
-        contentColor = scheme.onPrimaryContainer,
+        containerColor = ActionButtonContainer,
+        contentColor = CoralOnContainer,
     )
     val tonal = actionColors.containerColor != scheme.primary &&
-        actionColors.containerColor != scheme.primaryContainer && actionColors.containerColor != scheme.error
+        actionColors.containerColor != ActionButtonContainer && actionColors.containerColor != scheme.error
+    val visibleContainer = if (enabled) actionColors.containerColor else actionColors.disabledContainerColor
+    val textured = !LocalEffectiveDarkTheme.current && visibleContainer == ActionButtonContainer
+    val paintedColors = if (textured) actionColors.copy(
+        containerColor = Color.Transparent, disabledContainerColor = Color.Transparent,
+    ) else actionColors
     val source = remember { MutableInteractionSource() }
-    CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    CompositionLocalProvider(LocalRippleConfiguration provides null,
+        LocalBrightGradientHeader provides (textured || LocalBrightGradientHeader.current)) {
         Button(onClick, modifier.heightIn(min = 48.dp).pressFeedback(source, shape, enabled,
-            accent = actionColors.contentColor),
-            enabled = enabled, shape = shape, colors = actionColors, interactionSource = source,
+            accent = actionColors.contentColor)
+            .then(if (textured) Modifier.matteButtonFrame(visibleContainer, shape) else Modifier),
+            enabled = enabled, shape = shape, colors = paintedColors, interactionSource = source,
             border = if (tonal) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null, content = content)
     }
 }
@@ -195,7 +204,8 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 @Composable fun GlassTextButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(
-        contentColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
+        contentColor = if (LocalBrightGradientHeader.current) gradientHeaderColor()
+            else if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
     ),
     content: @Composable RowScope.() -> Unit,
 ) {

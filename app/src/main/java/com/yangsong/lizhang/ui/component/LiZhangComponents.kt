@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
@@ -25,7 +26,17 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun AppTopBar(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.()->Unit)?=null)=TopAppBar(title={Text(title,style=MaterialTheme.typography.titleLarge)},navigationIcon={if(onBack!=null)GlassIconButton(onBack){Icon(LiZhangIcons.ArrowLeft,stringResource(R.string.action_back), tint = featureIconColor())}},actions={action?.invoke(this)},colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent))
+@Composable
+fun AppTopBar(title: String, onBack: (() -> Unit)? = null, action: (@Composable RowScope.() -> Unit)? = null) {
+    CompositionLocalProvider(LocalBrightGradientHeader provides true) {
+        TopAppBar(title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+            navigationIcon = { if (onBack != null) GlassIconButton(onBack) {
+                Icon(LiZhangIcons.ArrowLeft, stringResource(R.string.action_back), tint = featureIconColor())
+            } }, actions = { action?.invoke(this) }, colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent, titleContentColor = gradientHeaderColor(),
+                navigationIconContentColor = Color.Black, actionIconContentColor = Color.Black))
+    }
+}
 
 @Composable
 fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, modifier: Modifier = Modifier, hazeState: HazeState, enabled: Boolean = true) =
@@ -34,8 +45,8 @@ fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, 
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     loading: Boolean = false, enabled: Boolean = true, icon: ImageVector? = null) {
-    val container = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
-    val content = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+    val container = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else ActionButtonContainer
+    val content = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.onPrimary else CoralOnContainer
     GlassButton(onClick, modifier.heightIn(min = 52.dp), enabled = enabled && !loading,
         shape = RoundedCornerShape(GlassTokens.ControlRadius),
         colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = content,

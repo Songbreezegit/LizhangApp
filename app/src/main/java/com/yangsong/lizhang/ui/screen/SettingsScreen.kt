@@ -1,6 +1,8 @@
 package com.yangsong.lizhang.ui.screen
 
 import com.yangsong.lizhang.ui.component.featureIconColor
+import com.yangsong.lizhang.ui.component.gradientHeaderColor
+import com.yangsong.lizhang.ui.component.gradientHeaderSecondaryColor
 
 import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
@@ -515,9 +517,10 @@ fun SettingsContent(
                     PageIllustration(R.drawable.page_settings_cat, Modifier.size(64.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium,
+                            color = gradientHeaderColor())
                         Text(stringResource(R.string.app_tagline), style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            color = gradientHeaderSecondaryColor())
                     }
                 }
             }

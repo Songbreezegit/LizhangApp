@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 AppThemeMode.DARK -> true
             }
             LaunchedEffect(darkTheme, startupState) {
-                // 只在白底与已揭示的暗色边缘之间切换栏图标，不随每帧重组主界面。
+                // 顶部浅蓝与粉色使用深色图标；底部随白底和已揭示的暗色边缘切换。
                 snapshotFlow {
                     StartupDropMotion.darkSystemBarIcons(
                         elapsedMs = startupState.progress * StartupAnimationViewModel.DURATION_MILLIS,
@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }.collect { darkIcons ->
                     WindowCompat.getInsetsController(window, window.decorView).apply {
-                        isAppearanceLightStatusBars = darkIcons
+                        isAppearanceLightStatusBars = true
                         isAppearanceLightNavigationBars = darkIcons
                     }
                 }

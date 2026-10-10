@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import com.yangsong.lizhang.ui.component.gradientHeaderSecondaryColor
 
 import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.component.AppScaffold
@@ -109,7 +110,7 @@ private fun InformationPage(
                     Text(
                         text,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = gradientHeaderSecondaryColor(),
                     )
                 }
             }
