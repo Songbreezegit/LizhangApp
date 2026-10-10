@@ -13,7 +13,8 @@ import com.yangsong.lizhang.domain.model.AppLanguage
 class AppearanceTransitionViewModel : ViewModel() {
     data class ListPosition(val index: Int, val offset: Int, val viewportWidth: Int, val viewportHeight: Int)
     class LanguageRequest(val id: Long, val target: AppLanguage, val originHost: Long,
-        val listPosition: ListPosition?, var listRestored: Boolean = listPosition == null)
+        val listPosition: ListPosition?, var listRestored: Boolean = listPosition == null,
+        val desiredLocales: String = "")
     class Snapshot(val id: Long, val bitmap: Bitmap, val width: Int, val height: Int,
         val x: Float, val y: Float, val targetDark: Boolean?, val language: AppLanguage?,
         var progress: Float = 0f, var started: Boolean = false, val originHost: Long = 0)
@@ -38,6 +39,8 @@ class AppearanceTransitionViewModel : ViewModel() {
     var languageSubmissions = 0
         internal set
     var languageHandoffs = 0
+        internal set
+    var languageCoverCommits = 0
         internal set
     var circularHandoffs = 0
         internal set

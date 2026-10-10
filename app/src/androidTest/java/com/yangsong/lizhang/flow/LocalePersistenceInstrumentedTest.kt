@@ -29,7 +29,7 @@ class LocalePersistenceInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             var previous: MainActivity? = null
             scenario.onActivity {
-                if (resourceLanguage(it) != targetLanguage) previous = it
+                previous = it
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(localeTag))
             }
             awaitLanguage(scenario, previous)
@@ -70,7 +70,7 @@ class LocalePersistenceInstrumentedTest {
         while (!ready && android.os.SystemClock.uptimeMillis() < deadline) {
             // 主线程空闲不代表系统配置已经派发，等待实际目标 Activity 的资源与导航。
             runCatching { scenario.onActivity {
-                ready = it !== previous && resourceLanguage(it) == targetLanguage && currentAppLanguage() == targetLanguage &&
+                ready = (previous == null || it === previous) && resourceLanguage(it) == targetLanguage && currentAppLanguage() == targetLanguage &&
                     it.appearanceHost.isNavigationReady && it.hasWindowFocus() && it.appearanceState.snapshot == null
             } }
             if (!ready) android.os.SystemClock.sleep(30)

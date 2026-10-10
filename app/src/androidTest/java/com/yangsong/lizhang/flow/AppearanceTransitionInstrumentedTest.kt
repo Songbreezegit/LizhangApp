@@ -47,10 +47,34 @@ class AppearanceTransitionInstrumentedTest {
             host.detach(preserveLanguage = false)
             assertSame("重复解除旧宿主不影响新宿主", retained, state.snapshot)
             root.layout(bounds.left, bounds.top, bounds.right - 1, bounds.bottom)
-            assertNull("新宿主仍响应尺寸变化并恢复实时页面", state.snapshot)
+            assertSame("语言重建的临时尺寸变化不能清掉旧画面", retained, state.snapshot)
+            root.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
+            state.install(AppearanceTransitionViewModel.Snapshot(state.requestId,
+                Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888), root.width, root.height,
+                0f, 0f, true, null))
+            root.layout(bounds.left, bounds.top, bounds.right - 1, bounds.bottom)
+            assertNull("主题圆形仍在尺寸变化时恢复实时页面", state.snapshot)
             root.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
             newHost.detach(preserveLanguage = false)
             assertEquals(initialChildren, root.childCount)
+        }
+    }
+
+    @Test
+    fun 语言快照在临时窗口尺寸下仍铺满实际画面() {
+        compose.runOnIdle {
+            val state = AppearanceTransitionViewModel()
+            val old = Bitmap.createBitmap(24, 40, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
+            state.install(AppearanceTransitionViewModel.Snapshot(0, old, 240, 400,
+                0f, 0f, null, AppLanguage.EN))
+            val view = SnapshotOverlay(compose.activity, state).apply { layout(0, 0, 200, 360) }
+            val frame = Bitmap.createBitmap(200, 360, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
+            try {
+                view.draw(Canvas(frame))
+                listOf(0 to 0, 199 to 0, 0 to 359, 199 to 359, 100 to 180).forEach { (x, y) ->
+                    assertEquals("旧画面在 Insets 临时变化时仍覆盖四角及中央", Color.RED, frame.getPixel(x, y))
+                }
+            } finally { frame.recycle(); state.clear() }
         }
     }
 
@@ -87,20 +111,21 @@ class AppearanceTransitionInstrumentedTest {
     fun 系统深色开关显示有效状态且圆心匹配控件并清理中断() {
         val app = compose.activity.application as com.yangsong.lizhang.LiZhangApplication
         val activityBeforeLanguage = compose.activity
-        val languageWillChange = activityBeforeLanguage.resources.configuration.locales[0].language != "zh"
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
                 androidx.core.os.LocaleListCompat.forLanguageTags("zh-CN"))
         }
-        // setApplicationLocales 的配置派发和重建异步完成，不能只依赖 Compose 空闲。
+        // 配置派发异步完成；纯语言变化必须保留同一窗口且实际资源已更新。
         compose.waitUntil(5000) {
-            runCatching { (!languageWillChange || compose.activity !== activityBeforeLanguage) &&
-                compose.activity.resources.configuration.locales[0].language == "zh" &&
-                compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() }.getOrDefault(false)
+            runCatching { compose.activity === activityBeforeLanguage &&
+                AppLanguage.fromLanguageTag(compose.activity.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.ZH_CN &&
+                com.yangsong.lizhang.ui.component.currentAppLanguage() == AppLanguage.ZH_CN &&
+                compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() &&
+                compose.activity.appearanceState.languageRequest == null }.getOrDefault(false)
         }
         compose.waitForIdle()
         compose.runOnIdle { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
-        compose.onNodeWithText("我的").performClick()
+        compose.onNodeWithTag("功能引导目标SETTINGS").performClick()
         compose.onNodeWithText("深色模式").performScrollTo()
         val switch = compose.onNode(isToggleable())
         switch.assertIsOff()
@@ -127,8 +152,11 @@ class AppearanceTransitionInstrumentedTest {
             android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
         if (systemDark) switch.assertIsOn() else switch.assertIsOff()
         switch.performClick()
+        val beforeRecreation = compose.activity
         compose.activityRule.scenario.recreate()
-        compose.waitUntil(2500) { compose.activity.appearanceState.snapshot == null }
+        compose.waitUntil(2500) { compose.activity !== beforeRecreation &&
+            compose.activity.appearanceState.snapshot == null &&
+            compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() }
         compose.onNodeWithText("语言").assertIsDisplayed()
         compose.runOnIdle { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
     }

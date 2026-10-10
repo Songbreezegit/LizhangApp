@@ -234,8 +234,9 @@ class StartupAnimationInstrumentedTest {
                         compose.waitUntil(8000) {
                             var ready = false
                             runCatching { scenario.onActivity {
-                                ready = it !== previous && it.resources.configuration.locales[0].language == target.substringBefore('-') &&
-                                    it.appearanceHost.isNavigationReady && !it.startupState.visible
+                                ready = it === previous && it.resources.configuration.locales[0].language == target.substringBefore('-') &&
+                                    AppCompatDelegate.getApplicationLocales().toLanguageTags() == target &&
+                                    it.appearanceHost.isNavigationReady && it.hasWindowFocus() && !it.startupState.visible
                             } }
                             ready
                         }

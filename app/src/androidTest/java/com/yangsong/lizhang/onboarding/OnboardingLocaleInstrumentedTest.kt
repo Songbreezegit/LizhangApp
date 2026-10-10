@@ -10,11 +10,12 @@ import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.AppLanguage
+import com.yangsong.lizhang.ui.component.currentAppLanguage
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
-/** 全新安装时单独执行，验证未确认告知的七语言重建与同卡片完整文档。 */
+/** 全新安装时单独执行，验证未确认告知的七语言配置更新与同卡片完整文档。 */
 class OnboardingLocaleInstrumentedTest {
     @get:Rule val compose = createEmptyComposeRule()
 
@@ -39,7 +40,7 @@ class OnboardingLocaleInstrumentedTest {
                 for (tag in listOf("zh-CN", "zh-Hant", "en", "ja", "ko", "es", "fr")) {
                     var previous: MainActivity? = null
                     scenario.onActivity {
-                        if (AppLanguage.fromLanguageTag(it.resources.configuration.locales[0].toLanguageTag()) != AppLanguage.fromLanguageTag(tag)) previous = it
+                        previous = it
                         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
                     }
                     try {
@@ -47,15 +48,15 @@ class OnboardingLocaleInstrumentedTest {
                             var ready = false
                             runCatching { scenario.onActivity {
                                 val locale = it.resources.configuration.locales[0]
-                                ready = it !== previous && locale.language == tag.substringBefore('-') &&
-                                    (tag != "zh-Hant" || locale.script == "Hant") &&
+                                ready = it === previous && AppLanguage.fromLanguageTag(locale.toLanguageTag()) == AppLanguage.fromLanguageTag(tag) &&
+                                    currentAppLanguage() == AppLanguage.fromLanguageTag(tag) &&
                                     it.appearanceHost.isNavigationReady && it.hasWindowFocus()
                             } }
                             ready
                         }
                     } catch (error: androidx.compose.ui.test.ComposeTimeoutException) {
                         var detail = "目标 $tag"
-                        scenario.onActivity { detail += "，当前 ${it.resources.configuration.locales[0].language}，新 Activity=${it !== previous}，就绪=${it.appearanceHost.isNavigationReady}，焦点=${it.hasWindowFocus()}" }
+                        scenario.onActivity { detail += "，当前 ${it.resources.configuration.locales[0].toLanguageTag()}，同一 Activity=${it === previous}，就绪=${it.appearanceHost.isNavigationReady}，焦点=${it.hasWindowFocus()}" }
                         throw AssertionError(detail, error)
                     }
                     compose.onNodeWithTag("首次隐私告知").assertIsDisplayed()

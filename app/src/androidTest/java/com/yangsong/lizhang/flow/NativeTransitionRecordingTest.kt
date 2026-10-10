@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
 import com.yangsong.lizhang.*
+import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.domain.model.AppThemeMode
 import com.yangsong.lizhang.ui.component.currentAppLanguage
@@ -77,6 +78,8 @@ class NativeTransitionRecordingTest {
         device.dumpWindowHierarchy(File(app.getExternalFilesDir(null), "transition-evidence/文字定位失败.xml"))
         error("未显示：$value；测试提醒数量=${app.appContainer.reminderRepository.reminders.value.size}")
     }
+    private fun navigationTab(route: String): UiObject2 =
+        device.wait(Until.findObject(By.res("底部导航项$route")), 6000) ?: error("底部导航入口未显示：$route")
     private fun chooseLanguage(value: String) {
         val choices = listOf("跟随系统", "简体中文", "繁體中文", "English", "日本語", "한국어", "Español", "Français")
         // 同语言文字也在下方设置行中；必须等弹窗选项出现后点击对应单选项。
@@ -129,13 +132,14 @@ class NativeTransitionRecordingTest {
                 !current.startupState.visible
         }
     }
-    private fun awaitChinese(previous: MainActivity, needsRecreation: Boolean) {
+    private fun awaitChinese(previous: MainActivity) {
         awaitPage {
             val current = activity()
-            (!needsRecreation || current !== previous) &&
+            current === previous &&
                 AppLanguage.fromLanguageTag(current.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.ZH_CN &&
                 currentAppLanguage() == AppLanguage.ZH_CN && current.appearanceHost.isNavigationReady &&
-                current.hasWindowFocus() && current.appearanceState.snapshot == null
+                current.hasWindowFocus() && current.appearanceState.snapshot == null &&
+                current.appearanceState.languageRequest == null
         }
     }
     private fun awaitThemeMode(mode: AppThemeMode, dark: Boolean) {
@@ -260,14 +264,13 @@ class NativeTransitionRecordingTest {
     private fun openChineseLightSettings() {
         launchFreshActivity()
         val previous = activity()
-        val needsRecreation = currentAppLanguage() != AppLanguage.ZH_CN
         instrumentation.runOnMainSync {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
             app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT)
         }
-        awaitChinese(previous, needsRecreation)
+        awaitChinese(previous)
         awaitThemeMode(AppThemeMode.LIGHT, dark = false)
-        text("我的").click()
+        navigationTab("settings").click()
         text("深色模式")
         val control = themeSwitch()
         if (control.visibleBounds.bottom > device.displayHeight * 3 / 4) {
@@ -337,20 +340,19 @@ class NativeTransitionRecordingTest {
         assertNull(activity().appearanceState.pendingDark)
     }
     @Test fun 正常渲染下圆形弹窗语言和提醒页面走查() = runFullLanguageScenario(1)
-    @Test fun 十二次语言重建后真实开关双向切换() = runFullLanguageScenario(2)
+    @Test fun 十二次语言切换后真实开关双向切换() = runFullLanguageScenario(2)
     private fun runFullLanguageScenario(languageCycles: Int) {
         launchFreshActivity()
         val chinesePrevious = activity()
-        val needsChineseRecreation = currentAppLanguage() != AppLanguage.ZH_CN
         instrumentation.runOnMainSync {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
             app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT)
         }
-        awaitChinese(chinesePrevious, needsChineseRecreation)
+        awaitChinese(chinesePrevious)
         awaitThemeMode(AppThemeMode.LIGHT, dark = false)
         val expectedMotion = InstrumentationRegistry.getArguments().getString("motion", "enabled") == "enabled"
         assertEquals("本次检查使用指定的实际动画比例", expectedMotion, android.animation.ValueAnimator.areAnimatorsEnabled())
-        text("我的").click()
+        navigationTab("settings").click()
         text("主题设置")
         awaitPage { activity().appearanceHost.isNavigationReady }
         text("深色模式")
@@ -401,11 +403,20 @@ class NativeTransitionRecordingTest {
             val submissions = state.languageSubmissions
             val handoffs = state.languageHandoffs
             val hosts = state.hostCount
+            val resourceLocales = previous.resources.configuration.locales.toLanguageTags()
+            val targetLanguage = when (choice) {
+                "English" -> AppLanguage.EN
+                "日本語" -> AppLanguage.JA
+                "한국어" -> AppLanguage.KO
+                "简体中文" -> AppLanguage.ZH_CN
+                "跟随系统" -> AppLanguage.SYSTEM
+                else -> error("测试路径包含未知语言：$choice")
+            }
             val top = text(title).visibleBounds.top
             val position = previous.appearanceHost.currentListPosition
             assertNotNull("取得原有列表状态", position)
             languageRow(title).click()
-            // 从点击之前持续读取系统实际合成画面，不能只检查重建完成后的终点。
+            // 从点击之前持续读取系统实际合成画面，不能只检查配置更新后的终点。
             val sampling = AtomicBoolean(true)
             val samples = AtomicInteger()
             val blankFrames = AtomicInteger()
@@ -432,23 +443,30 @@ class NativeTransitionRecordingTest {
             try {
                 chooseLanguage(choice)
                 text(target)
-                awaitPage { activity() !== previous && activity().appearanceState.snapshot == null }
+                awaitPage {
+                    val current = activity()
+                    current === previous && current.hasWindowFocus() && current.appearanceHost.isNavigationReady &&
+                        currentAppLanguage() == targetLanguage && current.getString(R.string.language) == target &&
+                        (targetLanguage == AppLanguage.SYSTEM ||
+                            AppLanguage.fromLanguageTag(current.resources.configuration.locales[0].toLanguageTag()) == targetLanguage) &&
+                        current.appearanceState.snapshot == null && current.appearanceState.languageRequest == null
+                }
                 device.waitForIdle()
             } finally {
                 sampling.set(false)
                 observer.join(3000)
             }
-            assertTrue("实际重建期间采集了连续画面", samples.get() > 1)
-            assertEquals("语言重建全过程没有实际空屏：$target", 0, blankFrames.get())
+            assertTrue("实际语言切换期间采集了连续画面", samples.get() > 1)
+            assertEquals("语言切换全过程没有实际空屏：$target", 0, blankFrames.get())
             println("语言连续画面检查：$target，采样 ${samples.get()} 帧，空屏 ${blankFrames.get()} 帧")
             assertSame(state, activity().appearanceState)
-            // 旧 Activity 的重复清理不得解除新宿主的监听或清空共享交接状态。
-            instrumentation.runOnMainSync { previous.appearanceHost.detach(preserveLanguage = false) }
-            assertEquals("每次语言选择只实际重建一次", hosts + 1, state.hostCount)
+            assertSame("每次纯语言选择保留同一实际 Activity", previous, activity())
+            assertEquals("每次语言选择不创建新宿主", hosts, state.hostCount)
             assertEquals(submissions + 1, state.languageSubmissions)
-            if (android.animation.ValueAnimator.areAnimatorsEnabled()) assertEquals(handoffs + 1, state.languageHandoffs)
+            val resourcesChanged = resourceLocales != activity().resources.configuration.locales.toLanguageTags()
+            assertEquals("有效资源变化才进行一次真实画面交接", handoffs + if (resourcesChanged) 1 else 0, state.languageHandoffs)
             frame("正常渲染_语言_${languageIndex + 1}_$target")
-            assertEquals("语言重建保持首个可见设置项及偏移：原坐标 $top，现坐标 ${text(target).visibleBounds.top}，记录 ${state.lastLanguagePosition}，恢复 ${state.lastRestoredPosition}，目标 ${state.lastLanguageTarget}",
+            assertEquals("语言切换保持首个可见设置项及偏移：原坐标 $top，现坐标 ${text(target).visibleBounds.top}，记录 ${state.lastLanguagePosition}，恢复 ${state.lastRestoredPosition}，目标 ${state.lastLanguageTarget}",
                 position, activity().appearanceHost.currentListPosition)
             title = target
         }
@@ -462,7 +480,7 @@ class NativeTransitionRecordingTest {
         device.waitForIdle()
         assertEquals("同语言不提交设置", sameSubmissions, sameLanguageState.languageSubmissions)
         assertEquals("同语言不重建", sameHosts, sameLanguageState.hostCount)
-        // 连续六次语言重建后，再次验证新宿主仍能双向完成真实圆形展开。
+        // 连续六次语言切换后，再次验证原窗口仍能双向完成真实圆形展开。
         device.swipe(device.displayWidth / 2, device.displayHeight / 3,
             device.displayWidth / 2, device.displayHeight * 3 / 4, 25)
         text("深色模式")
@@ -501,7 +519,7 @@ class NativeTransitionRecordingTest {
         assertEquals(circularBefore + if (expectedMotion) 2 else 0, activity().appearanceState.circularHandoffs)
         text("语言")
         device.waitForIdle()
-        text("首页").click()
+        navigationTab("home").click()
         device.wait(Until.findObject(By.desc("提醒")), 6000) ?: error("首页提醒入口未显示")
         awaitPage { activity().appearanceHost.isNavigationReady }
         device.findObject(By.desc("提醒")).click()
@@ -584,9 +602,8 @@ class NativeTransitionRecordingTest {
         try {
             launchFreshActivity()
             val chinesePrevious = activity()
-            val needsChineseRecreation = currentAppLanguage() != AppLanguage.ZH_CN
             instrumentation.runOnMainSync { AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN")) }
-            awaitChinese(chinesePrevious, needsChineseRecreation)
+            awaitChinese(chinesePrevious)
             for ((night, target) in listOf("yes" to AppThemeMode.LIGHT, "no" to AppThemeMode.DARK)) {
                 instrumentation.runOnMainSync { app.appContainer.themeRepository.setThemeMode(AppThemeMode.SYSTEM) }
                 val previous = activity()
@@ -602,7 +619,7 @@ class NativeTransitionRecordingTest {
                         current.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == targetNight &&
                         current.hasWindowFocus() && current.appearanceHost.isNavigationReady && !current.startupState.visible
                 }
-                text("我的").click()
+                navigationTab("settings").click()
                 text("主题设置")
                 awaitPage { activity().appearanceHost.isNavigationReady }
                 text("深色模式")
@@ -659,7 +676,7 @@ class NativeTransitionRecordingTest {
 }
 
 /** 检查正文区域的真实高对比笔画；排除系统栏和底部导航，平滑渐变不算内容。 */
-private fun hasRenderedContent(bitmap: Bitmap): Boolean {
+internal fun hasRenderedContent(bitmap: Bitmap): Boolean {
     val step = (bitmap.width / 240).coerceAtLeast(2)
     fun contrast(a: Int, b: Int) = maxOf(
         kotlin.math.abs(android.graphics.Color.red(a) - android.graphics.Color.red(b)),

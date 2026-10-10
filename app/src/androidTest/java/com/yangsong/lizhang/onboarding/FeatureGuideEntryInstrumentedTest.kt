@@ -12,6 +12,7 @@ import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.model.AppLanguage
+import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.domain.onboarding.FeatureGuidePage
 import com.yangsong.lizhang.domain.onboarding.FeatureGuideStep
 import org.junit.Assert.*
@@ -19,7 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import java.util.Locale
 
-/** 全新测试安装后单独执行，覆盖明确隐私确认、真实记账第三步、七语言重建和文档返回。 */
+/** 全新测试安装后单独执行，覆盖明确隐私确认、真实记账第三步、七语言更新和文档返回。 */
 class FeatureGuideEntryInstrumentedTest {
     @get:Rule val compose = createEmptyComposeRule()
 
@@ -48,7 +49,15 @@ class FeatureGuideEntryInstrumentedTest {
             waitFor("功能引导气泡")
             assertEquals(FeatureGuideStep.RECORD_AMOUNT, repository.state.value.featureGuideStep)
             compose.onNodeWithTag("功能引导气泡").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "3 / 5"))
+            var beforeRecreation: MainActivity? = null
+            scenario.onActivity { beforeRecreation = it }
             scenario.recreate()
+            compose.waitUntil(8000) {
+                var ready = false
+                runCatching { scenario.onActivity { ready = it !== beforeRecreation &&
+                    it.appearanceHost.isNavigationReady && it.hasWindowFocus() } }
+                ready
+            }
             waitFor("功能引导气泡")
             compose.onNodeWithTag("功能引导气泡").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "3 / 5"))
             scenario.onActivity { originalLanguage = it.resources.configuration.locales[0].toLanguageTag() }
@@ -56,14 +65,15 @@ class FeatureGuideEntryInstrumentedTest {
                 for (tag in listOf("zh-CN", "zh-Hant", "en", "ja", "ko", "es", "fr")) {
                     var previous: MainActivity? = null
                     scenario.onActivity {
-                        if (AppLanguage.fromLanguageTag(it.resources.configuration.locales[0].toLanguageTag()) != AppLanguage.fromLanguageTag(tag)) previous = it
+                        previous = it
                         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))
                     }
                     compose.waitUntil(8000) {
                         var ready = false
                         runCatching { scenario.onActivity {
-                            ready = it !== previous &&
+                            ready = it === previous &&
                                 AppLanguage.fromLanguageTag(it.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.fromLanguageTag(tag) &&
+                                currentAppLanguage() == AppLanguage.fromLanguageTag(tag) &&
                                 it.appearanceHost.isNavigationReady && it.hasWindowFocus()
                         } }
                         ready

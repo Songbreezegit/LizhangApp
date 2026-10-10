@@ -31,20 +31,19 @@ class LocalizationInstrumentedTest {
     @Test
     fun 主题开关与弹窗切换后保留设置页() {
         val previous = compose.activity
-        val needsRecreation = AppLanguage.fromLanguageTag(previous.resources.configuration.locales[0].toLanguageTag()) != AppLanguage.ZH_CN
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
         }
         compose.waitUntil(8000) {
             runCatching {
-                (!needsRecreation || compose.activity !== previous) &&
+                compose.activity === previous &&
                     AppLanguage.fromLanguageTag(compose.activity.resources.configuration.locales[0].toLanguageTag()) == AppLanguage.ZH_CN &&
                     compose.activity.appearanceHost.isNavigationReady && compose.activity.hasWindowFocus() &&
                     compose.activity.appearanceState.snapshot == null
             }.getOrDefault(false)
         }
         compose.waitForIdle()
-        compose.onNodeWithText("我的").performClick()
+        compose.onNodeWithTag("底部导航项settings").performClick()
         compose.onNode(isToggleable()).performScrollTo()
         compose.onNode(isToggleable()).performClick()
         compose.waitForIdle()

@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.MotionEvent
 import android.animation.ValueAnimator
 import androidx.appcompat.app.AppCompatActivity
-import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +40,9 @@ import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.component.AppearanceTransition
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.semantics.clearAndSetSemantics
 
 class MainActivity : AppCompatActivity() {
@@ -51,8 +53,6 @@ class MainActivity : AppCompatActivity() {
     private val reminderLaunchRequest = MutableStateFlow<ReminderLaunchRequest?>(null)
     private var nextRequestKey = 0L
     private val openRemindersRequest = MutableStateFlow<Long?>(null)
-    private var appliedLocaleTags = ""
-    private var localeRecreationRequested = false
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         // 只旁观设置控件的真实触摸，不消费事件或改变手势仲裁。
@@ -63,7 +63,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_LiZhang)
         super.onCreate(savedInstanceState)
-        appliedLocaleTags = resources.configuration.locales.toLanguageTags()
         // 保留窗口已有边到边配置，避免重复初始化。
         if (!window.decorView.isAttachedToWindow) enableEdgeToEdge()
         val app = application as LiZhangApplication
@@ -83,10 +82,13 @@ class MainActivity : AppCompatActivity() {
         // 复用的 Decor 还可能持有旧 Activity 的返回键调度器；
         // 必须先更新所有视图树所有者，重建后的返回键才能交给当前导航。
         initializeViewTreeOwners()
-        // 客户端重建会复用 Decor；移除已销毁 Activity 的 ComposeView，
-        // 让 setContent 为新 Activity 安装正确的生命周期与保存状态所有者。
-        findViewById<android.view.ViewGroup>(android.R.id.content).removeAllViews()
-        setContent {
+        // 新 Activity 使用新的 ComposeView 与所有者；语言覆盖留在 content 根中，
+        // 不随旧页面一同清空，直到新导航、窗口焦点和真实提交帧准备完成。
+        val composeView = ComposeView(this).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        }
+        composeView.setContent {
+            val resourceLocales = LocalConfiguration.current.locales.toLanguageTags()
             val onboardingState by onboardingViewModel.state.collectAsStateWithLifecycle()
             val privacyState by privacyViewModel.state.collectAsStateWithLifecycle()
             val startupVisible = startupState.visible
@@ -124,7 +126,7 @@ class MainActivity : AppCompatActivity() {
             }
             LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors) {
                 AppearanceTransition(appearanceHost, darkTheme, appearanceState.languagePreference,
-                    resources.configuration.locales[0].toLanguageTag()) {
+                    resourceLocales) {
                     CompositionLocalProvider(LocalPendingDark provides appearanceState.pendingDark,
                         LocalCurrentLanguage provides appearanceState.languagePreference) {
                         Surface(color = MaterialTheme.colorScheme.background) {
@@ -161,22 +163,17 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        appearanceHost.attach()
+        appearanceHost.replaceContent(composeView)
         startupWindowGate = StartupWindowGate(this, startupState,
             waitForSystemSplash = savedInstanceState == null && startupState.visible && !startupState.hasStarted)
         startupWindowGate.attach()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        val localesChanged = appliedLocaleTags != newConfig.locales.toLanguageTags()
         super.onConfigurationChanged(newConfig)
-        appliedLocaleTags = resources.configuration.locales.toLanguageTags()
-        if (localesChanged && !localeRecreationRequested) {
-            // 仍实际重建 Activity，但由客户端保留窗口后重建，避免系统 locale
-            // 配置重启先清空合成窗口；不再次提交语言设置。
-            localeRecreationRequested = true
-            recreate()
-        }
+        // locale 与 layoutDirection 已由 Manifest 声明自行处理；ComposeView
+        // 接收真实配置后重组资源，保留窗口、导航和输入状态，避免首次重建的黑帧。
+        if (::appearanceState.isInitialized) appearanceState.languagePreference = currentAppLanguage()
     }
 
     override fun onStop() {

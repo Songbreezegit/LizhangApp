@@ -36,12 +36,11 @@ class ExpandedLanguageInstrumentedTest {
             try {
                 var previous: MainActivity? = null
                 scenario.onActivity {
-                    if (resourceLanguage(it) != AppLanguage.ZH_CN) previous = it
+                    previous = it
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("zh-CN"))
                 }
                 awaitLanguage(scenario, AppLanguage.ZH_CN, previous)
-                // 导航文字在顶部标题与底部页签中可能重复，只点击可点击的页签。
-                compose.onNode(hasText("我的") and hasClickAction()).performClick()
+                compose.onNodeWithTag("底部导航项settings").performClick()
                 compose.onNodeWithTag("设置列表").assertIsDisplayed()
 
                 val targets = listOf(
@@ -60,7 +59,7 @@ class ExpandedLanguageInstrumentedTest {
 
                     scenario.onActivity { previous = it }
                     scenario.recreate()
-                    awaitLanguage(scenario, target.language, previous)
+                    awaitLanguage(scenario, target.language, previous, expectedRecreation = true)
                     assertLanguageAndSettings(scenario, target)
                     assertSelectedOption(scenario, target)
                 }
@@ -115,6 +114,7 @@ class ExpandedLanguageInstrumentedTest {
         scenario: ActivityScenario<MainActivity>,
         target: AppLanguage,
         previous: MainActivity? = null,
+        expectedRecreation: Boolean = false,
     ) {
         // 中文必须同时识别 script/region；只检查 language == zh 会误把简繁切换当作完成。
         var lastDiagnostic = "目标=$target，尚未取得 Activity"
@@ -125,17 +125,17 @@ class ExpandedLanguageInstrumentedTest {
                 runCatching {
                     scenario.onActivity {
                         val preference = currentAppLanguage()
-                        val newActivity = it !== previous
+                        val activityMatches = previous == null || if (expectedRecreation) it !== previous else it === previous
                         val navigationReady = it.appearanceHost.isNavigationReady
                         val windowFocus = it.hasWindowFocus()
                         val snapshotReleased = it.appearanceState.snapshot == null
                         lastDiagnostic = "目标=$target，完整资源tag=${it.resources.configuration.locales.toLanguageTags()}，" +
-                            "currentAppLanguage=$preference，Activity identity是否新=$newActivity，" +
+                            "currentAppLanguage=$preference，预期重建=$expectedRecreation，Activity identity匹配=$activityMatches，" +
                             "当前identity=${System.identityHashCode(it)}，旧identity=${previous?.let(System::identityHashCode)}，" +
                             "navigationReady=$navigationReady，windowFocus=$windowFocus，" +
                             "snapshot是否null=$snapshotReleased，languageRequest是否null=${it.appearanceState.languageRequest == null}"
-                        ready = newActivity && resourceLanguage(it) == target && preference == target &&
-                            navigationReady && windowFocus && snapshotReleased
+                        ready = activityMatches && resourceLanguage(it) == target && preference == target &&
+                            navigationReady && windowFocus && snapshotReleased && it.appearanceState.languageRequest == null
                         lastActivityReadFailure = null
                     }
                 }.onFailure { lastActivityReadFailure = it }

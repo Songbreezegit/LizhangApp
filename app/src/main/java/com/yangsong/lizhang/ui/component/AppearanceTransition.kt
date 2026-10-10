@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.semantics
@@ -82,13 +83,19 @@ class AppearanceTransitionHost(
     private var latest: (() -> Unit)? = null
     private var pendingApply: (() -> Unit)? = null
     private var pendingLanguage: AppLanguage? = null
+    private var pendingCaptureStart: (() -> Unit)? = null
+    private var coveredLanguageApply: (() -> Unit)? = null
     private var pendingId = 0L
     private var detached = false
     private var attached = false
     private var drawScheduled = false
+    private var frameObserver: ViewTreeObserver? = null
+    private var frameCommit: Runnable? = null
+    private var frameDelivery: Runnable? = null
+    private var frameSequence = 0L
     private var drawnDark: Boolean? = null
     private var drawnLanguage = AppLanguage.SYSTEM
-    private var drawnResourceLanguage = ""
+    private var drawnResourceLocales = ""
     private var listState: LazyListState? = null
     private var themeRowBounds: RectF? = null
     private var themeSwitchBounds: RectF? = null
@@ -142,13 +149,38 @@ class AppearanceTransitionHost(
     }
     internal var isNavigationReady = false
         private set
-    private val drawListener = ViewTreeObserver.OnDrawListener {
-        drawnDark?.let { pageDrawn(it, drawnLanguage, drawnResourceLanguage) }
+    private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
+        if (!detached && ownsState) {
+            if (activity.hasWindowFocus()) pendingCaptureStart?.also { pendingCaptureStart = null }?.invoke()
+            val shot = state.snapshot
+            if (shot?.language != null && shot.originHost == hostId && coveredLanguageApply != null) {
+                // 第一张 Bitmap 也要实际进入窗口，不能仅以 PixelCopy 完成代替覆盖已呈现。
+                if (!drawScheduled && activity.hasWindowFocus() && overlay.visibility == View.VISIBLE &&
+                    overlay.width == shot.width && overlay.height == shot.height) {
+                    afterFrameCommitted {
+                        if (!detached && ownsState && state.snapshot === shot && shot.id == state.requestId &&
+                            activity.hasWindowFocus()) {
+                            state.languageCoverCommits++
+                            coveredLanguageApply?.also { coveredLanguageApply = null }?.invoke()
+                        }
+                    }
+                }
+            } else drawnDark?.let { pageDrawn(it, drawnLanguage, drawnResourceLocales) }
+        }
+        true
+    }
+    private val focusListener = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+        if (focused && !detached && ownsState) {
+            pendingCaptureStart?.also { pendingCaptureStart = null }?.invoke()
+            root.postInvalidateOnAnimation()
+        }
     }
     private val layoutChangeListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
         if (detached || !ownsState) return@OnLayoutChangeListener
         state.snapshot?.let {
-            if (it.width != root.width || it.height != root.height) state.clear()
+            // locale 重建期间 Insets 可能先经过临时尺寸；旧画面缩放铺满即可，
+            // 不提前清掉交接。主题圆心仍使用原尺寸，尺寸变化时继续取消。
+            if (it.language == null && (it.width != root.width || it.height != root.height)) state.clear()
         }
     }
 
@@ -160,11 +192,13 @@ class AppearanceTransitionHost(
         ThemeOperationDiagnostics.record("host.attach", ThemeOperationDiagnostics.Operation(state.requestId, hostId, null, 0))
         // 在首次绘制前接上 Activity ViewModel 中的语言快照。
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
-        root.viewTreeObserver.addOnDrawListener(drawListener)
+        root.viewTreeObserver.addOnPreDrawListener(preDrawListener)
+        root.viewTreeObserver.addOnWindowFocusChangeListener(focusListener)
         state.observeSnapshots(hostId) {
             ThemeOperationDiagnostics.record("snapshot.listener", themeOperation,
                 "listenerHost=$hostId snapshotId=${state.snapshot?.id} originHost=${state.snapshot?.originHost}")
             if (state.snapshot == null) {
+                cancelFrameCommit()
                 val previous = animator
                 animator = null
                 previous?.cancel()
@@ -175,11 +209,19 @@ class AppearanceTransitionHost(
         overlay.visibility = if (state.snapshot == null) View.GONE else View.VISIBLE
         root.addOnLayoutChangeListener(layoutChangeListener)
     }
-    fun updateDrawTarget(dark: Boolean, language: AppLanguage, resourceLanguage: String) {
+    /** 只替换实时页面，语言快照覆盖始终留在同一个窗口根中。 */
+    internal fun replaceContent(content: View) {
+        attach()
+        for (index in root.childCount - 1 downTo 0) {
+            if (root.getChildAt(index) !== overlay) root.removeViewAt(index)
+        }
+        root.addView(content, 0, FrameLayout.LayoutParams(-1, -1))
+    }
+    fun updateDrawTarget(dark: Boolean, language: AppLanguage, resourceLocales: String) {
         if (drawnDark != dark) ThemeOperationDiagnostics.record("Compose.theme", themeOperation, "dark=$dark")
         drawnDark = dark
         drawnLanguage = language
-        drawnResourceLanguage = resourceLanguage
+        drawnResourceLocales = resourceLocales
         // Compose 可只更新 RenderNode；显式请求窗口绘制以获得对应主题的帧提交。
         if (state.snapshot != null) root.postInvalidateOnAnimation()
     }
@@ -192,10 +234,16 @@ class AppearanceTransitionHost(
         AppearanceTransitionViewModel.ListPosition(it.firstVisibleItemIndex, it.firstVisibleItemScrollOffset,
             it.layoutInfo.viewportSize.width, it.layoutInfo.viewportSize.height)
     }
-    internal suspend fun restoreList(value: LazyListState) {
+    internal val languageRequest get() = state.languageRequest
+    private fun languageResourcesReady(request: AppearanceTransitionViewModel.LanguageRequest,
+        resourceLocales: String): Boolean = if (request.desiredLocales.isNotEmpty()) {
+        resourceLocales == request.desiredLocales
+    } else request.target == AppLanguage.SYSTEM ||
+        AppLanguage.fromLanguageTag(resourceLocales.substringBefore(',')) == request.target
+    internal suspend fun restoreList(value: LazyListState, resourceLocales: String) {
         if (detached || !ownsState) return
         val request = state.languageRequest ?: return
-        if (request.originHost == hostId || request.listRestored) return
+        if (request.listRestored || !languageResourcesReady(request, resourceLocales)) return
         request.listPosition?.let { position ->
             // 等实际视口恢复，避免新 ComposeView 的暂时零 Insets 把滚动偏移夹到错误上限。
             snapshotFlow { (state.languageRequest === request && !detached && ownsState) to value.layoutInfo.viewportSize }.first {
@@ -231,6 +279,8 @@ class AppearanceTransitionHost(
         latest = null
         pendingApply = null
         pendingLanguage = null
+        pendingCaptureStart = null
+        coveredLanguageApply = null
         state.pendingDark = null
         state.nextRequest()
         state.animateColors = ValueAnimator.areAnimatorsEnabled()
@@ -258,16 +308,16 @@ class AppearanceTransitionHost(
             if (target != AppLanguage.SYSTEM) add(java.util.Locale.forLanguageTag(target.localeTag))
             for (index in 0 until systemLocales.size()) add(systemLocales[index])
         }.distinct().joinToString(",") { it.toLanguageTag() }
-        val willRecreate = desiredLocales != activity.resources.configuration.locales.toLanguageTags()
+        val resourcesWillChange = desiredLocales != activity.resources.configuration.locales.toLanguageTags()
         val submit = {
-            if (willRecreate) state.prepareLanguage(AppearanceTransitionViewModel.LanguageRequest(
-                state.requestId, target, hostId, requestedPosition))
+            if (resourcesWillChange) state.prepareLanguage(AppearanceTransitionViewModel.LanguageRequest(
+                state.requestId, target, hostId, requestedPosition, desiredLocales = desiredLocales))
             state.languageSubmissions++
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(target.localeTag))
             state.languagePreference = target
         }
-        // 有效语言相同时只保存偏好，不等待一次并不会发生的配置重建。
-        if (!willRecreate) {
+        // 有效语言相同时只保存偏好，不等待一次并不会发生的资源配置变化。
+        if (!resourcesWillChange) {
             latest = null
             pendingApply = null
             pendingLanguage = null
@@ -283,6 +333,8 @@ class AppearanceTransitionHost(
     ) {
         // 失效宿主不得分配新请求；已经接受且未被替代的目标由 cancel / detach 收尾。
         if (detached || !ownsState) return
+        pendingCaptureStart = null
+        coveredLanguageApply = null
         val id = state.nextRequest()
         val operation = if (targetDark != null) themeOperation?.copy(requestId = id) else null
         if (operation != null) themeOperation = operation
@@ -291,6 +343,8 @@ class AppearanceTransitionHost(
         pendingLanguage = language
         val apply = {
             if (pendingId == id && pendingApply != null) {
+                pendingCaptureStart = null
+                coveredLanguageApply = null
                 pendingApply = null
                 pendingLanguage = null
                 ThemeOperationDiagnostics.record("intent.apply", operation)
@@ -307,12 +361,18 @@ class AppearanceTransitionHost(
                 apply()
             }
         }, 600L)
-        val start: () -> Unit = start@{
+        lateinit var start: () -> Unit
+        start = start@{
             if (detached || id != state.requestId) return@start
-            if (!ValueAnimator.areAnimatorsEnabled() || root.width == 0 || root.height == 0) {
+            if ((!ValueAnimator.areAnimatorsEnabled() && language == null) || root.width == 0 || root.height == 0) {
                 ThemeOperationDiagnostics.record("capture.bypass", operation,
                     "animations=${ValueAnimator.areAnimatorsEnabled()} width=${root.width} height=${root.height}")
                 apply()
+                return@start
+            }
+            if (language != null && !activity.hasWindowFocus()) {
+                // 弹窗已经分离仍不代表主窗口取得焦点；由真实焦点回调继续捕获。
+                pendingCaptureStart = start
                 return@start
             }
             val position = IntArray(2).also(root::getLocationInWindow)
@@ -336,7 +396,11 @@ class AppearanceTransitionHost(
                                     targetDark, language, originHost = hostId,
                                 ))
                             } else bitmap.recycle()
-                            try { apply(); root.invalidate() } catch (_: RuntimeException) { state.clear() }
+                            try {
+                                if (result == PixelCopy.SUCCESS && language != null) coveredLanguageApply = apply
+                                else apply()
+                                root.postInvalidateOnAnimation()
+                            } catch (_: RuntimeException) { state.clear() }
                         } else bitmap.recycle()
                         latest?.also { latest = null }?.invoke()
                     }
@@ -353,40 +417,67 @@ class AppearanceTransitionHost(
         // 未完成捕获时只保留最新意图，释放旧目标后再分配画面。
         if (capturing) latest = start else start()
     }
-    /** 由实时导航树绘制完成后调用，不能用固定帧数或延时替代。 */
-    fun pageDrawn(dark: Boolean, language: AppLanguage, resourceLanguage: String) {
+    /** 从 OnPreDraw 登记当前帧，不能在 OnDraw 之后误登记到下一帧。 */
+    fun pageDrawn(dark: Boolean, language: AppLanguage, resourceLocales: String) {
         if (detached || !ownsState) return
-        if (!isNavigationReady) return
+        if (!isNavigationReady || !activity.hasWindowFocus()) return
         val request = state.languageRequest
-        if (request != null && !request.listRestored) return
+        // 偏好先变不代表页面已变；同一宿主和真实重建均等待完整有效 locale 配置。
+        if (request != null && (!request.listRestored || request.target != language ||
+                !languageResourcesReady(request, resourceLocales))) return
         val shot = state.snapshot ?: run {
-            if (request != null && request.originHost != hostId && request.target == language) state.clear()
+            if (request != null) state.clear()
             return
         }
         if (shot.started || drawScheduled || shot.id != state.requestId) return
-        // 全局 locales 可能先更新；旧 Activity 不得抢先消费重建交接。
-        if (shot.language != null && shot.originHost == hostId) return
         if (shot.targetDark != null && shot.targetDark != dark) return
         if (shot.language != null && (shot.language != language ||
                 (shot.language != AppLanguage.SYSTEM &&
-                    AppLanguage.fromLanguageTag(resourceLanguage) != shot.language))) return
-        drawScheduled = true
-        val committed = Runnable {
-            drawScheduled = false
-            if (!detached && ownsState && state.snapshot === shot && !shot.started) {
+                    AppLanguage.fromLanguageTag(resourceLocales.substringBefore(',')) != shot.language))) return
+        afterFrameCommitted {
+            if (!detached && ownsState && state.snapshot === shot && !shot.started &&
+                isNavigationReady && activity.hasWindowFocus() &&
+                (shot.language == null || (drawnLanguage == shot.language &&
+                    (request == null || (state.languageRequest === request && request.listRestored &&
+                        languageResourcesReady(request, drawnResourceLocales)))))) {
                 ThemeOperationDiagnostics.record("frame.committed", themeOperation, "snapshotId=${shot.id}")
                 shot.started = true
                 animate(shot)
             }
         }
-        if (Build.VERSION.SDK_INT >= 29 && root.isHardwareAccelerated) {
-            root.viewTreeObserver.registerFrameCommitCallback(committed)
-            root.postInvalidateOnAnimation()
-        } else {
-            // 旧系统在窗口 onDraw 返回后确认本次 Canvas 绘制结束；
-            // 支持提交回调时必须等真正提交，不能让 post 抢先消费交接。
-            root.post(committed)
+    }
+    private fun afterFrameCommitted(action: () -> Unit) {
+        val sequence = ++frameSequence
+        drawScheduled = true
+        val delivery = Runnable {
+            if (sequence == frameSequence) {
+                drawScheduled = false
+                frameObserver = null
+                frameCommit = null
+                frameDelivery = null
+                action()
+            }
         }
+        frameDelivery = delivery
+        if (Build.VERSION.SDK_INT >= 29 && root.isHardwareAccelerated) {
+            val committed = Runnable { handler.post(delivery) }
+            frameCommit = committed
+            frameObserver = root.viewTreeObserver.also { it.registerFrameCommitCallback(committed) }
+        } else {
+            // 软件窗口在本次绘制分发返回后交接，不与硬件提交回调竞速。
+            root.post(delivery)
+        }
+    }
+    private fun cancelFrameCommit() {
+        frameSequence++
+        frameDelivery?.let(handler::removeCallbacks)
+        if (Build.VERSION.SDK_INT >= 29) frameCommit?.let { committed ->
+            frameObserver?.takeIf { it.isAlive }?.unregisterFrameCommitCallback(committed)
+        }
+        frameObserver = null
+        frameCommit = null
+        frameDelivery = null
+        drawScheduled = false
     }
     private fun animate(shot: AppearanceTransitionViewModel.Snapshot) {
         val operation = themeOperation?.takeIf { it.requestId == shot.id }
@@ -418,6 +509,8 @@ class AppearanceTransitionHost(
             val apply = pendingApply.takeIf { pendingId == state.requestId }
             pendingApply = null
             pendingLanguage = null
+            pendingCaptureStart = null
+            coveredLanguageApply = null
             latest = null
             ThemeOperationDiagnostics.during(themeOperation) { apply?.invoke() }
             if (apply != null && pendingId == state.requestId) state.pendingDark = null
@@ -426,6 +519,8 @@ class AppearanceTransitionHost(
         val apply = pendingApply
         pendingApply = null
         pendingLanguage = null
+        pendingCaptureStart = null
+        coveredLanguageApply = null
         latest = null
         state.nextRequest()
         state.animateColors = false
@@ -440,13 +535,19 @@ class AppearanceTransitionHost(
         val change = pendingApply.takeIf { pendingId == state.requestId }
         pendingApply = null
         pendingLanguage = null
+        pendingCaptureStart = null
+        coveredLanguageApply = null
         detached = true
+        cancelFrameCommit()
         if (change != null) runCatching { ThemeOperationDiagnostics.during(themeOperation, change) }
         if (ownsState || (change != null && pendingId == state.requestId)) state.pendingDark = null
         listState = null
         latest = null
         animator?.cancel()
-        if (root.viewTreeObserver.isAlive) root.viewTreeObserver.removeOnDrawListener(drawListener)
+        if (root.viewTreeObserver.isAlive) {
+            root.viewTreeObserver.removeOnPreDrawListener(preDrawListener)
+            root.viewTreeObserver.removeOnWindowFocusChangeListener(focusListener)
+        }
         if (!preserveLanguage || (state.snapshot?.language == null && state.languageRequest == null)) {
             root.removeView(overlay)
             if (ownsState) state.nextRequest()
@@ -465,14 +566,17 @@ fun AppearanceListRestoration(listState: LazyListState) {
     val density = LocalDensity.current
     val top = WindowInsets.systemBars.getTop(density)
     val bottom = WindowInsets.systemBars.getBottom(density)
+    val resourceLocales = LocalConfiguration.current.locales.toLanguageTags()
+    val requestId = host.languageRequest?.id
     DisposableEffect(host, listState) {
         host.trackList(listState)
         onDispose { host.trackList(null) }
     }
-    LaunchedEffect(host, listState, top, bottom) {
+    LaunchedEffect(host, listState, top, bottom, requestId, resourceLocales) {
         val nativeInsets = androidx.core.view.ViewCompat.getRootWindowInsets(view)
             ?.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        if (nativeInsets != null && nativeInsets.top == top && nativeInsets.bottom == bottom) host.restoreList(listState)
+        if (nativeInsets != null && nativeInsets.top == top && nativeInsets.bottom == bottom)
+            host.restoreList(listState, resourceLocales)
     }
 }
 
@@ -484,7 +588,8 @@ internal class SnapshotOverlay(activity: Activity, private val state: Appearance
     init { importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO; isClickable = false; setWillNotDraw(false) }
     override fun onDraw(canvas: Canvas) {
         val shot = state.snapshot ?: return
-        if (shot.width != width || shot.height != height || shot.bitmap.isRecycled) return
+        if (shot.bitmap.isRecycled || width == 0 || height == 0) return
+        if (shot.language == null && (shot.width != width || shot.height != height)) return
         val checkpoint = canvas.save()
         if (shot.language == null) {
             hole.reset()
@@ -501,8 +606,8 @@ internal class SnapshotOverlay(activity: Activity, private val state: Appearance
 @Composable
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 fun AppearanceTransition(host: AppearanceTransitionHost, dark: Boolean, language: AppLanguage,
-    resourceLanguage: String, content: @Composable () -> Unit) {
-    SideEffect { host.updateDrawTarget(dark, language, resourceLanguage) }
+    resourceLocales: String, content: @Composable () -> Unit) {
+    SideEffect { host.updateDrawTarget(dark, language, resourceLocales) }
     CompositionLocalProvider(LocalAppearanceActions provides host) {
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) { content() }
     }
