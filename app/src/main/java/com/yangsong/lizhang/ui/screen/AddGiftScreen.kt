@@ -18,8 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -147,7 +145,7 @@ fun AddGiftContent(
                         SelectionRow(
                             text = state.contacts.firstOrNull { it.id == state.contactId }?.name
                                 ?: stringResource(R.string.field_contact_hint),
-                            icon = Icons.Outlined.PersonSearch,
+                            icon = LiZhangIcons.UserSearch,
                             onClick = onContactClick,
                             enabled = !state.isSaving && !state.isSaved,
                         )
@@ -161,7 +159,7 @@ fun AddGiftContent(
                     Box(Modifier.fillMaxWidth().featureGuideTarget(FeatureGuideTarget.RECORD_AMOUNT)) {
                         AmountTextField(state.amount,onAmountChange,if(state.validationError==GiftRecordValidationError.AMOUNT_INVALID)stringResource(R.string.error_amount_invalid)else null)
                     }
-                    SelectionRow(com.yangsong.lizhang.ui.mapper.displayDate(state.eventDate),Icons.Outlined.CalendarMonth,onDateClick)
+                    SelectionRow(com.yangsong.lizhang.ui.mapper.displayDate(state.eventDate),LiZhangIcons.CalendarDays,onDateClick)
                     if (state.validationError == GiftRecordValidationError.DATE_IN_FUTURE) {
                         Text(
                             stringResource(R.string.error_date_in_future),
@@ -220,7 +218,7 @@ fun GiftSaveBar(
                     CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
                         strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
                 } else {
-                    Icon(Icons.Outlined.Check, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(LiZhangIcons.Check, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(10.dp))
                     Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
@@ -257,7 +255,7 @@ fun DiscardGiftChangesDialog(
     )
 }
 
-@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit,enabled:Boolean=true){GlassClickableSurface(onClick=onClick,modifier=Modifier.fillMaxWidth(),enabled=enabled,shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit,enabled:Boolean=true){GlassClickableSurface(onClick=onClick,modifier=Modifier.fillMaxWidth(),enabled=enabled,shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(LiZhangIcons.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
 
 @Composable
 private fun CreateContactButton(
@@ -274,7 +272,7 @@ private fun CreateContactButton(
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
-        Icon(Icons.Outlined.PersonAdd, null)
+        Icon(LiZhangIcons.UserRoundPlus, null)
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.contact_create))
     }
@@ -314,7 +312,7 @@ private fun ContactPickerSheet(
                 value = query,
                 onValueChange = { query = it },
                 label = stringResource(R.string.contact_search_hint),
-                leadingIcon = Icons.Outlined.Search,
+                leadingIcon = LiZhangIcons.Search,
             )
             if (shown.isEmpty()) {
                 Box(
@@ -347,7 +345,7 @@ private fun ContactPickerSheet(
                                 Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Outlined.AccountCircle, null)
+                                Icon(LiZhangIcons.CircleUserRound, null)
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(contact.name)
@@ -359,7 +357,7 @@ private fun ContactPickerSheet(
                                 }
                                 if (contact.id == selectedId) {
                                     Icon(
-                                        Icons.Outlined.Check,
+                                        LiZhangIcons.Check,
                                         null,
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
@@ -411,9 +409,9 @@ private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Uni
         title={Text(stringResource(R.string.date_choose))},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(Icons.Outlined.ChevronLeft,stringResource(R.string.date_previous_year))}
+                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(LiZhangIcons.ChevronLeft,stringResource(R.string.date_previous_year))}
                 Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
-                GlassIconButton({year++},enabled=year<currentYear){Icon(Icons.Outlined.ChevronRight,stringResource(R.string.date_next_year))}
+                GlassIconButton({year++},enabled=year<currentYear){Icon(LiZhangIcons.ChevronRight,stringResource(R.string.date_next_year))}
             }
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(com.yangsong.lizhang.ui.mapper.displayMonth(value))})}}
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->GlassChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}

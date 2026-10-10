@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -64,7 +62,7 @@ fun ContactEditorScreen(
                 action = if (state.isNewContact || state.loadFailed) null else {
                     {
                         GlassIconButton(onClick = { showDeleteConfirm = true }, enabled = !state.isDeleting) {
-                            Icon(Icons.Outlined.DeleteOutline, stringResource(R.string.contact_delete), tint = MaterialTheme.colorScheme.error)
+                            Icon(LiZhangIcons.Trash, stringResource(R.string.contact_delete), tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 },

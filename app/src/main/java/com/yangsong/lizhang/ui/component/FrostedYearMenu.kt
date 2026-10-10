@@ -8,8 +8,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -67,7 +65,7 @@ fun FrostedYearMenu(
                     .padding(horizontal = 14.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (selected) Icon(Icons.Outlined.Check, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                if (selected) Icon(LiZhangIcons.Check, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
                 else Spacer(Modifier.size(24.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.year_format, year),

@@ -2,9 +2,16 @@ package com.yangsong.lizhang.ui.privacy
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -81,33 +89,42 @@ fun PrivacyNoticeScreen(
     onTerms: () -> Unit,
 ) {
     AppScaffold(topBar = { AppTopBar(stringResource(R.string.privacy_notice_title), onBack = onDecline) }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())
-            .padding(24.dp).testTag("首次隐私告知"), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text(stringResource(R.string.privacy_notice_intro), style = MaterialTheme.typography.bodyLarge)
-            GlassCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(stringResource(R.string.privacy_notice_local_data), style = MaterialTheme.typography.bodyLarge)
-                    Text(stringResource(R.string.privacy_notice_permissions), style = MaterialTheme.typography.bodyLarge)
-                    Text(stringResource(R.string.privacy_notice_exports), style = MaterialTheme.typography.bodyLarge)
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            // 内容较短时把文档入口推到底部；长文和大字号仍随整页滚动，避免遮挡确认操作。
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                .padding(24.dp).testTag("首次隐私告知")) {
+                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Text(stringResource(R.string.privacy_notice_intro), style = MaterialTheme.typography.bodyLarge)
+                    GlassCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(stringResource(R.string.privacy_notice_local_data), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.privacy_notice_permissions), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.privacy_notice_exports), style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                    Text(stringResource(R.string.privacy_notice_candidate), style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.privacy_notice_version, LegalPolicy.CURRENT_VERSION),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (saveFailed) Text(stringResource(R.string.privacy_notice_save_failed),
+                        Modifier.testTag("隐私确认保存失败"), color = MaterialTheme.colorScheme.error)
+                    GlassButton(onAgree, Modifier.fillMaxWidth().testTag("隐私告知同意")) {
+                        Text(stringResource(R.string.privacy_notice_agree))
+                    }
+                    GlassTextButton(onDecline, Modifier.fillMaxWidth().testTag("隐私告知拒绝")) {
+                        Text(stringResource(R.string.privacy_notice_decline))
+                    }
                 }
-            }
-            Text(stringResource(R.string.privacy_notice_candidate), style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(stringResource(R.string.privacy_notice_version, LegalPolicy.CURRENT_VERSION),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            GlassTextButton(onPrivacy, Modifier.fillMaxWidth().testTag("告知隐私政策")) {
-                Text(stringResource(R.string.privacy_notice_read_privacy))
-            }
-            GlassTextButton(onTerms, Modifier.fillMaxWidth().testTag("告知用户协议")) {
-                Text(stringResource(R.string.privacy_notice_read_terms))
-            }
-            if (saveFailed) Text(stringResource(R.string.privacy_notice_save_failed),
-                Modifier.testTag("隐私确认保存失败"), color = MaterialTheme.colorScheme.error)
-            GlassButton(onAgree, Modifier.fillMaxWidth().testTag("隐私告知同意")) {
-                Text(stringResource(R.string.privacy_notice_agree))
-            }
-            GlassTextButton(onDecline, Modifier.fillMaxWidth().testTag("隐私告知拒绝")) {
-                Text(stringResource(R.string.privacy_notice_decline))
+                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    GlassTextButton(onPrivacy, Modifier.weight(1f).fillMaxHeight().testTag("告知隐私政策")) {
+                        Text(stringResource(R.string.privacy_notice_read_privacy), textAlign = TextAlign.Center)
+                    }
+                    GlassTextButton(onTerms, Modifier.weight(1f).fillMaxHeight().testTag("告知用户协议")) {
+                        Text(stringResource(R.string.privacy_notice_read_terms), textAlign = TextAlign.Center)
+                    }
+                }
             }
         }
     }

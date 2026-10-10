@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+
+import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.GlassTokens
 import com.yangsong.lizhang.ui.component.GlassCard
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,7 +52,7 @@ fun FontGuideScreen(onBack: () -> Unit) {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                icon = LiZhangIcons.ExternalLink,
             )
         },
     )

@@ -25,11 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.NotificationsNone
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
@@ -142,9 +137,9 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
     GlassCard(Modifier.featureGuideTarget(FeatureGuideTarget.CALENDAR), shape = RoundedCornerShape(GlassTokens.Radius)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                GlassIconButton(onPrevious) { Icon(Icons.Outlined.ChevronLeft, stringResource(R.string.calendar_previous)) }
+                GlassIconButton(onPrevious) { Icon(LiZhangIcons.ChevronLeft, stringResource(R.string.calendar_previous)) }
                 Text(com.yangsong.lizhang.ui.mapper.displayYearMonth(state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                GlassIconButton(onNext) { Icon(Icons.Outlined.ChevronRight, stringResource(R.string.calendar_next)) }
+                GlassIconButton(onNext) { Icon(LiZhangIcons.ChevronRight, stringResource(R.string.calendar_next)) }
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf(R.string.week_monday, R.string.week_tuesday, R.string.week_wednesday, R.string.week_thursday, R.string.week_friday, R.string.week_saturday, R.string.week_sunday).forEach {
@@ -364,7 +359,7 @@ fun NotificationsContent(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         GlassTextButton(onAdd, Modifier.testTag("新增独立提醒").featureGuideTarget(FeatureGuideTarget.REMINDERS_PAGE)) {
-                            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
+                            Icon(LiZhangIcons.Plus, null, Modifier.size(18.dp))
                             Text(stringResource(R.string.independent_add))
                         }
                     }
@@ -377,7 +372,7 @@ fun NotificationsContent(
                     item {
                         GlassCard(Modifier.testTag("提醒空状态")) {
                             Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                Icon(Icons.Outlined.NotificationsNone, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.secondary)
+                                Icon(LiZhangIcons.Bell, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.secondary)
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(stringResource(R.string.notifications_empty), style = MaterialTheme.typography.titleMedium)
                                     Text(stringResource(R.string.notifications_empty_desc), style = MaterialTheme.typography.bodyMedium,
@@ -473,7 +468,7 @@ private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit
         ) {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(LiZhangIcons.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

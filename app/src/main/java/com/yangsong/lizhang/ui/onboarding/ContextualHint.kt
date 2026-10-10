@@ -1,10 +1,10 @@
 package com.yangsong.lizhang.ui.onboarding
 
+import com.yangsong.lizhang.ui.component.LiZhangIcons
+
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,7 +43,7 @@ fun ContextualHintBubble(text: String, onDismiss: () -> Unit, modifier: Modifier
     GlassCard(modifier.testTag("首次操作提示")) {
         Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            IconButton(onDismiss) { Icon(Icons.Outlined.Close, stringResource(R.string.onboarding_hint_close)) }
+            IconButton(onDismiss) { Icon(LiZhangIcons.Close, stringResource(R.string.onboarding_hint_close)) }
         }
     }
 }

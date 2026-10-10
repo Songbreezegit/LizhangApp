@@ -6,11 +6,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.CallMade
-import androidx.compose.material.icons.automirrored.outlined.CallReceived
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
@@ -30,13 +25,29 @@ import com.yangsong.lizhang.ui.navigation.AppDestination
 import com.yangsong.lizhang.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun AppTopBar(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.()->Unit)?=null)=TopAppBar(title={Text(title,style=MaterialTheme.typography.titleLarge)},navigationIcon={if(onBack!=null)GlassIconButton(onBack){Icon(Icons.AutoMirrored.Outlined.ArrowBack,stringResource(R.string.action_back))}},actions={action?.invoke(this)},colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent))
+@Composable fun AppTopBar(title:String,onBack:(()->Unit)?=null,action:(@Composable RowScope.()->Unit)?=null)=TopAppBar(title={Text(title,style=MaterialTheme.typography.titleLarge)},navigationIcon={if(onBack!=null)GlassIconButton(onBack){Icon(LiZhangIcons.ArrowLeft,stringResource(R.string.action_back))}},actions={action?.invoke(this)},colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent))
 
 @Composable
 fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, modifier: Modifier = Modifier, hazeState: HazeState, enabled: Boolean = true) =
     NotchedBottomNavigation(current, onNavigate, modifier, hazeState, enabled)
 
-@Composable fun PrimaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,loading:Boolean=false,enabled:Boolean=true,icon:ImageVector?=null){GlassButton(onClick,modifier.heightIn(min=52.dp),enabled=enabled&&!loading,shape=RoundedCornerShape(GlassTokens.ControlRadius),colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.primary,contentColor=MaterialTheme.colorScheme.onPrimary,disabledContainerColor=if(loading)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,disabledContentColor=if(loading)MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha=GlassTokens.DisabledAlpha))){if(loading)CircularProgressIndicator(Modifier.size(20.dp),strokeWidth=2.dp,color=MaterialTheme.colorScheme.onPrimary)else{icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text,fontWeight=FontWeight.SemiBold)}}}
+@Composable
+fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
+    loading: Boolean = false, enabled: Boolean = true, icon: ImageVector? = null) {
+    val container = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer
+    val content = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer
+    GlassButton(onClick, modifier.heightIn(min = 52.dp), enabled = enabled && !loading,
+        shape = RoundedCornerShape(GlassTokens.ControlRadius),
+        colors = ButtonDefaults.buttonColors(containerColor = container, contentColor = content,
+            disabledContainerColor = if (loading) container else MaterialTheme.colorScheme.surfaceContainerHighest,
+            disabledContentColor = if (loading) content else MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.DisabledAlpha))) {
+        if (loading) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = content)
+        else {
+            icon?.let { Icon(it, null); Spacer(Modifier.width(8.dp)) }
+            Text(text, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
 @Composable fun SecondaryButton(text:String,onClick:()->Unit,modifier:Modifier=Modifier,icon:ImageVector?=null){GlassButton(onClick,modifier.heightIn(min=52.dp),colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.secondaryContainer,contentColor=MaterialTheme.colorScheme.onSecondaryContainer)){icon?.let{Icon(it,null);Spacer(Modifier.width(8.dp))};Text(text)}}
 @Composable private fun visibleTextFieldColors()=OutlinedTextFieldDefaults.colors(focusedContainerColor=MaterialTheme.colorScheme.surfaceContainerLow,unfocusedContainerColor=MaterialTheme.colorScheme.surfaceContainerLow,focusedBorderColor=MaterialTheme.colorScheme.primary,unfocusedBorderColor=MaterialTheme.colorScheme.outlineVariant)
 @Composable fun AppTextField(value:String,onValueChange:(String)->Unit,label:String,modifier:Modifier=Modifier,placeholder:String?=null,error:String?=null,leadingIcon:ImageVector?=null,readOnly:Boolean=false){OutlinedTextField(value,onValueChange,modifier.fillMaxWidth(),label={Text(label)},placeholder=placeholder?.let{{Text(it)}},leadingIcon=leadingIcon?.let{{Icon(it,null)}},isError=error!=null,supportingText=error?.let{{Text(it)}},readOnly=readOnly,singleLine=true,shape=RoundedCornerShape(18.dp),colors=visibleTextFieldColors())}
@@ -44,7 +55,7 @@ fun BottomNavBar(current: AppDestination, onNavigate: (AppDestination) -> Unit, 
 @Composable fun AmountTextField(value:String,onValueChange:(String)->Unit,error:String?=null){OutlinedTextField(value,onValueChange,Modifier.fillMaxWidth(),label={Text(stringResource(R.string.field_amount))},prefix={Text("¥")},placeholder={Text(stringResource(R.string.field_amount_hint))},isError=error!=null,supportingText=error?.let{{Text(it)}},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Decimal),textStyle=MaterialTheme.typography.headlineMedium.copy(fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary),singleLine=true,shape=RoundedCornerShape(20.dp),colors=visibleTextFieldColors())}
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun DirectionSelector(selected:GiftDirection,onSelected:(GiftDirection)->Unit){Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.field_direction),fontWeight=FontWeight.SemiBold);FlowRow(horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){GiftDirection.entries.forEach{d->GlassChip(d==selected,{onSelected(d)},{Text(stringResource(d.labelRes()))},leadingIcon={Icon(if(d==GiftDirection.RECEIVED)Icons.AutoMirrored.Outlined.CallReceived else Icons.AutoMirrored.Outlined.CallMade,null)},accent=if(d==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}}}}
+@Composable fun DirectionSelector(selected:GiftDirection,onSelected:(GiftDirection)->Unit){Column(verticalArrangement=Arrangement.spacedBy(8.dp)){Text(stringResource(R.string.field_direction),fontWeight=FontWeight.SemiBold);FlowRow(horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){GiftDirection.entries.forEach{d->GlassChip(d==selected,{onSelected(d)},{Text(stringResource(d.labelRes()))},leadingIcon={Icon(if(d==GiftDirection.RECEIVED)LiZhangIcons.ArrowDownLeft else LiZhangIcons.ArrowUpRight,null)},accent=if(d==GiftDirection.RECEIVED)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary)}}}}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EventTypeSelector(selected: EventType, onSelected: (EventType) -> Unit,
@@ -115,13 +126,29 @@ fun ContactListItem(summary: ContactLedgerSummary, enabled: Boolean = true, onCl
             Text(com.yangsong.lizhang.ui.mapper.displayAmount(summary.netInCents), fontWeight = FontWeight.SemiBold, color = amountColor)
             Text(stringResource(R.string.contact_net), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
-        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(LiZhangIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 @Composable fun PageIllustration(@DrawableRes image:Int,modifier:Modifier=Modifier){Image(illustrationPainter(image),null,modifier.clip(RoundedCornerShape(GlassTokens.Radius)),contentScale=ContentScale.Fit)}
 @Composable fun SectionHeader(title:String,action:String?=null,onAction:(()->Unit)?=null){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(title,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.Bold);if(action!=null&&onAction!=null)GlassTextButton(onAction){Text(action,color=MaterialTheme.colorScheme.onSurfaceVariant)}}}
-@Composable fun EmptyState(title:String,description:String?=null,action:String?=null,onAction:(()->Unit)?=null,@DrawableRes image:Int?=null){Column(Modifier.fillMaxWidth().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(10.dp)){if(image!=null)PageIllustration(image,Modifier.size(104.dp))else Icon(Icons.Outlined.FavoriteBorder,null,Modifier.size(44.dp),tint=MaterialTheme.colorScheme.primary);Text(title,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,textAlign=androidx.compose.ui.text.style.TextAlign.Center);description?.let{Text(it,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center)};if(action!=null&&onAction!=null)PrimaryButton(action,onAction)}}
+@Composable fun EmptyState(title:String,description:String?=null,action:String?=null,onAction:(()->Unit)?=null,@DrawableRes image:Int?=null){Column(Modifier.fillMaxWidth().padding(20.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(10.dp)){if(image!=null)PageIllustration(image,Modifier.size(104.dp))else Icon(LiZhangIcons.Heart,null,Modifier.size(44.dp),tint=MaterialTheme.colorScheme.primary);Text(title,style=MaterialTheme.typography.titleMedium,fontWeight=FontWeight.SemiBold,textAlign=androidx.compose.ui.text.style.TextAlign.Center);description?.let{Text(it,color=MaterialTheme.colorScheme.onSurfaceVariant,style=MaterialTheme.typography.bodyMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center)};if(action!=null&&onAction!=null)PrimaryButton(action,onAction)}}
 @Composable fun LoadingState(){Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()}}
 @Composable fun ErrorState(onRetry:()->Unit){EmptyState(stringResource(R.string.load_failed),action=stringResource(R.string.action_retry),onAction=onRetry)}
 @Composable fun CenteredSnackbarHost(hostState:SnackbarHostState){Box(Modifier.fillMaxSize().padding(24.dp),contentAlignment=Alignment.Center){SnackbarHost(hostState,Modifier.widthIn(max=360.dp))}}
-@Composable fun SettingsRow(icon:ImageVector,title:String,subtitle:String?=null,onClick:()->Unit,trailing:(@Composable ()->Unit)?=null,accent:Color=MaterialTheme.colorScheme.primary,modifier:Modifier=Modifier,diagnosticName:String?=null){Row(modifier.fillMaxWidth().pressClickable(accent = accent, diagnosticName=diagnosticName, onClick=onClick).heightIn(min=64.dp).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Surface(shape=RoundedCornerShape(14.dp),color=accent.copy(alpha=.10f)){Icon(icon,null,Modifier.padding(10.dp),tint=accent)};Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.SemiBold);subtitle?.let{Text(it,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}};trailing?.invoke()?:Icon(Icons.Outlined.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}
+@Composable
+fun SettingsRow(icon: ImageVector, title: String, subtitle: String? = null, onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null, accent: Color = MaterialTheme.colorScheme.primary,
+    modifier: Modifier = Modifier, diagnosticName: String? = null) {
+    Row(modifier.fillMaxWidth().pressClickable(accent = accent, diagnosticName = diagnosticName, onClick = onClick)
+        .heightIn(min = 64.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(26.dp), tint = accent)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        trailing?.invoke() ?: Icon(LiZhangIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}

@@ -12,12 +12,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -229,7 +223,7 @@ private fun WalkthroughCoach(state: GuidePracticeUiState, enabled: Boolean, onNe
                     Text(copy.title, style = MaterialTheme.typography.titleMedium)
                 }
                 GlassIconButton({ collapsed = !collapsed }) {
-                    Icon(if (collapsed) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess,
+                    Icon(if (collapsed) LiZhangIcons.ChevronDown else LiZhangIcons.ChevronUp,
                         if (collapsed) "展开说明" else "收起说明")
                 }
             }
@@ -279,14 +273,14 @@ private fun PracticeFlowPreview() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         GlassCard(Modifier.weight(1f)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.PersonAdd, null, tint = MaterialTheme.colorScheme.secondary)
+                Icon(LiZhangIcons.UserRoundPlus, null, tint = MaterialTheme.colorScheme.secondary)
                 Text("联系人", style = MaterialTheme.typography.labelLarge)
             }
         }
-        Icon(Icons.AutoMirrored.Outlined.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(LiZhangIcons.ArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         GlassCard(Modifier.weight(1f)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.Payments, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(LiZhangIcons.Banknote, null, tint = MaterialTheme.colorScheme.primary)
                 Text("礼金往来", style = MaterialTheme.typography.labelLarge)
             }
         }

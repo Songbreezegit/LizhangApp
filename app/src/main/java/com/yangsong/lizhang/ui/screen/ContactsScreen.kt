@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+
+import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.GlassCheckbox
@@ -22,7 +24,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.testTag
 import com.yangsong.lizhang.ui.component.GlassAction
@@ -57,8 +58,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -245,8 +244,8 @@ fun ContactsContent(
             .padding(end = 20.dp, bottom = GlassTokens.BottomClearance)
             .featureGuideTarget(FeatureGuideTarget.CONTACTS_PAGE)) {
             GlassActionMenu(menuExpanded, { focusManager.clearFocus(); menuExpanded = !menuExpanded }, { menuExpanded = false },
-                listOf(GlassAction(stringResource(R.string.contact_import_menu), Icons.Outlined.Contacts, onImportContacts),
-                    GlassAction(stringResource(R.string.contact_add_manual), Icons.Outlined.PersonAdd, onAddContact)), hazeState = hazeState)
+                listOf(GlassAction(stringResource(R.string.contact_import_menu), LiZhangIcons.ContactRound, onImportContacts),
+                    GlassAction(stringResource(R.string.contact_add_manual), LiZhangIcons.UserRoundPlus, onAddContact)), hazeState = hazeState)
         }
     }
     }

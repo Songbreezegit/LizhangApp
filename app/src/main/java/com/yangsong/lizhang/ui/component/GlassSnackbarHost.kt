@@ -2,9 +2,6 @@ package com.yangsong.lizhang.ui.component
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -52,7 +49,7 @@ fun GlassSnackbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle, null, tint = accent)
+        Icon(if (isError) LiZhangIcons.CircleAlert else LiZhangIcons.CircleCheck, null, tint = accent)
         Text(message, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium)
         if (actionLabel != null) GlassTextButton(onAction,

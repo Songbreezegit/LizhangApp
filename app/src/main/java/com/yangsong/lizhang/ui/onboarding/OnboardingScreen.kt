@@ -8,10 +8,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,9 +91,9 @@ private fun OnboardingPage(page: Int) {
         if (page == 1) {
             GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                    FeatureItem(Icons.Outlined.EditNote, R.string.onboarding_record_title, R.string.onboarding_record_body)
-                    FeatureItem(Icons.Outlined.PersonOutline, R.string.onboarding_contacts_title, R.string.onboarding_contacts_body)
-                    FeatureItem(Icons.Outlined.NotificationsNone, R.string.onboarding_reminders_title, R.string.onboarding_reminders_body)
+                    FeatureItem(LiZhangIcons.NotebookPen, R.string.onboarding_record_title, R.string.onboarding_record_body)
+                    FeatureItem(LiZhangIcons.UsersRound, R.string.onboarding_contacts_title, R.string.onboarding_contacts_body)
+                    FeatureItem(LiZhangIcons.Bell, R.string.onboarding_reminders_title, R.string.onboarding_reminders_body)
                 }
             }
         } else {

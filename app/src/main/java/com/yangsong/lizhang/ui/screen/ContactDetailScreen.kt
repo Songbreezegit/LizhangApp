@@ -6,8 +6,6 @@ import com.yangsong.lizhang.ui.component.GlassIconButton
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -35,7 +33,7 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
                 state.contact?.name?:stringResource(R.string.nav_contact_detail),
                 onBack,
                 if (state.contact != null) {
-                    { GlassIconButton(onEdit){Icon(Icons.Outlined.Edit,stringResource(R.string.contact_edit))} }
+                    { GlassIconButton(onEdit){Icon(LiZhangIcons.Pencil,stringResource(R.string.contact_edit))} }
                 } else null,
             )
         },

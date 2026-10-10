@@ -15,7 +15,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -30,11 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -76,10 +70,10 @@ private data class BottomNavigationItem(
 )
 
 private val bottomNavigationItems = listOf(
-    BottomNavigationItem(AppDestination.Home, R.string.nav_home, Icons.Outlined.Home),
-    BottomNavigationItem(AppDestination.Contacts, R.string.nav_contacts, Icons.Outlined.PersonOutline),
-    BottomNavigationItem(AppDestination.AddGift, R.string.nav_add_gift, Icons.Outlined.EditNote),
-    BottomNavigationItem(AppDestination.Settings, R.string.nav_settings, Icons.Outlined.AccountCircle),
+    BottomNavigationItem(AppDestination.Home, R.string.nav_home, LiZhangIcons.House),
+    BottomNavigationItem(AppDestination.Contacts, R.string.nav_contacts, LiZhangIcons.UsersRound),
+    BottomNavigationItem(AppDestination.AddGift, R.string.nav_add_gift, LiZhangIcons.NotebookPen),
+    BottomNavigationItem(AppDestination.Settings, R.string.nav_settings, LiZhangIcons.CircleUserRound),
 )
 
 private object NavigationMotion {
@@ -168,9 +162,7 @@ internal fun NotchedBottomNavigation(
                     scaleX = if (animationsEnabled) selectionScale.value else 1f
                     scaleY = if (animationsEnabled) selectionScale.value else 1f
                 }
-                .pressFeedback(interactions[selectedIndex], CircleShape, enabled = enabled, pressedScale = 1f)
-                .frostedGlassFrame(hazeState, CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = GlassTokens.SelectedAlpha), CircleShape),
+                .pressFeedback(interactions[selectedIndex], CircleShape, enabled = enabled, pressedScale = 1f),
             contentAlignment = Alignment.Center,
         ) {
             Box(

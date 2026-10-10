@@ -1,4 +1,6 @@
 package com.yangsong.lizhang.ui.screen
+
+import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import com.yangsong.lizhang.ui.component.GlassSwitch
@@ -16,8 +18,6 @@ import androidx.compose.runtime.DisposableEffect
 import com.yangsong.lizhang.ui.mapper.giftExportLabels
 import com.yangsong.lizhang.ui.component.currentAppLanguage
 import com.yangsong.lizhang.ui.component.displayName
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.ChevronRight
 import com.yangsong.lizhang.ui.component.glassSwitchColors
 import com.yangsong.lizhang.ui.component.AppScaffold
 import androidx.compose.runtime.getValue
@@ -52,16 +52,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Backup
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.automirrored.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PrivacyTip
-import androidx.compose.material.icons.outlined.TableView
-import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -532,7 +522,7 @@ fun SettingsContent(
             item {
                 SettingsGroup {
                     SettingsRow(
-                        Icons.Outlined.Backup,
+                        LiZhangIcons.DatabaseBackup,
                         stringResource(R.string.settings_backup),
                         onClick = onBackup,
                         modifier = Modifier.featureGuideTarget(FeatureGuideTarget.SETTINGS_PAGE),
@@ -545,7 +535,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.TableView,
+                        LiZhangIcons.Sheet,
                         stringResource(R.string.settings_excel),
                         onClick = onExcelExport,
                         accent = MaterialTheme.colorScheme.secondary,
@@ -555,7 +545,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.Description,
+                        LiZhangIcons.FileText,
                         stringResource(R.string.settings_csv),
                         onClick = onCsvExport,
                         accent = MaterialTheme.colorScheme.secondary,
@@ -568,7 +558,7 @@ fun SettingsContent(
             item {
                 SettingsGroup {
                     SettingsRow(
-                        Icons.Outlined.Language,
+                        LiZhangIcons.Globe,
                         stringResource(R.string.language),
                         onClick = { showLanguagePicker = true },
                         modifier = Modifier.testTag("语言设置行").onGloballyPositioned {
@@ -579,7 +569,7 @@ fun SettingsContent(
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 Text((LocalCurrentLanguage.current ?: currentAppLanguage()).displayName(), Modifier.widthIn(max = 80.dp),
                                     style = MaterialTheme.typography.bodyMedium)
-                                androidx.compose.material3.Icon(Icons.Outlined.ChevronRight, null,
+                                androidx.compose.material3.Icon(LiZhangIcons.ChevronRight, null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         },
@@ -591,14 +581,14 @@ fun SettingsContent(
                         AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
                     }
                     SettingsRow(
-                        Icons.Outlined.Palette,
+                        LiZhangIcons.Palette,
                         stringResource(R.string.settings_theme),
                         themeDescription,
                         onClick = onThemeOptions,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.DarkMode,
+                        LiZhangIcons.Moon,
                         stringResource(R.string.settings_dark),
                         themeDescription,
                         onClick = { setDark(!effectiveDark, "row") },
@@ -622,7 +612,7 @@ fun SettingsContent(
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.TextFields,
+                        LiZhangIcons.Type,
                         stringResource(R.string.settings_font),
                         stringResource(R.string.settings_font_description),
                         onClick = onFontGuide,
@@ -632,28 +622,28 @@ fun SettingsContent(
             item {
                 SettingsGroup {
                     SettingsRow(
-                        Icons.Outlined.Info,
+                        LiZhangIcons.Info,
                         stringResource(R.string.settings_about),
                         stringResource(R.string.settings_version, com.yangsong.lizhang.BuildConfig.VERSION_NAME),
                         onClick = onAbout,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.PrivacyTip,
+                        LiZhangIcons.ShieldCheck,
                         stringResource(R.string.settings_privacy),
                         stringResource(R.string.settings_privacy_description),
                         onClick = onPrivacy,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.Outlined.Description,
+                        LiZhangIcons.FileText,
                         stringResource(R.string.legal_terms_title),
                         stringResource(R.string.legal_terms_description),
                         onClick = onTerms,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
-                        Icons.AutoMirrored.Outlined.HelpOutline,
+                        LiZhangIcons.CircleHelp,
                         stringResource(R.string.legal_help_title),
                         stringResource(R.string.legal_help_description),
                         onClick = onHelp,

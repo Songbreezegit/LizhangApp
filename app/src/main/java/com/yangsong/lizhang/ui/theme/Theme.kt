@@ -8,7 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
-/** 普通内容使用中性表面，蓝橘只用于金额、选中状态和主要操作。 */
+/** 淡雅背景与浅色操作容器降低视觉重量，绿蓝前景保持文字和图标可读。 */
 private val Light = lightColorScheme(
     primary = CoralPrimary,
     onPrimary = CardWhite,
@@ -27,7 +27,7 @@ private val Light = lightColorScheme(
     onBackground = InkPrimary,
     surface = CardWhite,
     onSurface = InkPrimary,
-    surfaceVariant = Color(0xFFE5E9E3),
+    surfaceVariant = Color(0xFFEBF2EE),
     onSurfaceVariant = InkSecondary,
     surfaceTint = CoralPrimary,
     inverseSurface = DarkSurface,
@@ -37,22 +37,22 @@ private val Light = lightColorScheme(
     errorContainer = Color(0xFFFFE5E7),
     onErrorContainer = Color(0xFF84262D),
     outline = SoftDivider,
-    outlineVariant = Color(0xFFE3E7E1),
+    outlineVariant = Color(0xFFE4EDE8),
     scrim = Color.Black,
     surfaceBright = CardWhite,
-    surfaceDim = Color(0xFFE6EAE3),
+    surfaceDim = Color(0xFFE8F0EB),
     surfaceContainerLowest = CardWhite,
-    surfaceContainerLow = Color(0xFFF0F2ED),
-    surfaceContainer = Color(0xFFEBEEE7),
-    surfaceContainerHigh = Color(0xFFE6EAE2),
-    surfaceContainerHighest = Color(0xFFE0E5DC),
+    surfaceContainerLow = Color(0xFFF2F7F4),
+    surfaceContainer = Color(0xFFEDF4EF),
+    surfaceContainerHigh = Color(0xFFE8F1EB),
+    surfaceContainerHighest = Color(0xFFE1ECE5),
 )
 private val Dark = darkColorScheme(
     primary = DarkCoral,
     onPrimary = Color(0xFF3D2115),
     primaryContainer = DarkCoralContainer,
     onPrimaryContainer = Color(0xFFFFD7C1),
-    inversePrimary = CoralPrimary,
+    inversePrimary = Color(0xFFA44625),
     secondary = DarkBlue,
     onSecondary = Color(0xFF143548),
     secondaryContainer = Color(0xFF304657),
@@ -68,7 +68,7 @@ private val Dark = darkColorScheme(
     surfaceVariant = Color(0xFF394149),
     onSurfaceVariant = DarkSecondary,
     surfaceTint = DarkCoral,
-    inverseSurface = CreamBackground,
+    inverseSurface = Color(0xFFF5F5F2),
     inverseOnSurface = InkPrimary,
     error = Color(0xFFFFA0A7),
     onError = Color(0xFF571B22),

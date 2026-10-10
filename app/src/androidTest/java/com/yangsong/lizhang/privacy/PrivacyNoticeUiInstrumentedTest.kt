@@ -5,6 +5,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -64,6 +65,38 @@ class PrivacyNoticeUiInstrumentedTest {
         compose.onNodeWithTag("隐私告知拒绝").performScrollTo().performClick()
         compose.onNodeWithTag("拒绝退出应用").performScrollTo().performClick()
         assertEquals(1, exited)
+        assertEquals(0, repository.accepts)
+        assertFalse(repository.state.value.canProcessPersonalData)
+    }
+
+    @Test fun 底部离线入口横排等大居中且阅读返回不会自动同意() {
+        val repository = UiConsentRepository()
+        var accepted = 0
+        val viewModel = PrivacyConsentViewModel(repository)
+        compose.setContent { LiZhangTheme {
+            PrivacyNoticeGate(viewModel, documents, { accepted++ }, {})
+        } }
+        compose.onNodeWithTag("首次隐私告知").performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+            scrollBy(0f, 100_000f)
+        }
+        val privacy = compose.onNodeWithTag("告知隐私政策").assertIsDisplayed().assertIsEnabled()
+            .fetchSemanticsNode().boundsInRoot
+        val terms = compose.onNodeWithTag("告知用户协议").assertIsDisplayed().assertIsEnabled()
+            .fetchSemanticsNode().boundsInRoot
+        val screen = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val density = compose.activity.resources.displayMetrics.density
+        assertEquals("阅读入口位于同一行", privacy.top, terms.top, 1f)
+        assertEquals("阅读入口等宽", privacy.width, terms.width, 1f)
+        assertEquals("阅读入口等高", privacy.height, terms.height, 1f)
+        assertEquals("阅读入口关于页面中心对称", screen.center.x, (privacy.center.x + terms.center.x) / 2f, 1f)
+        assertTrue("阅读入口保留最小点击高度", privacy.height >= 48f * density - 1f)
+        assertTrue("阅读入口分开排列", privacy.right < terms.left)
+        for ((tag, document) in listOf("告知隐私政策" to "legal_document_privacy", "告知用户协议" to "legal_document_terms")) {
+            compose.onNodeWithTag(tag).performScrollTo().performClick()
+            compose.onNodeWithTag(document).assertIsDisplayed()
+            compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
+        }
+        assertEquals(0, accepted)
         assertEquals(0, repository.accepts)
         assertFalse(repository.state.value.canProcessPersonalData)
     }

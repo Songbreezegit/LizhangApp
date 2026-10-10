@@ -5,8 +5,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.CompositionLocalProvider
@@ -60,6 +58,6 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
         GlassFab(onToggle, Modifier.testTag("联系人添加菜单").semantics {
             contentDescription = menuDescription
             stateDescription = expandedDescription
-        }, hazeState = hazeState) { Icon(Icons.Outlined.Add, null, Modifier.rotate(rotation).size(28.dp)) }
+        }, hazeState = hazeState) { Icon(LiZhangIcons.Plus, null, Modifier.rotate(rotation).size(28.dp)) }
     }
 }

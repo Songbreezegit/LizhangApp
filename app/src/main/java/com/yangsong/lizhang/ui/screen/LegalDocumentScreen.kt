@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.ui.screen
 
+import com.yangsong.lizhang.ui.component.LiZhangIcons
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -11,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -119,7 +119,7 @@ fun LegalDocumentContent(
                             }
                         },
                         modifier = Modifier.fillMaxWidth().testTag("legal_open_browser"),
-                        icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                        icon = LiZhangIcons.ExternalLink,
                     )
                 }
             }

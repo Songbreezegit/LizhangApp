@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -39,7 +37,7 @@ fun SearchScreen(
                 value = state.query,
                 onValueChange = viewModel::updateQuery,
                 label = stringResource(R.string.search_hint),
-                leadingIcon = Icons.Outlined.Search,
+                leadingIcon = LiZhangIcons.Search,
                 modifier = Modifier.featureGuideTarget(FeatureGuideTarget.SEARCH),
             )
             GlassCard(

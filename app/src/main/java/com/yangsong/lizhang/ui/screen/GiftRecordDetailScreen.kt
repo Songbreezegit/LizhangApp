@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteOutline
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -77,13 +74,13 @@ fun GiftRecordDetailScreen(
                         text = stringResource(R.string.record_edit),
                         onClick = { onEdit(record.id) },
                         modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Outlined.Edit,
+                        icon = LiZhangIcons.Pencil,
                     )
                     SecondaryButton(
                         text = stringResource(R.string.record_delete),
                         onClick = { showDeleteConfirm = true },
                         modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Outlined.DeleteOutline,
+                        icon = LiZhangIcons.Trash,
                     )
                     Spacer(Modifier.height(20.dp))
                 }

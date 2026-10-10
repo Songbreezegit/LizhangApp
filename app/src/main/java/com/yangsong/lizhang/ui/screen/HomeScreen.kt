@@ -32,8 +32,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -157,9 +155,9 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
             Text(stringResource(R.string.app_tagline), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassIconButton(onSearch) { Icon(Icons.Outlined.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
+            GlassIconButton(onSearch) { Icon(LiZhangIcons.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
             GlassIconButton(onNotice, Modifier.featureGuideTarget(FeatureGuideTarget.REMINDERS)) {
-                Icon(Icons.Outlined.NotificationsNone, stringResource(R.string.nav_notifications), Modifier.size(28.dp))
+                Icon(LiZhangIcons.Bell, stringResource(R.string.nav_notifications), Modifier.size(28.dp))
             }
         }
     }
@@ -204,7 +202,7 @@ private fun HeroSummaryCard(
                         ) {
                             Text(stringResource(R.string.year_format, state.year), Modifier.weight(1f, fill = false),
                                 fontWeight = FontWeight.Bold)
-                            Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
+                            Icon(LiZhangIcons.ChevronDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
                         }
                     }
                 }
@@ -320,13 +318,13 @@ private fun QuickActions(onReceived: () -> Unit, onGiven: () -> Unit, onCalendar
         }
         FlowRow(Modifier.fillMaxWidth(), maxItemsInEachRow = columns,
             horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            QuickAction(R.string.shortcut_received, Icons.Outlined.CardGiftcard, MaterialTheme.colorScheme.primary,
+            QuickAction(R.string.shortcut_received, LiZhangIcons.Gift, MaterialTheme.colorScheme.primary,
                 onReceived, Modifier.width(itemWidth))
-            QuickAction(R.string.shortcut_given, Icons.Outlined.MarkEmailRead, MaterialTheme.colorScheme.secondary,
+            QuickAction(R.string.shortcut_given, LiZhangIcons.MailCheck, MaterialTheme.colorScheme.secondary,
                 onGiven, Modifier.width(itemWidth))
-            QuickAction(R.string.shortcut_calendar, Icons.Outlined.CalendarMonth, MaterialTheme.colorScheme.primary,
+            QuickAction(R.string.shortcut_calendar, LiZhangIcons.CalendarDays, MaterialTheme.colorScheme.primary,
                 onCalendar, Modifier.width(itemWidth))
-            QuickAction(R.string.shortcut_statistics, Icons.Outlined.BarChart, MaterialTheme.colorScheme.secondary,
+            QuickAction(R.string.shortcut_statistics, LiZhangIcons.ChartColumns, MaterialTheme.colorScheme.secondary,
                 onStats, Modifier.width(itemWidth))
         }
     }
@@ -337,7 +335,7 @@ private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.Im
     onClick: () -> Unit, modifier: Modifier) {
     Column(modifier.clip(RoundedCornerShape(16.dp)).pressClickable(role = Role.Button, accent = tint, pressedScale = .96f, onClick = onClick).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(52.dp).background(tint.copy(alpha = .09f), RoundedCornerShape(16.dp)),
+        Box(Modifier.size(52.dp),
             contentAlignment = Alignment.Center) {
             Icon(icon, null, Modifier.size(26.dp), tint = tint)
         }
