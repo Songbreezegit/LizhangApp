@@ -22,16 +22,20 @@ class OnboardingUpgradeInstrumentedTest {
         assertFalse("旧安装不能自动视为同意新增的政策", container.canProcessPersonalData)
         assertFalse(container.isBusinessDatabaseInitialized)
         assertFalse(container.isReminderRepositoryInitialized)
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             compose.waitUntil(8000) { compose.onAllNodesWithTag("首次隐私告知").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("首页列表").assertDoesNotExist()
-            compose.onNodeWithTag("隐私告知拒绝").performScrollTo().performClick()
-            compose.onNodeWithTag("隐私拒绝说明").assertIsDisplayed()
+            compose.onNodeWithTag("隐私告知拒绝").performClick()
+            compose.waitUntil(5000) { scenario.state == androidx.lifecycle.Lifecycle.State.DESTROYED }
             assertEquals(before, container.onboardingRepository.state.value)
             assertFalse(container.isBusinessDatabaseInitialized)
             assertFalse(container.isReminderRepositoryInitialized)
-            compose.onNodeWithTag("返回隐私告知").performScrollTo().performClick()
-            compose.onNodeWithTag("隐私告知同意").performScrollTo().performClick()
+        }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(8000) {
+                runCatching { compose.onNodeWithTag("隐私告知同意").assertIsEnabled(); true }.getOrDefault(false)
+            }
+            compose.onNodeWithTag("隐私告知同意").performClick()
             compose.waitUntil(5000) { compose.onAllNodesWithTag("首页列表").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("引导页面1").assertDoesNotExist()
             compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()

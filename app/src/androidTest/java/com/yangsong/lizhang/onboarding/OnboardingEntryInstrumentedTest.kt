@@ -32,7 +32,7 @@ class OnboardingEntryInstrumentedTest {
         assertFalse(app.appContainer.onboardingRepository.state.value.notificationsPermission.requested)
     }
 
-    @Test fun 首次拒绝退出后仍告知离线阅读确认启动真实记账引导且重启不重复() {
+    @Test fun 首次拒绝及两种返回直接退出重启仍告知全文确认后启动记账引导且不重复() {
         val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
         val container = app.appContainer
         assertFalse("需卸载后全新安装且不能预置隐私同意", container.canProcessPersonalData)
@@ -40,37 +40,50 @@ class OnboardingEntryInstrumentedTest {
         assertFalse(container.isBusinessDatabaseInitialized)
         assertFalse(container.isReminderRepositoryInitialized)
         assertNoOptionalPermissions(app)
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            waitFor("首次隐私告知")
-            compose.onNodeWithTag("首页列表").assertDoesNotExist()
-            compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
-            compose.onNodeWithTag("隐私告知拒绝").performScrollTo().performClick()
-            waitFor("隐私拒绝说明")
-            assertFalse(container.canProcessPersonalData)
-            assertFalse(container.onboardingRepository.state.value.completed)
-            assertFalse(container.isBusinessDatabaseInitialized)
-            assertFalse(container.isReminderRepositoryInitialized)
-            assertNoOptionalPermissions(app)
-            compose.onNodeWithTag("拒绝退出应用").performScrollTo().performClick()
-            compose.waitUntil(5000) { scenario.state == androidx.lifecycle.Lifecycle.State.DESTROYED }
+        for (exit in listOf("不同意", "顶栏返回", "系统返回")) {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                waitFor("首次隐私告知")
+                compose.onNodeWithTag("首页列表").assertDoesNotExist()
+                compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
+                when (exit) {
+                    "不同意" -> compose.onNodeWithTag("隐私告知拒绝").performClick()
+                    "顶栏返回" -> {
+                        var back = ""
+                        scenario.onActivity { back = it.getString(R.string.action_back) }
+                        compose.onNodeWithContentDescription(back).performClick()
+                    }
+                    else -> scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+                }
+                compose.waitUntil(5000) { scenario.state == androidx.lifecycle.Lifecycle.State.DESTROYED }
+                assertFalse(container.canProcessPersonalData)
+                assertFalse(container.onboardingRepository.state.value.completed)
+                assertFalse(container.isBusinessDatabaseInitialized)
+                assertFalse(container.isReminderRepositoryInitialized)
+                assertNoOptionalPermissions(app)
+            }
         }
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             waitFor("首次隐私告知")
             assertFalse(container.canProcessPersonalData)
-            for ((entry, document) in listOf("告知隐私政策" to "legal_document_privacy", "告知用户协议" to "legal_document_terms")) {
-                compose.onNodeWithTag(entry).performScrollTo().performClick()
-                waitFor(document)
-                assertFalse(container.canProcessPersonalData)
-                assertFalse(container.isBusinessDatabaseInitialized)
-                var back = ""
-                scenario.onActivity { back = it.getString(R.string.action_back) }
-                compose.onNodeWithContentDescription(back).performClick()
-                waitFor("首次隐私告知")
+            compose.waitUntil(5000) {
+                runCatching { compose.onNodeWithTag("隐私告知同意").assertIsEnabled(); true }.getOrDefault(false)
             }
+            compose.onNodeWithTag("告知隐私政策").assertDoesNotExist()
+            compose.onNodeWithTag("告知用户协议").assertDoesNotExist()
+            compose.onNodeWithTag("告知正文_privacy").assertExists()
+            compose.onNodeWithTag("首次隐私告知正文").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) {
+                it(0f, 100_000f)
+            }
+            compose.onNodeWithTag("告知正文_terms").assertIsDisplayed()
+            assertFalse(container.canProcessPersonalData)
+            assertFalse(container.isBusinessDatabaseInitialized)
             scenario.recreate()
             waitFor("首次隐私告知")
             assertFalse(container.canProcessPersonalData)
-            compose.onNodeWithTag("隐私告知同意").performScrollTo().performClick()
+            compose.waitUntil(5000) {
+                runCatching { compose.onNodeWithTag("隐私告知同意").assertIsEnabled(); true }.getOrDefault(false)
+            }
+            compose.onNodeWithTag("隐私告知同意").performClick()
             waitFor("首页列表")
             waitFor("功能引导气泡")
             assertTrue(container.canProcessPersonalData)

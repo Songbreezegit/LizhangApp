@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -17,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
@@ -55,6 +58,7 @@ class FeatureGuideUiInstrumentedTest {
     private lateinit var repository: SharedPreferencesOnboardingRepository
     private lateinit var vm: OnboardingViewModel
     private var guideDensity = 1f
+    private var guideSystemInsets = intArrayOf(0, 0, 0, 0)
 
     private fun localized(tag: String) = app.createConfigurationContext(Configuration(app.resources.configuration).apply {
         setLocale(Locale.forLanguageTag(tag))
@@ -70,14 +74,23 @@ class FeatureGuideUiInstrumentedTest {
 
     @After fun 清除隔离偏好() { preferences.edit().clear().commit() }
 
-    private fun show() = compose.setContent {
+    private fun show(compactViewport: Boolean = false) = compose.setContent {
         val owner = requireNotNull(LocalActivityResultRegistryOwner.current)
         CompositionLocalProvider(LocalContext provides english, LocalConfiguration provides english.resources.configuration,
             LocalActivityResultRegistryOwner provides owner) {
             LiZhangTheme {
                 val density = LocalDensity.current
-                SideEffect { guideDensity = density.density; displayContext = english }
-                LiZhangNavGraph(app.appContainer, onboardingViewModel = vm)
+                val direction = LocalLayoutDirection.current
+                val insets = WindowInsets.safeDrawing
+                val systemInsets = intArrayOf(insets.getLeft(density, direction), insets.getTop(density),
+                    insets.getRight(density, direction), insets.getBottom(density))
+                SideEffect { guideDensity = density.density; displayContext = english; guideSystemInsets = systemInsets }
+                if (compactViewport) {
+                    // 固定滚动用例的视口，避免高屏已同时显示目标与底部留白。
+                    Box(Modifier.requiredSize(360.dp, 560.dp)) {
+                        LiZhangNavGraph(app.appContainer, onboardingViewModel = vm)
+                    }
+                } else LiZhangNavGraph(app.appContainer, onboardingViewModel = vm)
             }
         }
     }
@@ -115,8 +128,9 @@ class FeatureGuideUiInstrumentedTest {
     private fun reminders() {
         compose.onNodeWithTag("功能引导目标REMINDERS").performClick()
         compose.waitUntil(8000) {
-            runCatching { compose.onNodeWithText(displayContext.getString(R.string.nav_notifications)).assertIsDisplayed(); true }.getOrDefault(false)
+            runCatching { compose.onNodeWithTag("新增独立提醒").assertIsDisplayed(); true }.getOrDefault(false)
         }
+        compose.onNodeWithText(displayContext.getString(R.string.nav_notifications)).assertIsDisplayed()
     }
     private fun settings() { compose.onNodeWithTag("功能引导目标SETTINGS").performClick(); waitFor("设置列表") }
 
@@ -153,6 +167,79 @@ class FeatureGuideUiInstrumentedTest {
             assertTrue("引导按钮仍在云体安全范围内", action.left >= bubble.left && action.right <= bubble.right &&
                 action.top >= bubble.top && action.bottom <= bubble.bottom)
         }
+        assertRenderedThoughtBubbles(target)
+    }
+
+    /** 直接读取渲染器缓存，并可逐颗采样实际像素，不重新调用几何函数猜测绘制结果。 */
+    private fun assertRenderedThoughtBubbles(target: FeatureGuideTarget, checkPixels: Boolean = false) {
+        val overlay = compose.onNodeWithTag("功能引导高亮")
+        val node = overlay.fetchSemanticsNode()
+        val dots = node.config[FeatureGuideThoughtBubblesKey]
+        assertEquals("${target.name} 的实际绘制必须包含三个圆泡", 3, dots.size)
+        val visual = compose.onAllNodesWithTag("功能引导视觉锚点${target.name}", useUnmergedTree = true)
+            .fetchSemanticsNodes().firstOrNull()?.boundsInRoot ?: targetBounds(target)
+        val anchor = visual.inflate(6f * guideDensity)
+        val cat = compose.onAllNodesWithTag("功能引导猫咪装饰", useUnmergedTree = true)
+            .fetchSemanticsNodes().firstOrNull()?.boundsInRoot
+        dots.forEach { dot ->
+            assertFalse("${target.name} 的圆泡边框不能遮住高亮", dot.bounds.inflate(.5f * guideDensity).overlaps(anchor))
+            if (cat != null) assertFalse("${target.name} 的圆泡不能遮住猫咪", dot.bounds.inflate(4.5f * guideDensity).overlaps(cat))
+        }
+        dots.zipWithNext().forEach { (small, large) ->
+            assertTrue("${target.name} 从目标到云端半径严格递增", small.radius < large.radius)
+            assertTrue("${target.name} 三颗圆泡必须独立", (small.center - large.center).getDistance() > small.radius + large.radius)
+        }
+        if (!checkPixels) return
+        val frame = overlay.captureToImage()
+        val pixels = frame.toPixelMap()
+        fun cloudDistance(point: Offset): Float {
+            val local = point - node.boundsInRoot.topLeft
+            val pixel = pixels[local.x.roundToInt().coerceIn(0, frame.width - 1),
+                local.y.roundToInt().coerceIn(0, frame.height - 1)]
+            val color = GuideCloudPalette.surface
+            return abs(pixel.red - color.red) + abs(pixel.green - color.green) + abs(pixel.blue - color.blue)
+        }
+        dots.forEach { dot ->
+            assertTrue("${target.name} 每颗圆泡中心均有实际暖白像素", cloudDistance(dot.center) < .08f)
+            assertTrue("${target.name} 圆泡外侧保留背景", cloudDistance(dot.center + Offset(dot.radius + 3f * guideDensity, 0f)) > .08f)
+        }
+    }
+
+    @Test fun 十一个真实引导场景均实际绘制三个圆泡() {
+        show()
+        for (step in FeatureGuideStep.recordSteps) {
+            assertStep(step)
+            val target = FeatureGuideTarget.entries.first { it.step == step }
+            assertSafe(target)
+            assertRenderedThoughtBubbles(target, checkPixels = true)
+            next()
+        }
+        back(); waitFor("首页列表")
+        for (page in FeatureGuidePage.entries) {
+            when (page) {
+                FeatureGuidePage.CONTACTS -> contacts()
+                FeatureGuidePage.REMINDERS -> reminders()
+                FeatureGuidePage.SETTINGS -> settings()
+                FeatureGuidePage.CALENDAR -> compose.onNodeWithText(english.getString(R.string.shortcut_calendar)).performClick()
+                FeatureGuidePage.SEARCH -> compose.onNodeWithContentDescription(english.getString(R.string.action_search)).performClick()
+                FeatureGuidePage.STATISTICS -> compose.onNodeWithText(english.getString(R.string.shortcut_statistics)).performClick()
+            }
+            assertPage(page, FeatureGuideStep.COMPLETED)
+            val target = when (page) {
+                FeatureGuidePage.CONTACTS -> FeatureGuideTarget.CONTACTS_PAGE
+                FeatureGuidePage.REMINDERS -> FeatureGuideTarget.REMINDERS_PAGE
+                FeatureGuidePage.SETTINGS -> FeatureGuideTarget.SETTINGS_PAGE
+                FeatureGuidePage.CALENDAR -> FeatureGuideTarget.CALENDAR
+                FeatureGuidePage.SEARCH -> FeatureGuideTarget.SEARCH
+                FeatureGuidePage.STATISTICS -> FeatureGuideTarget.STATISTICS
+            }
+            assertSafe(target)
+            assertRenderedThoughtBubbles(target, checkPixels = true)
+            next()
+            if (page == FeatureGuidePage.CONTACTS || page == FeatureGuidePage.SETTINGS) home()
+            else { back(); waitFor("首页列表") }
+        }
+        assertEquals(FeatureGuidePage.entries.toSet(), vm.state.value.seenPageGuides)
     }
 
     @Test fun 五步只在真实记账页面推进且完成引导不自动保存或介绍其他页面() {
@@ -203,9 +290,17 @@ class FeatureGuideUiInstrumentedTest {
         val cloudBody = Rect(bubble.left, bubble.top + cat.height * 40f / 64f, bubble.right, bubble.bottom)
         val cloud = guideCloudGeometry(cloudBody, guideDensity)
         val anchor = visual.inflate(6f * guideDensity)
-        val dots = guideThoughtBubbles(anchor, cloud, cat, screen, cloudAbove = true, unit = guideDensity)
-        assertEquals("当前设计以两个独立圆泡指向真实入口", 2, dots.size)
-        assertFalse("圆泡之间保留空隙", dots[0].bounds.overlaps(dots[1].bounds))
+        // 使用运行时的系统安全区；底栏完整点击边界只限制云体，不截断圆泡。
+        val thoughtSafe = Rect(maxOf(screen.left, guideSystemInsets[0].toFloat()) + 16f * guideDensity,
+            maxOf(screen.top, guideSystemInsets[1].toFloat()) + 12f * guideDensity,
+            screen.right - guideSystemInsets[2] - 16f * guideDensity,
+            screen.bottom - guideSystemInsets[3] - 12f * guideDensity)
+        val dots = guideThoughtBubbles(anchor, cloud, cat, thoughtSafe, cloudAbove = true, unit = guideDensity)
+        assertEquals("三个独立圆泡从真实入口到云朵由小到大", 3, dots.size)
+        dots.zipWithNext().forEach { (small, large) ->
+            assertTrue("从目标到云端半径递增", small.radius < large.radius)
+            assertFalse("两段圆泡之间都保留空隙", small.bounds.overlaps(large.bounds))
+        }
         dots.forEach { assertFalse("圆泡不擦入目标", it.bounds.overlaps(anchor)) }
         val frame = overlay.captureToImage()
         val pixels = frame.toPixelMap()
@@ -221,8 +316,10 @@ class FeatureGuideUiInstrumentedTest {
             assertTrue("圆泡外侧不能沿用旧三角尾或连接线",
                 cloudDistance(dot.center + Offset(dot.radius + 3f * guideDensity, 0f)) > .08f)
         }
-        val gap = (dots[0].center + dots[1].center) / 2f
-        assertTrue("圆泡间隙必须保留背景，不能重新连成箭头", cloudDistance(gap) > .08f)
+        dots.zipWithNext().forEach { (small, large) ->
+            val gap = (small.center + large.center) / 2f
+            assertTrue("两段圆泡间隙必须保留背景，不能重新连成箭头", cloudDistance(gap) > .08f)
+        }
         val directory = File(app.getExternalFilesDir(null), "guide-rc2").apply { mkdirs() }
         File(directory, "导航圆云泡实际绘制.png").outputStream().use {
             frame.asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
@@ -293,10 +390,11 @@ class FeatureGuideUiInstrumentedTest {
     }
 
     @Test fun 真实记账目标滚出视口时气泡暂停滚回后恢复且进度不变() {
-        show(); assertStep(FeatureGuideStep.ADD_RECORD); next(); assertStep(FeatureGuideStep.RECORD_CONTACT)
+        show(compactViewport = true); assertStep(FeatureGuideStep.ADD_RECORD); next(); assertStep(FeatureGuideStep.RECORD_CONTACT)
         next(); assertStep(FeatureGuideStep.RECORD_AMOUNT)
         compose.onNodeWithTag("记账底部留白").performScrollTo()
         compose.waitForIdle()
+        compose.onNodeWithTag("功能引导目标RECORD_AMOUNT").assertIsNotDisplayed()
         compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
         assertEquals(FeatureGuideStep.RECORD_AMOUNT, vm.state.value.featureGuideStep)
         compose.onNodeWithTag("功能引导目标RECORD_AMOUNT").performScrollTo()
@@ -320,7 +418,20 @@ class FeatureGuideUiInstrumentedTest {
             }
         }
         assertStep(FeatureGuideStep.ADD_RECORD)
-        reminders(); assertPage(FeatureGuidePage.REMINDERS)
+        val homeBubble = compose.onNodeWithTag("功能引导气泡").fetchSemanticsNode().boundsInRoot
+        val reminderEntry = targetBounds(FeatureGuideTarget.REMINDERS)
+        assertFalse("法语窄屏长说明不能遮住真实提醒入口", homeBubble.overlaps(reminderEntry))
+        compose.onNodeWithTag("功能引导目标REMINDERS").performClick()
+        compose.waitUntil(8000) {
+            runCatching { compose.onNodeWithText(french.getString(R.string.nav_notifications)).assertIsDisplayed(); true }
+                .getOrDefault(false)
+        }
+        compose.onNodeWithTag("首页列表").assertDoesNotExist()
+        // 窄屏大字下新增入口在第四个列表项，尚未进入组合；按真实滚动操作建立可见锚点。
+        compose.onNodeWithTag("功能引导气泡").assertDoesNotExist()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollToIndex))
+            .performScrollToNode(targetMatcher(FeatureGuideTarget.REMINDERS_PAGE))
+        assertPage(FeatureGuidePage.REMINDERS)
         assertSafe(FeatureGuideTarget.REMINDERS_PAGE, "窄屏范围")
         val directory = File(app.getExternalFilesDir(null), "guide-rc2").apply { mkdirs() }
         File(directory, "法语窄屏大字体提醒页.png").outputStream().use {

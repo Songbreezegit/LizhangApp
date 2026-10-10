@@ -14,11 +14,11 @@ import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 
-/** 全新安装时单独执行，验证未确认告知的七语言重建与离线文档位置保存。 */
+/** 全新安装时单独执行，验证未确认告知的七语言重建与同卡片完整文档。 */
 class OnboardingLocaleInstrumentedTest {
     @get:Rule val compose = createEmptyComposeRule()
 
-    @Test fun 未确认告知阅读隐私时切换七语言保留文档和未同意状态() {
+    @Test fun 未确认告知切换七语言仍可在同一卡片阅读完整文档且不自动同意() {
         val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
         assertFalse(app.appContainer.onboardingRepository.state.value.completed)
         assertFalse(app.appContainer.canProcessPersonalData)
@@ -30,10 +30,9 @@ class OnboardingLocaleInstrumentedTest {
                 compose.waitUntil(8000) {
                     runCatching { compose.onNodeWithTag("首次隐私告知").assertIsDisplayed(); true }.getOrDefault(false)
                 }
-                compose.onNodeWithTag("告知隐私政策").performScrollTo().performClick()
                 compose.waitUntil(5000) {
                     runCatching {
-                        compose.onNodeWithTag("legal_document_privacy").assertIsDisplayed()
+                        compose.onNodeWithTag("隐私告知同意").assertIsEnabled()
                         true
                     }.getOrDefault(false)
                 }
@@ -59,12 +58,14 @@ class OnboardingLocaleInstrumentedTest {
                         scenario.onActivity { detail += "，当前 ${it.resources.configuration.locales[0].language}，新 Activity=${it !== previous}，就绪=${it.appearanceHost.isNavigationReady}，焦点=${it.hasWindowFocus()}" }
                         throw AssertionError(detail, error)
                     }
-                    compose.waitUntil(5000) {
-                        runCatching { compose.onNodeWithTag("legal_document_privacy").assertIsDisplayed(); true }.getOrDefault(false)
-                    }
+                    compose.onNodeWithTag("首次隐私告知").assertIsDisplayed()
+                    compose.onNodeWithTag("告知正文_privacy").assertExists()
+                    compose.onNodeWithTag("告知正文_terms").assertExists()
                     compose.onNodeWithText(app.createConfigurationContext(android.content.res.Configuration(app.resources.configuration).apply {
                         setLocale(java.util.Locale.forLanguageTag(tag))
-                    }).getString(R.string.legal_language_fallback)).assertIsDisplayed()
+                    }).getString(R.string.legal_language_fallback)).performScrollTo().assertIsDisplayed()
+                    compose.onNodeWithTag("隐私告知同意").assertIsDisplayed().assertIsEnabled()
+                    compose.onNodeWithTag("隐私告知拒绝").assertIsDisplayed().assertIsEnabled()
                     assertFalse(app.appContainer.onboardingRepository.state.value.completed)
                     assertFalse(app.appContainer.canProcessPersonalData)
                     assertFalse(app.appContainer.isBusinessDatabaseInitialized)
