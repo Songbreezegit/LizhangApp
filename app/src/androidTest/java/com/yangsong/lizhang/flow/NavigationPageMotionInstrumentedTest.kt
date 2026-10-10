@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -33,14 +36,19 @@ import kotlin.math.max
 @RunWith(AndroidJUnit4::class)
 class NavigationPageMotionInstrumentedTest {
     @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
-    private val durationScale = object : MotionDurationScale { override val scaleFactor = 1f }
+    private class DurationScale : MotionDurationScale {
+        var factor by mutableFloatStateOf(1f)
+        override val scaleFactor: Float get() = factor
+    }
+    private val durationScale = DurationScale()
     @get:Rule(order = 1) val compose = createComposeRule(effectContext = durationScale)
     private val app = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val directory get() = File(app.getExternalFilesDir(null), "navigation-pages-v096").apply { mkdirs() }
     private val tabRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
     private var density = 1f
 
-    private fun start() {
+    private fun start(animationScale: Float = 1f) {
+        durationScale.factor = animationScale
         compose.setChineseContent {
             density = LocalDensity.current.density
             LiZhangTheme {
@@ -56,7 +64,7 @@ class NavigationPageMotionInstrumentedTest {
         compose.mainClock.autoAdvance = false
     }
 
-    private fun tab(label: String) = compose.onNode(hasText(label) and tabRole)
+    private fun tab(label: String) = compose.onNode(hasContentDescription(label) and tabRole)
     private fun bounds(tag: String): Rect = compose.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
     private fun settle() { compose.mainClock.advanceTimeBy(900); compose.waitForIdle() }
 
@@ -72,43 +80,63 @@ class NavigationPageMotionInstrumentedTest {
         }
     }
 
-    @Test fun 进入记一笔时底栏逐帧退场并在返回首页时逐帧恢复() {
+    @Test fun 进入和返回记一笔的每一帧保存栏与导航栏互斥() {
         start()
         val initialBar = bounds("底部导航主体")
-        val leavingPositions = mutableListOf<Rect>()
-        verifyPageMotion("进入记一笔", "礼金保存栏", { tab("记一笔").performClick() }) { index ->
-            if (index < 2) {
-                leavingPositions += bounds("底部导航主体")
-                capture("底栏退场${index + 1}", wholeWindow = true)
-            }
-            if (index == 0) {
-                tab("首页").assertIsNotEnabled()
-                tab("联系人").assertIsNotEnabled().performTouchInput { click() }
-            }
-        }
-        assertEquals("退场保留两个真实中间位置", 2, leavingPositions.size)
-        assertTrue("底栏先轻落再离开", leavingPositions.first().top > initialBar.top + density)
-        assertTrue("退场位置连续向下", leavingPositions.last().top > leavingPositions.first().top + density)
+        tab("记一笔").performClick()
+        sampleHandoffFrames("进入记一笔")
         compose.onNodeWithTag("底部导航主体").assertDoesNotExist()
         compose.onNodeWithTag("礼金保存栏").assertIsDisplayed()
         compose.onNodeWithTag("首页列表").assertDoesNotExist()
 
-        val enteringPositions = mutableListOf<Rect>()
-        verifyPageMotion("记一笔返回", "首页列表", {
-            compose.onNodeWithContentDescription("返回").performClick()
-        }) { index ->
-            if (index < 2) {
-                enteringPositions += bounds("底部导航主体")
-                capture("底栏入场${index + 1}", wholeWindow = true)
-            }
-        }
+        compose.onNodeWithContentDescription("返回").performClick()
+        val enteringPositions = sampleHandoffFrames("记一笔返回")
         val restoredBar = bounds("底部导航主体")
-        assertEquals("入场保留两个真实中间位置", 2, enteringPositions.size)
-        assertTrue("底栏从下方进入", enteringPositions.first().top > restoredBar.top + density)
-        assertTrue("入场位置连续向上", enteringPositions.last().top < enteringPositions.first().top - density)
+        assertTrue("保存栏退场后底栏仍保留入场动效", enteringPositions.count {
+            it.top > restoredBar.top + density
+        } >= 2)
         assertEquals("返回后底栏恢复原位置", initialBar.top, restoredBar.top, density)
         tab("首页").assertIsSelected()
         compose.onNodeWithTag("礼金保存栏").assertDoesNotExist()
+    }
+
+    @Test fun 入场途中立即返回及再次进入不会同时绘制两栏() {
+        start()
+        repeat(3) { attempt ->
+            tab("记一笔").performClick()
+            sampleHandoffFrames("快速进入第${attempt + 1}次", frames = 2)
+            compose.onNodeWithContentDescription("返回").performClick()
+            sampleHandoffFrames("快速返回第${attempt + 1}次")
+            tab("首页").assertIsSelected()
+            compose.onNodeWithTag("礼金保存栏").assertDoesNotExist()
+        }
+    }
+
+    @Test fun 系统关闭动画时进入和返回仍保持两栏互斥() {
+        start(animationScale = 0f)
+        tab("记一笔").performClick()
+        sampleHandoffFrames("关闭动画进入", frames = 8)
+        compose.onNodeWithTag("礼金保存栏").assertIsDisplayed()
+        compose.onNodeWithTag("底部导航主体").assertDoesNotExist()
+        compose.onNodeWithContentDescription("返回").performClick()
+        sampleHandoffFrames("关闭动画返回", frames = 8)
+        tab("首页").assertIsSelected()
+        compose.onNodeWithTag("礼金保存栏").assertDoesNotExist()
+    }
+
+    /** 每个绘制帧检查真实子树，包含退出动画保留的旧页面，不能只检查最终路由。 */
+    private fun sampleHandoffFrames(name: String, frames: Int = 60): List<Rect> {
+        val positions = mutableListOf<Rect>()
+        repeat(frames) { index ->
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            val bars = compose.onAllNodesWithTag("底部导航主体", useUnmergedTree = true).fetchSemanticsNodes()
+            val saves = compose.onAllNodesWithTag("礼金保存栏", useUnmergedTree = true).fetchSemanticsNodes()
+            assertFalse("$name 第 ${index + 1} 帧导航栏不能覆盖保存栏", bars.isNotEmpty() && saves.isNotEmpty())
+            bars.singleOrNull()?.let { positions += it.boundsInRoot }
+            if (index in listOf(0, 7, 15, 23, 35, 59)) capture("$name-互斥帧${index + 1}", wholeWindow = true)
+        }
+        return positions
     }
 
     private fun verifyPageMotion(

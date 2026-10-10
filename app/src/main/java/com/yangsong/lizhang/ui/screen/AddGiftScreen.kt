@@ -34,15 +34,10 @@ import com.yangsong.lizhang.ui.viewmodel.*
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import java.util.Calendar
-import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
-import com.yangsong.lizhang.ui.theme.ActionButtonContainer
-import com.yangsong.lizhang.ui.theme.CoralOnContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,10 +203,8 @@ fun GiftSaveBar(
     hazeState: HazeState,
 ) {
     val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
-    val saveFrame = if (LocalEffectiveDarkTheme.current || (!enabled && !isSaving))
-        Modifier.frostedGlassFrame(hazeState, glassShape)
-        else Modifier.matteButtonFrame(ActionButtonContainer, glassShape)
-    val saveTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else CoralOnContainer
+    // 保存栏与底部导航共用透明磨砂材质，保存状态只改变内容与点击能力。
+    val saveTextColor = MaterialTheme.colorScheme.primary
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
@@ -219,7 +212,7 @@ fun GiftSaveBar(
                     .testTag("礼金保存栏")
                     .featureGuideTarget(FeatureGuideTarget.RECORD_SAVE)
                     .pressClickable(enabled = enabled && !isSaving, role = Role.Button, shape = glassShape, onClick = onSave)
-                    .then(saveFrame),
+                    .frostedGlassFrame(hazeState, glassShape),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
@@ -227,7 +220,7 @@ fun GiftSaveBar(
                     CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
                         strokeWidth = 2.dp, color = saveTextColor)
                 } else {
-                    Icon(LiZhangIcons.Check, null, tint = if (LocalEffectiveDarkTheme.current) featureIconColor() else androidx.compose.ui.graphics.Color.Black)
+                    Icon(LiZhangIcons.Check, null, tint = featureIconColor())
                     Spacer(Modifier.width(10.dp))
                     Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
                         color = saveTextColor, style = MaterialTheme.typography.titleMedium)

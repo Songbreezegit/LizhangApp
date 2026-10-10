@@ -124,6 +124,7 @@ fun LiZhangNavGraph(
     var contactsSelectionMode by remember { mutableStateOf(false) }
     val unavailableMessage = stringResource(R.string.reminder_record_unavailable)
     val backStackEntry by nav.currentBackStackEntryAsState()
+    val visibleEntries by nav.visibleEntries.collectAsStateWithLifecycle()
     val transition = LocalAppearanceActions.current as? AppearanceTransitionHost
     val navigationReady = backStackEntry?.lifecycle?.currentStateAsState()?.value == Lifecycle.State.RESUMED
     val guide = if (guideEnabled && navigationReady) featureGuidePresentation(onboardingState, backStackEntry?.destination?.route) else null
@@ -424,22 +425,25 @@ fun LiZhangNavGraph(
             )
         }
     }
-    // 保留退场期间的目的地，让记一笔的浮钮先响应，再随底栏轻落退出。
+    // 普通页面退场继续保留浮钮位置，主标签切换仍使用既有跟随动效。
     var lastMainRoute by rememberSaveable { mutableStateOf(AppDestination.Home.route) }
     SideEffect { currentMainTab?.let { lastMainRoute = it.route } }
     val barTab = currentMainTab ?: mainTabs.first { it.route == lastMainRoute }
-    val showBottomBar = currentMainTab != null && currentMainTab != AppDestination.AddGift &&
+    // 导航图在返回转场中仍绘制原页面，不能只看已经改变的当前路由。
+    // 进入记账时立即交出底部区域；返回时等所有记账条目真正退场后再恢复导航。
+    val editorRoutes = recordGuideRoutes + AppDestination.GiftRecordEditor.route
+    val editorVisible = backStackEntry?.destination?.route in editorRoutes ||
+        visibleEntries.any { it.destination.route in editorRoutes }
+    val showBottomBar = currentMainTab != null && currentMainTab != AppDestination.AddGift && !editorVisible &&
         !(currentMainTab == AppDestination.Contacts && contactsSelectionMode)
-    // 记一笔路由立即打开，但底栏先完成 Figma 360ms 跟随，再退出，避免 180ms 就淡没。
-    val barExitDelay = if (currentMainTab == AppDestination.AddGift) 360 else 0
     AnimatedVisibility(
         visible = showBottomBar,
         modifier = Modifier.align(Alignment.BottomCenter).testTag("底部导航出入场"),
         enter = slideInVertically(tween(320, easing = pageEasing)) { it / 3 } + fadeIn(tween(240)),
-        exit = slideOutVertically(tween(220, delayMillis = barExitDelay, easing = pageEasing)) { it / 3 } +
-            fadeOut(tween(180, delayMillis = barExitDelay)),
+        exit = slideOutVertically(tween(220, easing = pageEasing)) { it / 3 } + fadeOut(tween(180)),
     ) {
-        BottomNavBar(barTab, go, Modifier, hazeState, enabled = showBottomBar)
+        // AnimatedVisibility 的退出动画会保留子树；记账页面出现时必须停止实际绘制与点击。
+        if (!editorVisible) BottomNavBar(barTab, go, Modifier, hazeState, enabled = showBottomBar)
     }
     CenteredSnackbarHost(snackbar)
     guide?.let { currentGuide ->

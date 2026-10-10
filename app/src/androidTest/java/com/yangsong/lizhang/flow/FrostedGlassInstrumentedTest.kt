@@ -123,6 +123,46 @@ class FrostedGlassInstrumentedTest {
         assertTrue("回退仍透出页面色彩", blue.blue - red.blue > .70f)
     }
 
+    @Test fun 保存栏在深浅色与保存状态下始终保持透明玻璃() {
+        val dark = mutableStateOf(false)
+        val isSaving = mutableStateOf(false)
+        val enabled = mutableStateOf(true)
+        val background = mutableStateOf(Color.Red)
+        compose.setChineseContent {
+            LiZhangTheme(dark.value) {
+                // 固定使用回退材质，直接验证保存栏能透出页面色彩，避免模糊实现掩盖实底回归。
+                val haze = rememberHazeState(blurEnabled = false)
+                Box(Modifier.size(320.dp, 180.dp)) {
+                    Canvas(Modifier.fillMaxSize().hazeSource(haze)) { drawRect(background.value) }
+                    GiftSaveBar(isSaving.value, {}, Modifier.align(Alignment.Center), enabled.value, haze)
+                }
+            }
+        }
+        fun sampleBackground(): Color {
+            val pixels = compose.onNodeWithTag("礼金保存栏").captureToImage().toPixelMap()
+            // 采样左侧空白区，避开文字、对勾和加载指示器。
+            return pixels[pixels.width / 6, pixels.height / 2]
+        }
+        for (night in listOf(false, true)) {
+            for ((saving, canSave) in listOf(false to true, true to true, false to false)) {
+                compose.runOnIdle {
+                    dark.value = night
+                    isSaving.value = saving
+                    enabled.value = canSave
+                    background.value = Color.Red
+                }
+                val red = sampleBackground()
+                compose.runOnIdle { background.value = Color.Blue }
+                val blue = sampleBackground()
+                val state = "深色=$night，保存中=$saving，可保存=$canSave"
+                assertTrue("保存栏不得恢复实体底色：$state", red.red - blue.red > .60f)
+                assertTrue("保存栏应透出背景更新：$state", blue.blue - red.blue > .60f)
+                if (canSave && !saving) compose.onNodeWithTag("礼金保存栏").assertIsEnabled()
+                else compose.onNodeWithTag("礼金保存栏").assertIsNotEnabled()
+            }
+        }
+    }
+
     @Test fun 四类浮层图案背景深浅色与大字体截图() {
         val dark = mutableStateOf(false)
         val font = mutableFloatStateOf(1f)
