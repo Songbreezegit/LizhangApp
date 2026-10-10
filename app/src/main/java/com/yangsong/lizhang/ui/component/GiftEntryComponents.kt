@@ -26,14 +26,14 @@ fun GiftEntryOption(
     ) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
-                Icon(icon, null, Modifier.size(28.dp), tint = iconTint)
+                Icon(icon, null, Modifier.size(28.dp), tint = featureIconColor())
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)
                 Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Icon(LiZhangIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(LiZhangIcons.ChevronRight, null, tint = featureIconColor())
         }
     }
 }

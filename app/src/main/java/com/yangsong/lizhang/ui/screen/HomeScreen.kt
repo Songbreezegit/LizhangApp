@@ -155,9 +155,9 @@ private fun HomeHeader(onSearch: () -> Unit, onNotice: () -> Unit) {
             Text(stringResource(R.string.app_tagline), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassIconButton(onSearch) { Icon(LiZhangIcons.Search, stringResource(R.string.action_search), Modifier.size(28.dp)) }
+            GlassIconButton(onSearch) { Icon(LiZhangIcons.Search, stringResource(R.string.action_search), Modifier.size(28.dp), tint = featureIconColor()) }
             GlassIconButton(onNotice, Modifier.featureGuideTarget(FeatureGuideTarget.REMINDERS)) {
-                Icon(LiZhangIcons.Bell, stringResource(R.string.nav_notifications), Modifier.size(28.dp))
+                Icon(LiZhangIcons.Bell, stringResource(R.string.nav_notifications), Modifier.size(28.dp), tint = featureIconColor())
             }
         }
     }
@@ -202,7 +202,7 @@ private fun HeroSummaryCard(
                         ) {
                             Text(stringResource(R.string.year_format, state.year), Modifier.weight(1f, fill = false),
                                 fontWeight = FontWeight.Bold)
-                            Icon(LiZhangIcons.ChevronDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp))
+                            Icon(LiZhangIcons.ChevronDown, stringResource(R.string.home_choose_year), Modifier.size(24.dp), tint = featureIconColor())
                         }
                     }
                 }
@@ -337,7 +337,7 @@ private fun QuickAction(label: Int, icon: androidx.compose.ui.graphics.vector.Im
         horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(52.dp),
             contentAlignment = Alignment.Center) {
-            Icon(icon, null, Modifier.size(26.dp), tint = tint)
+            Icon(icon, null, Modifier.size(26.dp), tint = featureIconColor())
         }
         Spacer(Modifier.height(8.dp))
         Text(stringResource(label), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,

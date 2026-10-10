@@ -30,7 +30,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -189,7 +188,7 @@ internal fun NotchedBottomNavigation(
                 ) { index ->
                     Icon(bottomNavigationItems[index].icon, contentDescription = null,
                         modifier = Modifier.size(23.dp).testTag("底部导航浮动图标${bottomNavigationItems[index].destination.route}"),
-                        tint = MaterialTheme.colorScheme.primary)
+                        tint = NavigationIconColor)
                 }
             }
         }
@@ -209,7 +208,7 @@ internal fun NotchedBottomNavigation(
                     label = "导航原位图标交接${item.destination.route}",
                 )
                 val tint by animateColorAsState(
-                    targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    targetValue = NavigationIconColor,
                     animationSpec = tween(if (animationsEnabled) NavigationMotion.OriginalReturnDurationMillis else 0,
                         easing = NavigationMotion.ColorEasing),
                     label = "导航图标颜色${item.destination.route}",

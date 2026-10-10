@@ -33,7 +33,7 @@ fun ContactDetailScreen(viewModel:ContactDetailViewModel,onBack:()->Unit,onEdit:
                 state.contact?.name?:stringResource(R.string.nav_contact_detail),
                 onBack,
                 if (state.contact != null) {
-                    { GlassIconButton(onEdit){Icon(LiZhangIcons.Pencil,stringResource(R.string.contact_edit))} }
+                    { GlassIconButton(onEdit){Icon(LiZhangIcons.Pencil,stringResource(R.string.contact_edit), tint = featureIconColor())} }
                 } else null,
             )
         },

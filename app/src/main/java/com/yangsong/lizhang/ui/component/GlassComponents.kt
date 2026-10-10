@@ -95,14 +95,20 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
     ),
     content: @Composable RowScope.() -> Unit,
 ) {
-    // 调用方传入的危险操作颜色保留；主要实色按钮不增加多余的内层描边。
-    val tonal = colors.containerColor != MaterialTheme.colorScheme.primary &&
-        colors.containerColor != MaterialTheme.colorScheme.primaryContainer && colors.containerColor != MaterialTheme.colorScheme.error
+    // 浅色实体按钮统一粉色与深色文字，危险操作及调用方的禁用态保持原语义。
+    val scheme = MaterialTheme.colorScheme
+    val actionColors = if (LocalEffectiveDarkTheme.current || colors.containerColor == scheme.error ||
+        colors.containerColor == scheme.errorContainer) colors else colors.copy(
+        containerColor = scheme.primaryContainer,
+        contentColor = scheme.onPrimaryContainer,
+    )
+    val tonal = actionColors.containerColor != scheme.primary &&
+        actionColors.containerColor != scheme.primaryContainer && actionColors.containerColor != scheme.error
     val source = remember { MutableInteractionSource() }
     CompositionLocalProvider(LocalRippleConfiguration provides null) {
         Button(onClick, modifier.heightIn(min = 48.dp).pressFeedback(source, shape, enabled,
-            accent = colors.contentColor),
-            enabled = enabled, shape = shape, colors = colors, interactionSource = source,
+            accent = actionColors.contentColor),
+            enabled = enabled, shape = shape, colors = actionColors, interactionSource = source,
             border = if (tonal) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null, content = content)
     }
 }
@@ -116,8 +122,8 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
         .pressFeedback(source, shape, enabled, pressedScale = .95f), enabled = enabled,
         interactionSource = source,
         colors = IconButtonDefaults.iconButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = GlassTokens.DisabledAlpha),
+            contentColor = featureIconColor(),
+            disabledContentColor = featureIconColor().copy(alpha = GlassTokens.DisabledAlpha),
         ), content = content)
     }
 }
@@ -135,7 +141,7 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
                 pressedScale = .95f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary, content = content)
+        CompositionLocalProvider(LocalContentColor provides featureIconColor(), content = content)
     }
 }
 
@@ -152,9 +158,9 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
         leadingIcon = leadingIcon, interactionSource = source, shape = shape,
         colors = FilterChipDefaults.filterChipColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            iconColor = featureIconColor(),
             selectedContainerColor = accent.copy(alpha = .14f).compositeOver(MaterialTheme.colorScheme.surface),
-            selectedLabelColor = accent, selectedLeadingIconColor = accent),
+            selectedLabelColor = accent, selectedLeadingIconColor = featureIconColor()),
         border = BorderStroke(1.dp, if (selected) accent.copy(alpha = .26f) else MaterialTheme.colorScheme.outlineVariant))
     }
 }
@@ -162,7 +168,7 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 @Composable fun GlassSearchBar(value: String, onValueChange: (String) -> Unit, hint: String) {
     OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth(), singleLine = true,
         placeholder = { Text(hint) },
-        leadingIcon = { Icon(LiZhangIcons.Search, null) },
+        leadingIcon = { Icon(LiZhangIcons.Search, null, tint = featureIconColor()) },
         shape = RoundedCornerShape(GlassTokens.ControlRadius),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -188,7 +194,9 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun GlassTextButton(
     onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    colors: ButtonColors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+    colors: ButtonColors = ButtonDefaults.textButtonColors(
+        contentColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer,
+    ),
     content: @Composable RowScope.() -> Unit,
 ) {
     val source = remember { MutableInteractionSource() }

@@ -62,7 +62,7 @@ fun ContactEditorScreen(
                 action = if (state.isNewContact || state.loadFailed) null else {
                     {
                         GlassIconButton(onClick = { showDeleteConfirm = true }, enabled = !state.isDeleting) {
-                            Icon(LiZhangIcons.Trash, stringResource(R.string.contact_delete), tint = MaterialTheme.colorScheme.error)
+                            Icon(LiZhangIcons.Trash, stringResource(R.string.contact_delete), tint = featureIconColor())
                         }
                     }
                 },

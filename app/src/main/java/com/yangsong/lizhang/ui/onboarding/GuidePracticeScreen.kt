@@ -224,7 +224,7 @@ private fun WalkthroughCoach(state: GuidePracticeUiState, enabled: Boolean, onNe
                 }
                 GlassIconButton({ collapsed = !collapsed }) {
                     Icon(if (collapsed) LiZhangIcons.ChevronDown else LiZhangIcons.ChevronUp,
-                        if (collapsed) "展开说明" else "收起说明")
+                        if (collapsed) "展开说明" else "收起说明", tint = featureIconColor())
                 }
             }
             if (!collapsed) {
@@ -273,14 +273,14 @@ private fun PracticeFlowPreview() {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         GlassCard(Modifier.weight(1f)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(LiZhangIcons.UserRoundPlus, null, tint = MaterialTheme.colorScheme.secondary)
+                Icon(LiZhangIcons.UserRoundPlus, null, tint = featureIconColor())
                 Text("联系人", style = MaterialTheme.typography.labelLarge)
             }
         }
-        Icon(LiZhangIcons.ArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(LiZhangIcons.ArrowRight, null, tint = featureIconColor())
         GlassCard(Modifier.weight(1f)) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(LiZhangIcons.Banknote, null, tint = MaterialTheme.colorScheme.primary)
+                Icon(LiZhangIcons.Banknote, null, tint = featureIconColor())
                 Text("礼金往来", style = MaterialTheme.typography.labelLarge)
             }
         }

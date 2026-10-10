@@ -8,7 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
-/** 淡雅背景与浅色操作容器降低视觉重量，绿蓝前景保持文字和图标可读。 */
+/** 奶油黄与淡蓝紫背景配浅粉色操作容器，深色文字保留清晰对比。 */
 private val Light = lightColorScheme(
     primary = CoralPrimary,
     onPrimary = CardWhite,
@@ -27,9 +27,9 @@ private val Light = lightColorScheme(
     onBackground = InkPrimary,
     surface = CardWhite,
     onSurface = InkPrimary,
-    surfaceVariant = Color(0xFFEBF2EE),
+    surfaceVariant = Color(0xFFF1F2F7),
     onSurfaceVariant = InkSecondary,
-    surfaceTint = CoralPrimary,
+    surfaceTint = Color(0xFFCBD7EF),
     inverseSurface = DarkSurface,
     inverseOnSurface = DarkText,
     error = AppError,
@@ -37,15 +37,15 @@ private val Light = lightColorScheme(
     errorContainer = Color(0xFFFFE5E7),
     onErrorContainer = Color(0xFF84262D),
     outline = SoftDivider,
-    outlineVariant = Color(0xFFE4EDE8),
+    outlineVariant = Color(0xFFE7E7EF),
     scrim = Color.Black,
     surfaceBright = CardWhite,
-    surfaceDim = Color(0xFFE8F0EB),
+    surfaceDim = Color(0xFFE9ECF4),
     surfaceContainerLowest = CardWhite,
-    surfaceContainerLow = Color(0xFFF2F7F4),
-    surfaceContainer = Color(0xFFEDF4EF),
-    surfaceContainerHigh = Color(0xFFE8F1EB),
-    surfaceContainerHighest = Color(0xFFE1ECE5),
+    surfaceContainerLow = Color(0xFFF8F8FC),
+    surfaceContainer = Color(0xFFF3F4F9),
+    surfaceContainerHigh = Color(0xFFEEF0F7),
+    surfaceContainerHighest = Color(0xFFE7EAF3),
 )
 private val Dark = darkColorScheme(
     primary = DarkCoral,

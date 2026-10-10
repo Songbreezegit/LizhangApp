@@ -34,10 +34,13 @@ import com.yangsong.lizhang.ui.viewmodel.*
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import java.util.Calendar
+import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,6 +206,10 @@ fun GiftSaveBar(
     hazeState: HazeState,
 ) {
     val glassShape = RoundedCornerShape(GlassTokens.FloatingRadius)
+    val saveFrame = if (LocalEffectiveDarkTheme.current || (!enabled && !isSaving))
+        Modifier.frostedGlassFrame(hazeState, glassShape)
+        else Modifier.clip(glassShape).background(MaterialTheme.colorScheme.primaryContainer)
+    val saveTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
     Column(modifier.fillMaxWidth()) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
@@ -210,18 +217,18 @@ fun GiftSaveBar(
                     .testTag("礼金保存栏")
                     .featureGuideTarget(FeatureGuideTarget.RECORD_SAVE)
                     .pressClickable(enabled = enabled && !isSaving, role = Role.Button, shape = glassShape, onClick = onSave)
-                    .frostedGlassFrame(hazeState, glassShape),
+                    .then(saveFrame),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(Modifier.size(24.dp).testTag("礼金保存中"),
-                        strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                        strokeWidth = 2.dp, color = saveTextColor)
                 } else {
-                    Icon(LiZhangIcons.Check, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(LiZhangIcons.Check, null, tint = featureIconColor())
                     Spacer(Modifier.width(10.dp))
                     Text(stringResource(R.string.action_save_record), fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                        color = saveTextColor, style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
@@ -255,7 +262,7 @@ fun DiscardGiftChangesDialog(
     )
 }
 
-@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit,enabled:Boolean=true){GlassClickableSurface(onClick=onClick,modifier=Modifier.fillMaxWidth(),enabled=enabled,shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=MaterialTheme.colorScheme.primary);Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(LiZhangIcons.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)}}}
+@Composable private fun SelectionRow(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,onClick:()->Unit,enabled:Boolean=true){GlassClickableSurface(onClick=onClick,modifier=Modifier.fillMaxWidth(),enabled=enabled,shape=RoundedCornerShape(18.dp),color=glassColor()){Row(Modifier.fillMaxWidth().padding(16.dp),verticalAlignment=Alignment.CenterVertically){Icon(icon,null,tint=featureIconColor());Spacer(Modifier.width(12.dp));Text(text,Modifier.weight(1f));Icon(LiZhangIcons.ChevronRight,null,tint=featureIconColor())}}}
 
 @Composable
 private fun CreateContactButton(
@@ -272,7 +279,7 @@ private fun CreateContactButton(
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
-        Icon(LiZhangIcons.UserRoundPlus, null)
+        Icon(LiZhangIcons.UserRoundPlus, null, tint = featureIconColor())
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.contact_create))
     }
@@ -345,7 +352,7 @@ private fun ContactPickerSheet(
                                 Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(LiZhangIcons.CircleUserRound, null)
+                                Icon(LiZhangIcons.CircleUserRound, null, tint = featureIconColor())
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(contact.name)
@@ -359,7 +366,7 @@ private fun ContactPickerSheet(
                                     Icon(
                                         LiZhangIcons.Check,
                                         null,
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = featureIconColor(),
                                     )
                                 }
                             }
@@ -409,9 +416,9 @@ private fun GiftDatePicker(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Uni
         title={Text(stringResource(R.string.date_choose))},
         text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
-                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(LiZhangIcons.ChevronLeft,stringResource(R.string.date_previous_year))}
+                GlassIconButton({year--},enabled=year>MIN_GIFT_YEAR){Icon(LiZhangIcons.ChevronLeft,stringResource(R.string.date_previous_year), tint = featureIconColor())}
                 Text(stringResource(R.string.year_format,year),style=MaterialTheme.typography.titleMedium)
-                GlassIconButton({year++},enabled=year<currentYear){Icon(LiZhangIcons.ChevronRight,stringResource(R.string.date_next_year))}
+                GlassIconButton({year++},enabled=year<currentYear){Icon(LiZhangIcons.ChevronRight,stringResource(R.string.date_next_year), tint = featureIconColor())}
             }
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxMonth).toList()){value->GlassChip(value==month,{month=value},{Text(com.yangsong.lizhang.ui.mapper.displayMonth(value))})}}
             LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){items((1..maxDay).toList()){value->GlassChip(value==day,{day=value},{Text(stringResource(R.string.day_format,value))})}}

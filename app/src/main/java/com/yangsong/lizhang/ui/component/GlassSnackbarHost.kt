@@ -49,7 +49,7 @@ fun GlassSnackbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Icon(if (isError) LiZhangIcons.CircleAlert else LiZhangIcons.CircleCheck, null, tint = accent)
+        Icon(if (isError) LiZhangIcons.CircleAlert else LiZhangIcons.CircleCheck, null, tint = featureIconColor())
         Text(message, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium)
         if (actionLabel != null) GlassTextButton(onAction,

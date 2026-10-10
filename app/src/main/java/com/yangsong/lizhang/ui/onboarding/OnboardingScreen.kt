@@ -109,7 +109,7 @@ private fun OnboardingPage(page: Int) {
 @Composable
 private fun FeatureItem(icon: ImageVector, title: Int, body: Int) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Icon(icon, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(icon, null, Modifier.size(28.dp), tint = featureIconColor())
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

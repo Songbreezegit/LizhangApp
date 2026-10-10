@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.CompositionLocalProvider
@@ -18,12 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.yangsong.lizhang.ui.theme.LocalEffectiveDarkTheme
 
 data class GlassAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
 
@@ -33,6 +36,10 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
     val menuDescription = androidx.compose.ui.res.stringResource(if (expanded) com.yangsong.lizhang.R.string.menu_close else com.yangsong.lizhang.R.string.contact_create)
     val expandedDescription = androidx.compose.ui.res.stringResource(if (expanded) com.yangsong.lizhang.R.string.state_expanded else com.yangsong.lizhang.R.string.state_collapsed)
     val rotation by animateFloatAsState(if (expanded) 45f else 0f, tween(180), label = "添加按钮旋转")
+    val actionShape = RoundedCornerShape(GlassTokens.ControlRadius)
+    val actionFrame = if (LocalEffectiveDarkTheme.current) Modifier.frostedGlassFrame(hazeState, actionShape)
+        else Modifier.clip(actionShape).background(MaterialTheme.colorScheme.primaryContainer)
+    val actionTextColor = if (LocalEffectiveDarkTheme.current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
     Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         actions.forEachIndexed { index, action ->
             AnimatedVisibility(expanded,
@@ -42,15 +49,15 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
             ) {
                 Row(
                     Modifier.heightIn(min = 48.dp)
-                        .pressClickable(role = Role.Button, shape = RoundedCornerShape(GlassTokens.ControlRadius)) { onDismiss(); action.onClick() }
-                        .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius))
+                        .pressClickable(role = Role.Button, shape = actionShape) { onDismiss(); action.onClick() }
+                        .then(actionFrame)
                         .padding(horizontal = 24.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
-                        Icon(action.icon, null)
+                        Icon(action.icon, null, tint = featureIconColor())
                         Spacer(Modifier.width(10.dp))
-                        Text(action.label, style = MaterialTheme.typography.labelLarge)
+                        Text(action.label, color = actionTextColor, style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -58,6 +65,6 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
         GlassFab(onToggle, Modifier.testTag("联系人添加菜单").semantics {
             contentDescription = menuDescription
             stateDescription = expandedDescription
-        }, hazeState = hazeState) { Icon(LiZhangIcons.Plus, null, Modifier.rotate(rotation).size(28.dp)) }
+        }, hazeState = hazeState) { Icon(LiZhangIcons.Plus, null, Modifier.rotate(rotation).size(28.dp), tint = featureIconColor()) }
     }
 }

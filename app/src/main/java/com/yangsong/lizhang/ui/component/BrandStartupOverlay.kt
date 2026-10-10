@@ -63,6 +63,8 @@ fun BrandStartupOverlay(state: StartupAnimationViewModel, modifier: Modifier = M
             },
         contentAlignment = Alignment.Center,
     ) {
+        // 开屏与即将显示的页面使用同一背景，不改变猫咪和柔光的播放时序。
+        AppGradientBackground(Modifier.matchParentSize()) {}
         // 按用户更新后的无文字稿，让猫与柔光环独立锚定屏幕中心。
         Box(
             Modifier.size(112.dp).testTag("品牌开屏扩散").graphicsLayer {

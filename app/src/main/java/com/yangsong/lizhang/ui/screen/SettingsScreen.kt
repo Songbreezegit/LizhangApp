@@ -1,5 +1,7 @@
 package com.yangsong.lizhang.ui.screen
 
+import com.yangsong.lizhang.ui.component.featureIconColor
+
 import com.yangsong.lizhang.ui.component.LiZhangIcons
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
@@ -570,7 +572,7 @@ fun SettingsContent(
                                 Text((LocalCurrentLanguage.current ?: currentAppLanguage()).displayName(), Modifier.widthIn(max = 80.dp),
                                     style = MaterialTheme.typography.bodyMedium)
                                 androidx.compose.material3.Icon(LiZhangIcons.ChevronRight, null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    tint = featureIconColor())
                             }
                         },
                     )

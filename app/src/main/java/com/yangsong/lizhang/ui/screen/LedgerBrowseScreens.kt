@@ -137,9 +137,9 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
     GlassCard(Modifier.featureGuideTarget(FeatureGuideTarget.CALENDAR), shape = RoundedCornerShape(GlassTokens.Radius)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                GlassIconButton(onPrevious) { Icon(LiZhangIcons.ChevronLeft, stringResource(R.string.calendar_previous)) }
+                GlassIconButton(onPrevious) { Icon(LiZhangIcons.ChevronLeft, stringResource(R.string.calendar_previous), tint = featureIconColor()) }
                 Text(com.yangsong.lizhang.ui.mapper.displayYearMonth(state.year, state.month), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                GlassIconButton(onNext) { Icon(LiZhangIcons.ChevronRight, stringResource(R.string.calendar_next)) }
+                GlassIconButton(onNext) { Icon(LiZhangIcons.ChevronRight, stringResource(R.string.calendar_next), tint = featureIconColor()) }
             }
             Row(Modifier.fillMaxWidth()) {
                 listOf(R.string.week_monday, R.string.week_tuesday, R.string.week_wednesday, R.string.week_thursday, R.string.week_friday, R.string.week_saturday, R.string.week_sunday).forEach {
@@ -359,7 +359,7 @@ fun NotificationsContent(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(stringResource(R.string.independent_list_title), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         GlassTextButton(onAdd, Modifier.testTag("新增独立提醒").featureGuideTarget(FeatureGuideTarget.REMINDERS_PAGE)) {
-                            Icon(LiZhangIcons.Plus, null, Modifier.size(18.dp))
+                            Icon(LiZhangIcons.Plus, null, Modifier.size(18.dp), tint = featureIconColor())
                             Text(stringResource(R.string.independent_add))
                         }
                     }
@@ -372,7 +372,7 @@ fun NotificationsContent(
                     item {
                         GlassCard(Modifier.testTag("提醒空状态")) {
                             Row(Modifier.fillMaxWidth().padding(18.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                Icon(LiZhangIcons.Bell, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.secondary)
+                                Icon(LiZhangIcons.Bell, null, Modifier.size(32.dp), tint = featureIconColor())
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(stringResource(R.string.notifications_empty), style = MaterialTheme.typography.titleMedium)
                                     Text(stringResource(R.string.notifications_empty_desc), style = MaterialTheme.typography.bodyMedium,
@@ -468,7 +468,7 @@ private fun ReminderSettingRow(title: String, value: String, onClick: () -> Unit
         ) {
             Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
             Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Icon(LiZhangIcons.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(LiZhangIcons.ChevronRight, contentDescription = null, tint = featureIconColor())
         }
     }
 }
