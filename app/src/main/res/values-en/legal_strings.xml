@@ -3,12 +3,12 @@
     <string name="legal_help_title">Help documents</string>
     <string name="legal_terms_description">Read the full terms offline</string>
     <string name="legal_help_description">Accounting, permissions, backup and restore guidance</string>
-    <string name="legal_candidate_notice">RC2 review draft · Not yet effective</string>
+    <string name="legal_candidate_notice">review draft · Not yet effective</string>
     <string name="legal_language_fallback">The complete offline review draft is in Simplified Chinese. Every app language displays the same full text. Complete translations await review; key data processing explanations are never replaced with a summary.</string>
     <string name="legal_content_version">Candidate content ID: %1$s (official policy version awaits developer confirmation)</string>
     <string name="legal_read_failed">The offline document could not be loaded. Retry so that you can read the complete text before confirming the notice.</string>
     <string name="legal_retry">Load again</string>
-    <string name="legal_online_explanation">This address is reserved for the official website. Tapping opens it online in the system browser. Website content and availability await approval; the full text on this page needs no internet connection.</string>
+    <string name="legal_online_explanation">The website is currently available only as a local preview and has not been deployed publicly. This address is reserved for the future website and may be unavailable. The full text on this page works offline.</string>
     <string name="legal_open_official_site">Open official website in browser</string>
     <string name="legal_browser_failed">Could not open the system browser. The full text remains available offline on this page.</string>
 </resources>

@@ -3,12 +3,12 @@
     <string name="legal_help_title">Documents d\'aide</string>
     <string name="legal_terms_description">Lire les conditions intégrales hors ligne</string>
     <string name="legal_help_description">Guide des écritures, autorisations, sauvegardes et restaurations</string>
-    <string name="legal_candidate_notice">Projet RC2 à examiner · Non encore en vigueur</string>
+    <string name="legal_candidate_notice">Projet à examiner · Non encore en vigueur</string>
     <string name="legal_language_fallback">Le projet intégral hors ligne est en chinois simplifié. Toutes les langues affichent le même texte complet. Les traductions intégrales attendent une validation ; les explications essentielles sur les données ne sont jamais remplacées par un résumé.</string>
     <string name="legal_content_version">Identifiant du contenu candidat : %1$s (version officielle à confirmer par le développeur)</string>
     <string name="legal_read_failed">Impossible de charger le document hors ligne. Réessayez pour lire le texte intégral avant de confirmer l\'avis.</string>
     <string name="legal_retry">Recharger</string>
-    <string name="legal_online_explanation">Adresse réservée au site officiel. Un appui ouvre le site en ligne dans le navigateur système. Son contenu et sa disponibilité attendent une approbation ; cette page intégrale fonctionne sans internet.</string>
+    <string name="legal_online_explanation">Le site est uniquement disponible en aperçu local et n’est pas encore publié. Cette adresse est réservée au futur site et peut être indisponible. Le texte intégral de cette page fonctionne hors ligne.</string>
     <string name="legal_open_official_site">Ouvrir le site officiel dans le navigateur</string>
     <string name="legal_browser_failed">Impossible d\'ouvrir le navigateur système. Le texte intégral reste lisible ici hors ligne.</string>
 </resources>

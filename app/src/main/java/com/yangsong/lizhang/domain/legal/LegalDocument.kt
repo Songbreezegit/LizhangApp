@@ -2,7 +2,7 @@ package com.yangsong.lizhang.domain.legal
 
 /** 候选内容标识，不代表政策已生效或已获批准。重大内容更新必须变更此标识。 */
 object LegalPolicy {
-    const val CURRENT_VERSION = "1.0.0-rc2-policy-v1"
+    const val CURRENT_VERSION = "privacy-site-minimal-v1-policy-20261011"
 }
 
 enum class LegalDocumentType(val assetName: String, val officialUrl: String) {

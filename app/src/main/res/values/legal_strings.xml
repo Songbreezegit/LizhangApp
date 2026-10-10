@@ -3,12 +3,12 @@
     <string name="legal_help_title">帮助文档</string>
     <string name="legal_terms_description">离线阅读完整用户协议</string>
     <string name="legal_help_description">查看记账、权限、备份与恢复说明</string>
-    <string name="legal_candidate_notice">RC2 候选审核稿 · 尚未生效</string>
+    <string name="legal_candidate_notice">候选审核稿 · 尚未生效</string>
     <string name="legal_language_fallback">离线正文完整提供简体中文审核稿，所有应用语言均读取同一全文。其他语言的完整译文待审核，当前不会用摘要替代关键数据处理说明。</string>
     <string name="legal_content_version">候选内容标识：%1$s（正式政策版本待本人确认）</string>
     <string name="legal_read_failed">离线文档暂时无法读取。请重试；确认告知前应先能查看完整正文。</string>
     <string name="legal_retry">重新读取</string>
-    <string name="legal_online_explanation">此链接预留为官方网站地址。点击后由系统浏览器联网打开，网页内容与访问可用性待正式批准；本页全文无需联网。</string>
+    <string name="legal_online_explanation">网站目前仅提供本机预览，尚未部署到公网。此地址为未来官网预留，浏览器链接可能暂不可用；本页全文无需联网。</string>
     <string name="legal_open_official_site">在浏览器打开官方网站</string>
     <string name="legal_browser_failed">无法打开系统浏览器。你仍可在本页离线阅读全文。</string>
 </resources>

@@ -1,0 +1,13 @@
+{
+  "name": "lizhang-website-minimal",
+  "private": true,
+  "type": "module",
+  "description": "礼账最简静态官网，本地预览",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs"
+  }
+}
