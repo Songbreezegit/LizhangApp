@@ -118,7 +118,7 @@ class StartupAnimationViewModel(
     }
 
     companion object {
-        const val DURATION_MILLIS = 900L
+        const val DURATION_MILLIS = 1300L
         internal const val WINDOW_WAIT_TIMEOUT_MILLIS = 1500L
         // 帧调度仍可能短暂延迟；独立截止时间覆盖首个动画帧缺失及播放中断。
         internal const val PLAYBACK_TIMEOUT_MILLIS = DURATION_MILLIS + 600L

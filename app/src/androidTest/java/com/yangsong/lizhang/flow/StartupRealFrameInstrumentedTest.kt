@@ -22,6 +22,8 @@ import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.StartupFrameEvidence
 import com.yangsong.lizhang.core.common.diagnoseStartupFrames
+import com.yangsong.lizhang.ui.component.StartupDropMotion
+import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 import com.yangsong.lizhang.ui.viewmodel.StartupDiagnosticEvent
 import com.yangsong.lizhang.ui.viewmodel.StartupDiagnosticSnapshot
 import org.junit.Assert.assertEquals
@@ -117,8 +119,10 @@ class StartupRealFrameInstrumentedTest {
         File(folder, "运行前置.txt").writeText(
             "runId=$runId\nPID=${Process.myPid()}\nAPI=${Build.VERSION.SDK_INT}\n" +
                 "首次引导已完成=$completedBefore\n进程启动机会尚未消费=$coldOpportunity\n" +
-                "最终入口=$destination\n设计时长=900ms；落地=260ms；圆渐变揭示=260..620ms；退场=620..900ms\n" +
-                "小猫采样窗口=.20..${FADE_START_PROGRESS}\n动画速度由设备清单记录\n" +
+                "最终入口=$destination\n设计时长=${StartupAnimationViewModel.DURATION_MILLIS}ms；落地=${StartupDropMotion.LANDING_MS}ms；" +
+                "圆渐变揭示=${StartupDropMotion.LANDING_MS}..${StartupDropMotion.REVEAL_END_MS}ms；" +
+                "退场=${StartupDropMotion.REVEAL_END_MS}..${StartupAnimationViewModel.DURATION_MILLIS}ms\n" +
+                "小猫采样窗口=${LANDING_PROGRESS}..${FADE_START_PROGRESS}\n动画速度由设备清单记录\n" +
                 "时基=System.nanoTime；以下调用和状态均使用同一单调时钟\n",
         )
         assertTrue("本用例必须独立冷进程执行，启动机会不能被之前用例消耗", coldOpportunity)
@@ -313,13 +317,14 @@ class StartupRealFrameInstrumentedTest {
             val span = if (visible.size >= 2) visible.last().captureStartNanos - visible.first().captureEndNanos else 0L
             val startedBeforeContent = firstAnimation != null && contentCommit != null && firstAnimation < contentCommit
             val startedBeforeSplash = firstAnimation != null && splashRemove != null && firstAnimation < splashRemove
-            val diagnosis = diagnoseStartupFrames(StartupFrameEvidence(visible.size, changed, span,
-                maximumCapture, maximumDispatchGap, startedBeforeContent, startedBeforeSplash)).description
+            // 旧诊断器以900ms设计为基准；只按总时长等比例换算时间，不改变帧数与像素门槛。
+            val diagnosis = diagnoseStartupFrames(StartupFrameEvidence(visible.size, changed, referenceNanos(span),
+                referenceNanos(maximumCapture), referenceNanos(maximumDispatchGap), startedBeforeContent, startedBeforeSplash)).description
             File(folder, "采样说明.txt").writeText(buildString {
-                appendLine("runId=$runId；目标入口=$destination；主线程快照可见且就绪、before>=.20、after<=${FADE_START_PROGRESS}、小猫特征像素>=12")
+                appendLine("runId=$runId；目标入口=$destination；主线程快照可见且就绪、before>=${LANDING_PROGRESS}、after<=${FADE_START_PROGRESS}、小猫特征像素>=12")
                 appendLine("已移除旧版应用名识别；系统层设计为纯白且无静止猫；0进度纯白允许，落地前背景必须纯白")
                 appendLine("采集从Activity创建开始；完整进程开头的系统启动层仍须独立连续系统录制，不以本组采集补全未见画面")
-                appendLine("实际DecorView屏幕范围确定猫下落区域与圆形中心；620ms退场后的底层页面不混入中间帧")
+                appendLine("实际DecorView屏幕范围确定猫下落区域与圆形中心；${StartupDropMotion.REVEAL_END_MS}ms退场后的底层页面不混入中间帧")
                 appendLine("验收在截图返回后立即关联；缩放结束后关联仅作采集对照，不放宽帧数、跨度或变化像素阈值")
                 appendLine("调用前后快照等待包含在各请求/收到时间中；capture 时长仅含系统截图；scaling 含缩放及原图回收")
                 appendLine("序号\t截图开始ms\t截图结束ms\t截图耗时ms\t缩放耗时ms\t快照前请求/收到ms\t快照后请求/收到ms\tprogress前/后/缩放后\t宿主前/后\t原图分配bytes\t保留图bytes\t额外固定休眠ms\t实际窗口范围\t小猫特征像素\t渐变覆盖比例\t实际扩散半径dp\t细涟漪射线\t缩放后关联排除\t立即关联排除")
@@ -335,7 +340,8 @@ class StartupRealFrameInstrumentedTest {
                         exclusionReasons(frame).ifEmpty { listOf("有效") }.joinToString("；"))
                 }
                 appendLine("缩放后关联有效=${scaledAssociation.size}；立即关联有效=${visible.size}；保守真实时间跨度ms=${millis(span)}；品牌变化像素=$changed；小猫进入后空帧=$blank")
-                appendLine("落地前采样=${whiteStart.size}；揭示阶段采样=${revealFrames.size}；渐变覆盖增长=$revealGrowth；实际扩散半径增长px=$revealRadiusGrowth；细涟漪帧=${revealFrames.count { rippleRays.getValue(it) > 0 }}")
+                appendLine("落地前采样=${whiteStart.size}；揭示阶段采样=${revealFrames.size}；渐变覆盖增长=$revealGrowth；实际扩散半径增长px=$revealRadiusGrowth；明暗水波帧=${revealFrames.count { rippleRays.getValue(it) > 0 }}")
+                appendLine("真实跨度门槛ms=${millis(MINIMUM_SPAN_NANOS)}；时间比例=${StartupAnimationViewModel.DURATION_MILLIS}/900；帧数>=3与变化像素>=60保持")
                 appendLine("最大截图耗时ms=${millis(maximumCapture)}；动画帧回调最大交付间隔ms=${millis(maximumDispatchGap)}；有界缓冲已耗尽=$bufferLimit")
                 appendLine("页面结束=$finished；真实页面可见=$pageVisible；真实触摸成功=$interactionSucceeded；基础帧覆盖诊断=$diagnosis；新增阶段契约仍以独立断言为准")
                 appendLine("场景异常=${scenarioFailure?.stackTraceToString() ?: "无"}")
@@ -360,14 +366,14 @@ class StartupRealFrameInstrumentedTest {
             if (Build.VERSION.SDK_INT >= 31) assertNotNull("记录系统启动层退出时间", splashRemove)
             assertFalse("动画必须在内容提交与系统启动层退出之后开始", startedBeforeContent || startedBeforeSplash)
             assertTrue("系统启动层退场后至少采集三个带小猫的实际品牌中间帧，取得 ${visible.size} 帧；$diagnosis", visible.size >= 3)
-            assertTrue("品牌中间帧保守覆盖至少 140.8ms 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
+            assertTrue("品牌中间帧保守覆盖至少 ${millis(MINIMUM_SPAN_NANOS)}ms 的真实时间跨度，实际 ${millis(span)}ms", span >= MINIMUM_SPAN_NANOS)
             assertTrue("系统画面中的图标或扩散圆环确实变化，取得 $changed 个变化像素", changed >= 60)
-            assertTrue("至少采集一个260ms落地前的白底阶段，否则起帧证据不足", whiteStart.isNotEmpty())
+            assertTrue("至少采集一个${StartupDropMotion.LANDING_MS}ms落地前的白底阶段，否则起帧证据不足", whiteStart.isNotEmpty())
             assertTrue("落地前实际背景必须纯白", whiteStart.all { sceneMetrics.getValue(it).coloredFraction < .005f })
-            assertTrue("至少采集两个620ms退场前的圆渐变揭示帧，否则扩散证据不足", revealFrames.size >= 2)
+            assertTrue("至少采集两个${StartupDropMotion.REVEAL_END_MS}ms退场前的圆渐变揭示帧，否则扩散证据不足", revealFrames.size >= 2)
             assertTrue("落地后的实际渐变区域和外沿继续扩大，覆盖增长=$revealGrowth；半径增长px=$revealRadiusGrowth",
                 revealGrowth > .02f && revealRadiusGrowth > 12f * (revealFrames.firstOrNull()?.density ?: 1f))
-            assertTrue("实际揭示帧存在中心向外的细涟漪；缺少该阶段采样不能声明通过",
+            assertTrue("实际揭示帧存在同一圆周的多角度明暗水波；缺少该阶段采样不能声明通过",
                 revealFrames.any { rippleRays.getValue(it) > 0 })
             assertEquals("小猫实际进入后的有效动画期间没有纯白或小猫缺失帧", 0, blank)
             assertTrue("最终真实页面可见且启动层不再遮挡实际触摸", pageVisible && interactionSucceeded)
@@ -384,13 +390,14 @@ class StartupRealFrameInstrumentedTest {
             if (frame.before.hostId != after.hostId) add("截图跨越宿主重建")
             if (frame.viewport.isEmpty || frame.before.viewport != after.viewport) add("实际窗口范围未就绪或截图跨越窗口变化")
             if (!frame.before.active || !after.active) add("截图关联窗口并非两端均为可播放品牌层")
-            if (frame.before.progress < .20f) add("调用前进度低于.20")
-            if (after.progress > FADE_START_PROGRESS) add("关联后已进入620ms退场，不混入底层页面")
+            if (frame.before.progress < LANDING_PROGRESS) add("调用前尚未到达${StartupDropMotion.LANDING_MS}ms落地阶段")
+            if (after.progress > FADE_START_PROGRESS) add("关联后已进入${StartupDropMotion.REVEAL_END_MS}ms退场，不混入底层页面")
             if (catPixels(frame) < 12) add("小猫下落区域没有实际小猫特征")
         }
     }
 
     private fun millis(nanos: Long) = nanos / 1_000_000.0
+    private fun referenceNanos(nanos: Long) = nanos * 900L / StartupAnimationViewModel.DURATION_MILLIS
 
     private fun contrast(a: Int, b: Int): Int = maxOf(abs(Color.red(a) - Color.red(b)),
         abs(Color.green(a) - Color.green(b)), abs(Color.blue(a) - Color.blue(b)))
@@ -410,9 +417,9 @@ class StartupRealFrameInstrumentedTest {
     }
 
     companion object {
-        private const val MINIMUM_SPAN_NANOS = 140_800_000L
-        private const val LANDING_PROGRESS = 260f / 900f
-        private const val FADE_START_PROGRESS = 620f / 900f
+        private const val MINIMUM_SPAN_NANOS = 140_800_000L * StartupAnimationViewModel.DURATION_MILLIS / 900L
+        private const val LANDING_PROGRESS = StartupDropMotion.LANDING_MS / StartupAnimationViewModel.DURATION_MILLIS
+        private const val FADE_START_PROGRESS = StartupDropMotion.REVEAL_END_MS / StartupAnimationViewModel.DURATION_MILLIS
     }
 }
 
@@ -471,58 +478,128 @@ internal object StartupScenePixels {
         return Background(if (total > 0) colored.toFloat() / total else 0f, maximumRadius)
     }
 
-    /** 在实际窗口中心的16条射线上找“白底间隔、细色带、外侧白底”，不把大片渐变算作涟漪。 */
+    private data class WaveHit(val ray: Int, val radius: Float)
+
+    /** 检查径向局部明暗和同半径圆弧；水波可以覆盖已揭示渐变，不要求两侧都是白色。 */
     fun rippleRays(image: Bitmap, viewport: Rect, density: Float): Int {
         if (viewport.isEmpty) return 0
         val bounds = contentBounds(image, viewport, density)
         val centerX = viewport.exactCenterX()
         val centerY = viewport.exactCenterY()
-        val minimumGap = maxOf(2, (3f * density).roundToInt())
-        val maximumBand = maxOf(3, (6f * density).roundToInt())
-        val minimumOutside = maxOf(3, (6f * density).roundToInt())
-        var rays = 0
+        // 生产波带18→32dp；各侧2dp仅容纳缩放抗锯齿，不能把整块渐变当成波带。
+        val halfBand = maxOf(3, (18f * density).roundToInt())
+        val smoothing = maxOf(1, (2f * density).roundToInt())
+        val minimumBand = maxOf(3, (4f * density).roundToInt())
+        val radiusTolerance = maxOf(2f, 4f * density)
+        val startRadius = (80f * density).roundToInt()
+        val hits = mutableListOf<WaveHit>()
         for (index in 0 until 16) {
             val angle = index * Math.PI / 8.0
             val dx = cos(angle).toFloat()
             val dy = sin(angle).toFloat()
-            var radius = (80f * density).roundToInt()
-            var whiteBefore = 0
-            var band = 0
-            var whiteAfter = 0
-            var bandHasColor = false
-            while (true) {
-                val x = (centerX + radius * dx).roundToInt()
-                val y = (centerY + radius * dy).roundToInt()
-                if (!bounds.contains(x, y)) break
-                val distance = whiteDistance(image.getPixel(x, y))
-                if (band == 0) {
-                    if (distance <= 6) whiteBefore++ else if (whiteBefore >= minimumGap) {
-                        band = 1
-                        bandHasColor = distance >= 10
-                    } else whiteBefore = 0
-                } else if (distance <= 6) {
-                    whiteAfter++
-                    if (whiteAfter >= minimumOutside) {
-                        if (bandHasColor && band <= maximumBand) {
-                            rays++
-                            break
-                        }
-                        whiteBefore = whiteAfter
-                        band = 0
-                        whiteAfter = 0
-                        bandHasColor = false
-                    }
-                } else {
-                    // 短暂抗锯齿间隙仍归同一条细带；大片连续渐变会超过最大带宽而被排除。
-                    band += whiteAfter + 1
-                    whiteAfter = 0
-                    bandHasColor = bandHasColor || distance >= 10
+            val pixels = buildList {
+                var radius = startRadius
+                while (true) {
+                    val x = (centerX + radius * dx).roundToInt()
+                    val y = (centerY + radius * dy).roundToInt()
+                    if (!bounds.contains(x, y)) break
+                    add(image.getPixel(x, y))
+                    radius++
                 }
-                radius++
             }
+            if (pixels.size < 2 * (halfBand + smoothing) + 1) continue
+            val red = DoubleArray(pixels.size + 1)
+            val green = DoubleArray(pixels.size + 1)
+            val blue = DoubleArray(pixels.size + 1)
+            for (sample in pixels.indices) {
+                red[sample + 1] = red[sample] + Color.red(pixels[sample])
+                green[sample + 1] = green[sample] + Color.green(pixels[sample])
+                blue[sample + 1] = blue[sample] + Color.blue(pixels[sample])
+            }
+            fun mean(channel: DoubleArray, sample: Int): Float {
+                val left = (sample - smoothing).coerceAtLeast(0)
+                val right = (sample + smoothing + 1).coerceAtMost(pixels.size)
+                return ((channel[right] - channel[left]) / (right - left)).toFloat()
+            }
+            fun stableBackground(sample: Int): Boolean {
+                var redMin = 255
+                var greenMin = 255
+                var blueMin = 255
+                var redMax = 0
+                var greenMax = 0
+                var blueMax = 0
+                for (offset in sample - smoothing..sample + smoothing) {
+                    val pixel = pixels[offset]
+                    redMin = minOf(redMin, Color.red(pixel))
+                    greenMin = minOf(greenMin, Color.green(pixel))
+                    blueMin = minOf(blueMin, Color.blue(pixel))
+                    redMax = maxOf(redMax, Color.red(pixel))
+                    greenMax = maxOf(greenMax, Color.green(pixel))
+                    blueMax = maxOf(blueMax, Color.blue(pixel))
+                }
+                return maxOf(redMax - redMin, greenMax - greenMin, blueMax - blueMin) <= 12
+            }
+            val rayHits = mutableListOf<WaveHit>()
+            for (center in halfBand + smoothing until pixels.size - halfBand - smoothing step smoothing) {
+                val left = center - halfBand
+                val right = center + halfBand
+                // 两端不能取在文字或其它前景上，以免正文留下偶合的圆弧假象。
+                if (!stableBackground(left) || !stableBackground(right)) continue
+                val redLeft = mean(red, left)
+                val greenLeft = mean(green, left)
+                val blueLeft = mean(blue, left)
+                val redRight = mean(red, right)
+                val greenRight = mean(green, right)
+                val blueRight = mean(blue, right)
+                // 波带两侧应回到近似同一背景；白→彩色揭示边界、卡片边缘不能当水波。
+                if (maxOf(abs(redLeft - redRight), abs(greenLeft - greenRight), abs(blueLeft - blueRight)) > 10f) continue
+                val lumaLeft = luma(redLeft, greenLeft, blueLeft)
+                val lumaRight = luma(redRight, greenRight, blueRight)
+                var minimumResidual = 0f
+                var maximumResidual = 0f
+                var strongestResidual = 0f
+                var peak = center
+                var firstBand = -1
+                var lastBand = -1
+                for (sample in left + smoothing..right - smoothing) {
+                    val fraction = (sample - left).toFloat() / (right - left)
+                    val baseline = lumaLeft + (lumaRight - lumaLeft) * fraction
+                    val residual = luma(mean(red, sample), mean(green, sample), mean(blue, sample)) - baseline
+                    minimumResidual = minOf(minimumResidual, residual)
+                    maximumResidual = maxOf(maximumResidual, residual)
+                    if (abs(residual) > strongestResidual) {
+                        strongestResidual = abs(residual)
+                        peak = sample
+                    }
+                    if (abs(residual) >= 3f) {
+                        if (firstBand < 0) firstBand = sample
+                        lastBand = sample
+                    }
+                }
+                // 平滑背景没有局部峰谷；很深的文字笔画也不能冒充淡色水波。
+                val bandWidth = lastBand - firstBand + 1
+                if (strongestResidual < 6f || strongestResidual > 90f ||
+                    maximumResidual - minimumResidual < 6f || firstBand < 0 ||
+                    bandWidth < minimumBand || bandWidth > 2 * halfBand) continue
+                val radius = (startRadius + peak).toFloat()
+                if (rayHits.none { abs(it.radius - radius) <= radiusTolerance }) rayHits += WaveHit(index, radius)
+            }
+            hits += rayHits
         }
-        return rays
+        return hits.maxOfOrNull { hit ->
+            val matchingRays = hits.filter { abs(it.radius - hit.radius) <= radiusTolerance }.map { it.ray }.distinct()
+            val angularSeparation = matchingRays.maxOfOrNull { first ->
+                matchingRays.maxOfOrNull { second ->
+                    val separation = abs(first - second)
+                    minOf(separation, 16 - separation)
+                } ?: 0
+            } ?: 0
+            // 至少四条射线且跨90度圆弧；单段正文、矩形边或零星纸纹不足以证明圆形水波。
+            if (matchingRays.size >= 4 && angularSeparation >= 4) matchingRays.size else 0
+        } ?: 0
     }
+
+    private fun luma(red: Float, green: Float, blue: Float) = (54f * red + 183f * green + 19f * blue) / 256f
 
     private fun whiteDistance(pixel: Int) = maxOf(255 - Color.red(pixel), 255 - Color.green(pixel), 255 - Color.blue(pixel))
 }

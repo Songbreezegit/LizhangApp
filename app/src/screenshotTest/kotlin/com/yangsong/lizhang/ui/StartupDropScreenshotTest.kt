@@ -30,24 +30,9 @@ private fun StartupDropScreenshot(elapsedMs: Float, darkTheme: Boolean = false) 
 fun StartupDropLight0Screenshot() = StartupDropScreenshot(0f)
 
 @PreviewTest
-@Preview(name = "浅色开屏130毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Preview(name = "浅色开屏190毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
 @Composable
-fun StartupDropLight130Screenshot() = StartupDropScreenshot(130f)
-
-@PreviewTest
-@Preview(name = "浅色开屏260毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
-@Composable
-fun StartupDropLight260Screenshot() = StartupDropScreenshot(260f)
-
-@PreviewTest
-@Preview(name = "浅色开屏280毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
-@Composable
-fun StartupDropLight280Screenshot() = StartupDropScreenshot(280f)
-
-@PreviewTest
-@Preview(name = "浅色开屏320毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
-@Composable
-fun StartupDropLight320Screenshot() = StartupDropScreenshot(320f)
+fun StartupDropLight190Screenshot() = StartupDropScreenshot(190f)
 
 @PreviewTest
 @Preview(name = "浅色开屏380毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
@@ -55,19 +40,34 @@ fun StartupDropLight320Screenshot() = StartupDropScreenshot(320f)
 fun StartupDropLight380Screenshot() = StartupDropScreenshot(380f)
 
 @PreviewTest
-@Preview(name = "浅色开屏500毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Preview(name = "浅色开屏412毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
 @Composable
-fun StartupDropLight500Screenshot() = StartupDropScreenshot(500f)
+fun StartupDropLight412Screenshot() = StartupDropScreenshot(412f)
 
 @PreviewTest
-@Preview(name = "浅色开屏620毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Preview(name = "浅色开屏492毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
 @Composable
-fun StartupDropLight620Screenshot() = StartupDropScreenshot(620f)
+fun StartupDropLight492Screenshot() = StartupDropScreenshot(492f)
 
 @PreviewTest
-@Preview(name = "浅色开屏760毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Preview(name = "浅色开屏588毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
 @Composable
-fun StartupDropLight760Screenshot() = StartupDropScreenshot(760f)
+fun StartupDropLight588Screenshot() = StartupDropScreenshot(588f)
+
+@PreviewTest
+@Preview(name = "浅色开屏720毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Composable
+fun StartupDropLight720Screenshot() = StartupDropScreenshot(720f)
+
+@PreviewTest
+@Preview(name = "浅色开屏940毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Composable
+fun StartupDropLight940Screenshot() = StartupDropScreenshot(940f)
+
+@PreviewTest
+@Preview(name = "浅色开屏1100毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f)
+@Composable
+fun StartupDropLight1100Screenshot() = StartupDropScreenshot(1100f)
 
 @PreviewTest
 @Preview(name = "暗色开屏0毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
@@ -76,19 +76,19 @@ fun StartupDropLight760Screenshot() = StartupDropScreenshot(760f)
 fun StartupDropDark0Screenshot() = StartupDropScreenshot(0f, darkTheme = true)
 
 @PreviewTest
-@Preview(name = "暗色开屏500毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
+@Preview(name = "暗色开屏720毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
     uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun StartupDropDark500Screenshot() = StartupDropScreenshot(500f, darkTheme = true)
+fun StartupDropDark720Screenshot() = StartupDropScreenshot(720f, darkTheme = true)
 
 @PreviewTest
-@Preview(name = "暗色开屏620毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
+@Preview(name = "暗色开屏940毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
     uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun StartupDropDark620Screenshot() = StartupDropScreenshot(620f, darkTheme = true)
+fun StartupDropDark940Screenshot() = StartupDropScreenshot(940f, darkTheme = true)
 
 @PreviewTest
-@Preview(name = "暗色开屏760毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
+@Preview(name = "暗色开屏1100毫秒", locale = "zh-rCN", widthDp = 392, heightDp = 844, fontScale = 1f,
     uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun StartupDropDark760Screenshot() = StartupDropScreenshot(760f, darkTheme = true)
+fun StartupDropDark1100Screenshot() = StartupDropScreenshot(1100f, darkTheme = true)

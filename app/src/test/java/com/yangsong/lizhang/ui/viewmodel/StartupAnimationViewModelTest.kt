@@ -15,7 +15,7 @@ class StartupAnimationViewModelTest {
         state.markReady()
         state.onFrame(1_000_000_000L)
         now = 3_000L
-        state.onFrame(1_450_000_000L)
+        state.onFrame(1_000_000_000L + durationNanos / 2L)
         val snapshot = state.diagnosticSnapshot()
         assertEquals(3_000L, snapshot.monotonicNanos)
         assertTrue(snapshot.visible && snapshot.ready && snapshot.initialized)
@@ -23,24 +23,24 @@ class StartupAnimationViewModelTest {
         assertEquals(1_000_000_000L, snapshot.firstFrameNanos)
         val events = state.diagnostics()
         assertEquals(7, events.first { it.event == "内容首帧已提交" }.hostId)
-        assertEquals(1_450_000_000L, events.last().frameNanos)
+        assertEquals(1_000_000_000L + durationNanos / 2L, events.last().frameNanos)
         assertEquals(.5f, events.last().state.progress, .001f)
         assertTrue(events.zipWithNext().all { (first, second) -> first.state.monotonicNanos <= second.state.monotonicNanos })
     }
 
     @Test fun Release关闭诊断后不分配逐帧证据而保持固定时长() {
         val state = StartupAnimationViewModel(monotonicClock = { 0L }, diagnosticsEnabled = false)
-        assertEquals("保持已经确定的九百毫秒设计，不能靠缩短动画满足旧测试", 900L, StartupAnimationViewModel.DURATION_MILLIS)
+        assertEquals("保持放缓后的一千三百毫秒设计", 1300L, StartupAnimationViewModel.DURATION_MILLIS)
         state.initialize(eligible = true, animationsEnabled = true)
         state.recordWindowEvent("内容首帧已提交", 7)
         state.markReady()
         state.onFrame(1_000_000_000L)
-        state.onFrame(1_880_000_000L)
-        assertTrue("旧八百八十毫秒终点尚未播完", state.visible)
-        state.onFrame(1_899_000_000L)
+        state.onFrame(1_900_000_000L)
+        assertTrue("原九百毫秒终点尚未播完", state.visible)
+        state.onFrame(1_000_000_000L + durationNanos - 1_000_000L)
         assertTrue("结束前一毫秒仍保留启动层", state.visible)
         assertTrue(state.ready)
-        state.onFrame(1_900_000_000L)
+        state.onFrame(1_000_000_000L + durationNanos)
         assertTrue(state.diagnostics().isEmpty())
         assertFalse(state.visible)
         assertFalse(state.ready)
@@ -52,7 +52,7 @@ class StartupAnimationViewModelTest {
         state.initialize(eligible = true, animationsEnabled = true)
         state.markReady()
         state.onFrame(1_000_000_000L)
-        state.onFrame(1_450_000_000L)
+        state.onFrame(1_000_000_000L + durationNanos / 2L)
         assertTrue(state.visible)
         assertEquals(.5f, state.progress, .001f)
         state.initialize(eligible = false, animationsEnabled = true)
@@ -61,12 +61,12 @@ class StartupAnimationViewModelTest {
         state.awaitWindow(2)
         assertFalse("新窗口必须重新等自己的提交", state.ready)
         assertTrue("重建保留第一次动画帧", state.hasStarted)
-        state.onFrame(1_700_000_000L)
+        state.onFrame(1_850_000_000L)
         assertEquals("等待新窗口期间不推进或回拨进度", .5f, state.progress, .001f)
         state.markReady(2)
-        state.onFrame(1_899_000_000L)
+        state.onFrame(1_000_000_000L + durationNanos - 1_000_000L)
         assertTrue(state.visible)
-        state.onFrame(1_900_000_000L)
+        state.onFrame(1_000_000_000L + durationNanos)
         assertFalse(state.visible)
         assertEquals(1f, state.progress, 0f)
     }
@@ -107,13 +107,13 @@ class StartupAnimationViewModelTest {
         assertFalse(state.hasStarted)
         state.markReady()
         state.onFrame(6_000_000_000L)
-        state.onFrame(6_450_000_000L)
+        state.onFrame(6_000_000_000L + durationNanos / 2L)
         assertEquals(.5f, state.progress, .001f)
         state.awaitWindow()
         assertFalse("已开始的重建仍须等新窗口交接", state.ready)
         assertTrue("等待新窗口时保留原有时间轴", state.hasStarted)
         state.markReady()
-        state.onFrame(6_900_000_000L)
+        state.onFrame(6_000_000_000L + durationNanos)
         assertFalse(state.visible)
         assertEquals(1f, state.progress, 0f)
     }
@@ -124,7 +124,7 @@ class StartupAnimationViewModelTest {
         state.awaitWindow(1)
         state.markReady(1)
         state.onFrame(0L)
-        state.onFrame(300_000_000L)
+        state.onFrame(durationNanos / 3L)
         state.releaseWindow(1)
         state.awaitWindow(2)
 
@@ -138,7 +138,7 @@ class StartupAnimationViewModelTest {
         state.markReady(2)
         state.releaseWindow(1)
         assertTrue("旧宿主不能释放新窗口的就绪状态", state.ready)
-        state.onFrame(900_000_000L)
+        state.onFrame(durationNanos)
         assertFalse(state.visible)
         state.releaseWindow(2)
         assertFalse(state.ownsWindow(2))
@@ -170,20 +170,20 @@ class StartupAnimationViewModelTest {
         state.awaitWindow(1)
         now = 100_000_000L
         state.markReady(1)
-        assertEquals(1500L, state.playbackTimeoutRemainingMillis())
+        assertEquals(StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS, state.playbackTimeoutRemainingMillis())
         assertFalse(state.hasStarted)
 
         now = 700_000_000L
         state.releaseWindow(1)
         state.awaitWindow(2)
-        assertEquals("新窗口等待不能超过既有播放截止时间", 900L, state.windowTimeoutRemainingMillis())
+        assertEquals("新窗口等待不能超过既有播放截止时间", 1300L, state.windowTimeoutRemainingMillis())
         now = 800_000_000L
         state.markReady(2)
         now = 900_000_000L
         state.markReady(2)
-        assertEquals("重复交接不能重置截止时间", 700L, state.playbackTimeoutRemainingMillis())
+        assertEquals("重复交接不能重置截止时间", 1100L, state.playbackTimeoutRemainingMillis())
 
-        now = 1_600_000_000L
+        now = 100_000_000L + StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
         state.onFrame(now)
         assertFalse("超时任务尚未派发时，迟到首帧也必须释放启动层", state.visible)
         assertFalse(state.ready)
@@ -202,7 +202,7 @@ class StartupAnimationViewModelTest {
         state.onFrame(now)
         assertTrue(state.visible)
 
-        now = 1_500_000_000L
+        now = StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
         // 即使恢复帧携带的帧时间较旧，也先按原绝对截止时间释放。
         state.onFrame(400_000_000L)
         assertFalse(state.visible)
@@ -228,7 +228,7 @@ class StartupAnimationViewModelTest {
         state.releaseWindow(7)
         state.markReady(7)
         state.awaitWindow(8)
-        state.onFrame(900_000_000L)
+        state.onFrame(durationNanos)
         state.initialize(eligible = true, animationsEnabled = true)
         assertFalse(state.ownsWindow(7))
         assertFalse(state.ownsWindow(8))
@@ -236,4 +236,6 @@ class StartupAnimationViewModelTest {
         assertFalse(state.ready)
         assertEquals(1f, state.progress, 0f)
     }
+
+    private val durationNanos get() = StartupAnimationViewModel.DURATION_MILLIS * 1_000_000L
 }

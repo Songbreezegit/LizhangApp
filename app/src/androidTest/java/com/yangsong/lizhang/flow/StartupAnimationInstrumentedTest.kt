@@ -26,6 +26,7 @@ import com.yangsong.lizhang.LiZhangApplication
 import com.yangsong.lizhang.MainActivity
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.core.common.ReminderNavigationContract
+import com.yangsong.lizhang.ui.component.StartupDropMotion
 import com.yangsong.lizhang.ui.viewmodel.StartupAnimationViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -128,21 +129,29 @@ class StartupAnimationInstrumentedTest {
                 StartupScenePixels.background(first, viewport, density).coloredFraction < .005f)
             assertEquals("0进度纯白起帧没有提前静止在中央的小猫",
                 0, StartupScenePixels.catPixels(first, viewport, density))
-            compose.mainClock.advanceTimeBy(220)
-            val falling = frame("${entry}_下落220ms")
+            val landingMs = StartupDropMotion.LANDING_MS.toLong()
+            val revealEndMs = StartupDropMotion.REVEAL_END_MS.toLong()
+            val revealDurationMs = revealEndMs - landingMs
+            // 相位跟随生产落地与揭示区间，调整总时长后不沿用旧的固定采样毫秒数。
+            val fallingSampleMs = (landingMs * .84f).toLong()
+            // 揭示期三分之一时第二圈已离开猫图范围；不以第一圈紧贴背景裁切边缘证明水波。
+            val landingSampleMs = landingMs + revealDurationMs / 3
+            val middleSampleMs = landingMs + revealDurationMs * 3 / 5
+            compose.mainClock.advanceTimeBy(fallingSampleMs)
+            val falling = frame("${entry}_下落${fallingSampleMs}ms")
             assertTrue("落地前小猫实际进入画面", StartupScenePixels.catPixels(falling, viewport, density) >= 12)
-            assertTrue("260ms落地前背景仍是纯白",
+            assertTrue("${landingMs}ms落地前背景仍是纯白",
                 StartupScenePixels.background(falling, viewport, density).coloredFraction < .005f)
-            compose.mainClock.advanceTimeBy(100)
-            val landed = frame("${entry}_落地扩散320ms")
+            compose.mainClock.advanceTimeBy(landingSampleMs - fallingSampleMs)
+            val landed = frame("${entry}_落地扩散${landingSampleMs}ms")
             val landingBackground = StartupScenePixels.background(landed, viewport, density)
             assertTrue("小猫落地后位于实际画面中心",
                 StartupScenePixels.catPixels(landed, viewport, density, falling = false) >= 12)
             assertTrue("落地后渐变已经从小猫周围向外揭示", landingBackground.coloredFraction > .02f)
-            assertTrue("落地阶段实际画面含白底间隔两侧的细涟漪",
+            assertTrue("落地阶段实际画面含白底间隔两侧的水波层次",
                 StartupScenePixels.rippleRays(landed, viewport, density) > 0)
-            compose.mainClock.advanceTimeBy(180)
-            val middle = frame("${entry}_渐变展开500ms")
+            compose.mainClock.advanceTimeBy(middleSampleMs - landingSampleMs)
+            val middle = frame("${entry}_渐变展开${middleSampleMs}ms")
             val middleBackground = StartupScenePixels.background(middle, viewport, density)
             assertTrue("渐变揭示继续向外扩大",
                 middleBackground.coloredFraction > landingBackground.coloredFraction + .02f &&
@@ -155,10 +164,11 @@ class StartupAnimationInstrumentedTest {
             assertTrue("中途仍在有限动画时间轴内", startup.progress > 0f && startup.progress < 1f)
             File(evidenceFolder, "阶段采样.txt").writeText(
                 "本组使用Compose测试时钟，不替代系统真实帧验收\n" +
-                    "设计时长=900ms；落地=260ms；圆渐变揭示=260..620ms；退场=620..900ms\n" +
-                    "320ms背景覆盖=${landingBackground.coloredFraction}；500ms背景覆盖=${middleBackground.coloredFraction}\n" +
-                    "320ms实际扩散半径=${landingBackground.maximumColoredRadius / density}dp；" +
-                    "500ms实际扩散半径=${middleBackground.maximumColoredRadius / density}dp\n",
+                    "设计时长=${StartupAnimationViewModel.DURATION_MILLIS}ms；落地=${landingMs}ms；" +
+                    "圆渐变揭示=${landingMs}..${revealEndMs}ms；退场=${revealEndMs}..${StartupAnimationViewModel.DURATION_MILLIS}ms\n" +
+                    "${landingSampleMs}ms背景覆盖=${landingBackground.coloredFraction}；${middleSampleMs}ms背景覆盖=${middleBackground.coloredFraction}\n" +
+                    "${landingSampleMs}ms实际扩散半径=${landingBackground.maximumColoredRadius / density}dp；" +
+                    "${middleSampleMs}ms实际扩散半径=${middleBackground.maximumColoredRadius / density}dp\n",
             )
 
             when (entry) {
@@ -201,7 +211,7 @@ class StartupAnimationInstrumentedTest {
                     scenario.recreate()
                     scenario.onActivity { assertSame("重建保留同一启动状态", startup, it.startupState) }
                     assertTrue("重建不将动画回拨到开始", startup.progress >= beforeRotation)
-                    compose.mainClock.advanceTimeBy(1000)
+                    compose.mainClock.advanceTimeBy(StartupAnimationViewModel.DURATION_MILLIS)
                     compose.mainClock.autoAdvance = true
                     compose.waitUntil(3000) { !startup.visible }
                     compose.onNodeWithTag("品牌开屏").assertDoesNotExist()
@@ -246,8 +256,43 @@ class StartupAnimationInstrumentedTest {
         }
         compose.mainClock.autoAdvance = true
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { assertFalse("同进程新 Activity 不补播开屏", it.startupState.visible) }
+            compose.waitUntil(6000) {
+                var completed = false
+                scenario.onActivity {
+                    completed = !it.startupState.visible && it.startupState.progress == 1f &&
+                        it.appearanceHost.isNavigationReady && it.hasWindowFocus()
+                }
+                completed
+            }
+            scenario.onActivity {
+                val trace = it.startupState.diagnostics()
+                assertTrue("同进程全新窗口仍获得独立启动机会",
+                    trace.any { event -> event.event.startsWith("初始化：冷启动机会=true") })
+                if (ValueAnimator.areAnimatorsEnabled()) {
+                    assertTrue("全新窗口播放有限时间轨中的中间阶段",
+                        trace.any { event -> event.frameNanos != null && event.state.progress > 0f && event.state.progress < 1f })
+                }
+                assertFalse("全新窗口有限播放后释放覆盖状态", it.startupState.visible)
+                assertFalse(it.startupState.ready)
+                assertEquals(1f, it.startupState.progress, 0f)
+            }
             compose.onNodeWithTag("品牌开屏").assertDoesNotExist()
+            compose.onNodeWithTag("首页列表").assertIsDisplayed()
+            // 页面状态和语义结束仍不足以证明原生启动视图已移除，补充真实窗口触摸。
+            var settingsLabel = ""
+            var darkModeLabel = ""
+            scenario.onActivity {
+                settingsLabel = it.getString(R.string.nav_settings)
+                darkModeLabel = it.getString(R.string.settings_dark)
+            }
+            val device = UiDevice.getInstance(instrumentation)
+            val settings = device.wait(Until.findObject(By.desc(settingsLabel)), 3000)
+            assertNotNull("启动完成后我的页入口具有真实可操作范围", settings)
+            val bounds = requireNotNull(settings).visibleBounds
+            assertTrue("启动完成后的入口启用且可见", settings.isEnabled && !bounds.isEmpty)
+            device.click(bounds.centerX(), bounds.centerY())
+            assertTrue("全新窗口完成后真实触摸可切换页面，不残留启动遮挡",
+                device.wait(Until.hasObject(By.text(darkModeLabel)), 6000) == true)
         }
     }
 }
