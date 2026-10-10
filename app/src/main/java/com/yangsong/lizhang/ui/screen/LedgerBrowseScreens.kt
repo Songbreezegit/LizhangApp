@@ -21,6 +21,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import com.yangsong.lizhang.domain.reminder.IndependentReminder
 import com.yangsong.lizhang.domain.reminder.IndependentReminderPlanner
 import com.yangsong.lizhang.domain.reminder.ReminderSettings
@@ -46,6 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.core.content.ContextCompat
 import androidx.core.app.ActivityCompat
 import android.app.Activity
@@ -107,26 +111,44 @@ fun DirectionRecordsScreen(
 @Composable
 fun CalendarScreen(viewModel: CalendarViewModel, onBack: () -> Unit, onRecordClick: (Long) -> Unit) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateAsState()
+    var recordsMayAppear by remember(lifecycle) {
+        mutableStateOf(lifecycle.currentState == Lifecycle.State.RESUMED)
+    }
+    // 日期网格立即显示，记录与空状态插画在导航转场完成后再组成。
+    LaunchedEffect(lifecycleState) {
+        if (lifecycleState == Lifecycle.State.RESUMED) recordsMayAppear = true
+    }
     AppScaffold(topBar = { AppTopBar(stringResource(R.string.shortcut_calendar), onBack) }) { padding ->
-        when {
-            state.isLoading -> LoadingState()
-            state.error -> ErrorState(viewModel::retry)
-            else -> LazyColumn(
-                Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                item { CalendarCard(state, viewModel::previousMonth, viewModel::nextMonth, viewModel::selectDay) }
-                item { SectionHeader(stringResource(R.string.calendar_records_on, com.yangsong.lizhang.ui.mapper.displayCalendarDate(state.year, state.month, state.selectedDay))) }
-                if (state.selectedRecords.isEmpty()) {
-                    item { EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat) }
-                } else {
-                    items(
-                        items = state.selectedRecords,
-                        key = { item -> item.record.id },
-                    ) { item ->
-                        GiftRecordListItem(item) { onRecordClick(item.record.id) }
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item(key = "日历", contentType = "日历") {
+                CalendarCard(state, viewModel::previousMonth, viewModel::nextMonth, viewModel::selectDay)
+            }
+            item(key = "日历记录标题", contentType = "标题") {
+                SectionHeader(stringResource(R.string.calendar_records_on, com.yangsong.lizhang.ui.mapper.displayCalendarDate(state.year, state.month, state.selectedDay)))
+            }
+            when {
+                state.isLoading || !recordsMayAppear -> item(key = "日历记录加载", contentType = "加载") {
+                    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Text(stringResource(R.string.loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                }
+                state.error -> item(key = "日历记录错误", contentType = "错误") { ErrorState(viewModel::retry) }
+                state.selectedRecords.isEmpty() -> item(key = "日历记录为空", contentType = "空状态") {
+                    EmptyState(stringResource(R.string.calendar_empty), image = R.drawable.page_add_cat)
+                }
+                else -> items(
+                    items = state.selectedRecords,
+                    key = { item -> item.record.id },
+                    contentType = { "礼金记录" },
+                ) { item ->
+                    GiftRecordListItem(item) { onRecordClick(item.record.id) }
                 }
             }
         }
@@ -165,15 +187,17 @@ private fun CalendarCard(state: CalendarUiState, onPrevious: () -> Unit, onNext:
 
 @Composable
 private fun DayCell(day: Int, selected: Boolean, hasRecord: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassClickableSurface(
-        onClick = onClick,
-        modifier = modifier.aspectRatio(1f).padding(2.dp),
-        shape = CircleShape,
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent,
+    Box(
+        modifier = modifier.aspectRatio(1f).padding(2.dp)
+            .minimumInteractiveComponentSize()
+            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = .12f) else androidx.compose.ui.graphics.Color.Transparent, CircleShape)
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClick = onClick)
+            .semantics { this.selected = selected },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(day.toString(), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-            if (hasRecord) Surface(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp).size(5.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {}
+        Text(day.toString(), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+        if (hasRecord) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp).size(5.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
         }
     }
 }

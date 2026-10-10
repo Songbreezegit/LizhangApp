@@ -17,12 +17,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlin.coroutines.coroutineContext
@@ -95,26 +98,38 @@ private data class CalendarMonthData(
     )
 }
 
+private data class CalendarMonthLoad(
+    val monthStart: Long,
+    val data: CalendarMonthData? = null,
+    val error: Boolean = false,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
     private val selection = MutableStateFlow(initialSelection())
     private val retrySignal = RetrySignal()
 
-    val uiState: StateFlow<CalendarUiState> = retrySignal.flow(
+    private val monthLoads = retrySignal.flow(
         source = {
             selection.map { it.monthStart }.distinctUntilChanged().flatMapLatest { monthStart ->
-                repository.observeBetween(monthStart, nextMonthStart(monthStart))
-                    .mapLatest { records -> buildCalendarMonth(records, monthStart) }
+                flow { emitAll(repository.observeBetween(monthStart, nextMonthStart(monthStart))) }
+                    .mapLatest { records -> CalendarMonthLoad(monthStart, buildCalendarMonth(records, monthStart)) }
                     .flowOn(Dispatchers.Default)
-                    .combine(selection) { month, selected ->
-                        // 翻月期间旧查询结果不能与新月份的选日拼接。
-                        if (month.monthStart == selected.monthStart) month.selectedState(selected.selectedDay) else null
-                    }
-                    .filterNotNull()
+                    .onStart { emit(CalendarMonthLoad(monthStart)) }
+                    .catch { emit(CalendarMonthLoad(monthStart, error = true)) }
             }
         },
-        onError = { CalendarUiState(isLoading = false, error = true) },
-    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CalendarUiState())
+        onError = { CalendarMonthLoad(selection.value.monthStart, error = true) },
+    )
+
+    val uiState: StateFlow<CalendarUiState> = combine(monthLoads, selection) { load, selected ->
+        // 日期网格先响应；月份结果匹配后才展示标记和记录，不沿用旧月份数据。
+        when {
+            load.monthStart != selected.monthStart -> calendarShell(selected)
+            load.data != null -> load.data.selectedState(selected.selectedDay)
+            else -> calendarShell(selected, error = load.error)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), calendarShell(selection.value))
 
     fun previousMonth() = shiftMonth(-1)
     fun nextMonth() = shiftMonth(1)
@@ -131,6 +146,19 @@ class CalendarViewModel(repository: GiftRecordRepository) : ViewModel() {
     }
 
     companion object {
+        private fun calendarShell(selection: CalendarSelection, error: Boolean = false): CalendarUiState {
+            val month = monthCalendar(selection.monthStart)
+            return CalendarUiState(
+                year = month.get(Calendar.YEAR),
+                month = month.get(Calendar.MONTH) + 1,
+                daysInMonth = month.getActualMaximum(Calendar.DAY_OF_MONTH),
+                firstDayOffset = (month.get(Calendar.DAY_OF_WEEK) + 5) % 7,
+                selectedDay = selection.selectedDay,
+                isLoading = !error,
+                error = error,
+            )
+        }
+
         private fun initialSelection(): CalendarSelection {
             val now = Calendar.getInstance()
             val day = now.get(Calendar.DAY_OF_MONTH)

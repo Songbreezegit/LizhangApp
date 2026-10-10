@@ -184,6 +184,8 @@ fun LiZhangNavGraph(
         nav, AppDestination.Home.route, Modifier.hazeSource(hazeState).testTag("业务导航页面"),
         enterTransition = {
             if (initialState.destination.route == targetState.destination.route) EnterTransition.None
+            // 日历先亮出日期网格，短淡入避免密集日期控件参与整页滑动合成。
+            else if (targetState.destination.route == AppDestination.Calendar.route) fadeIn(tween(120), initialAlpha = .75f)
             else {
                 val direction = motionDirection(initialState.destination.route, targetState.destination.route)
                 slideInHorizontally(tween(360, easing = pageEasing)) { it / 8 * direction } +
@@ -192,18 +194,25 @@ fun LiZhangNavGraph(
         },
         exitTransition = {
             if (initialState.destination.route == targetState.destination.route) ExitTransition.None
+            else if (targetState.destination.route == AppDestination.Calendar.route) fadeOut(tween(120))
             else {
                 val direction = motionDirection(initialState.destination.route, targetState.destination.route)
                 slideOutHorizontally(tween(260, easing = pageEasing)) { -it / 12 * direction } + fadeOut(tween(220))
             }
         },
         popEnterTransition = {
-            val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
-            slideInHorizontally(tween(360, easing = pageEasing)) { it / 8 * direction } + fadeIn(tween(240), initialAlpha = .45f)
+            if (targetState.destination.route == AppDestination.Calendar.route) fadeIn(tween(120), initialAlpha = .75f)
+            else {
+                val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
+                slideInHorizontally(tween(360, easing = pageEasing)) { it / 8 * direction } + fadeIn(tween(240), initialAlpha = .45f)
+            }
         },
         popExitTransition = {
-            val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
-            slideOutHorizontally(tween(260, easing = pageEasing)) { -it / 12 * direction } + fadeOut(tween(220))
+            if (targetState.destination.route == AppDestination.Calendar.route) fadeOut(tween(120))
+            else {
+                val direction = motionDirection(initialState.destination.route, targetState.destination.route, returning = true)
+                slideOutHorizontally(tween(260, easing = pageEasing)) { -it / 12 * direction } + fadeOut(tween(220))
+            }
         },
     ) {
         composable(AppDestination.Home.route) {
