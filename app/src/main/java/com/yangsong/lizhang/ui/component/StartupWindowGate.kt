@@ -58,8 +58,14 @@ internal class StartupWindowGate(
     }
     private val playbackTimeout: Runnable = Runnable {
         if (currentWindow && state.visible) {
-            state.recordWindowEvent("启动动画帧回调超时", diagnosticHostId)
-            cancel()
+            val remaining = state.playbackTimeoutRemainingMillis()
+            if (remaining > 0L) {
+                // 有效首帧会补足一次播放余量；旧的排队任务按当前截止时间继续等待。
+                handler.postDelayed(playbackTimeout, remaining)
+            } else {
+                state.recordWindowEvent("启动动画帧回调超时", diagnosticHostId)
+                cancel()
+            }
         }
     }
     private val removeDrawListener: Runnable = Runnable {

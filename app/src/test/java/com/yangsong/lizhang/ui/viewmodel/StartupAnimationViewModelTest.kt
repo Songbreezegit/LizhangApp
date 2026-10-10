@@ -183,13 +183,75 @@ class StartupAnimationViewModelTest {
         state.markReady(2)
         assertEquals("重复交接不能重置截止时间", 1100L, state.playbackTimeoutRemainingMillis())
 
-        now = 100_000_000L + StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
+        now = 100_000_000L + StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L + 1L
+        assertEquals(0L, state.playbackTimeoutRemainingMillis())
         state.onFrame(now)
         assertFalse("超时任务尚未派发时，迟到首帧也必须释放启动层", state.visible)
         assertFalse(state.ready)
         assertFalse(state.hasStarted)
         assertEquals(1f, state.progress, 0f)
         assertTrue(state.diagnostics().any { it.event == "启动动画截止时间已过" })
+    }
+
+    @Test fun 首帧迟到一秒仍从首帧开始完整播放一千三百毫秒() {
+        var now = 0L
+        val state = StartupAnimationViewModel(monotonicClock = { now })
+        state.initialize(eligible = true, animationsEnabled = true)
+        state.awaitWindow(1)
+        state.markReady(1)
+
+        val firstFrame = 1_000_000_000L
+        now = firstFrame
+        state.onFrame(firstFrame)
+        assertTrue(state.hasStarted && state.visible)
+        assertEquals(0f, state.progress, 0f)
+        assertEquals(StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS, state.playbackTimeoutRemainingMillis())
+
+        // 原就绪时排队的超时任务到点时，新的播放截止时间仍有一秒余量。
+        now = StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
+        state.onFrame(now)
+        assertTrue("首帧等待不能截断后面的水波和淡出", state.visible)
+        assertEquals(1000L, state.playbackTimeoutRemainingMillis())
+        assertEquals(900f / 1300f, state.progress, .001f)
+
+        now = firstFrame + durationNanos - 1_000_000L
+        state.onFrame(now)
+        assertTrue("首帧之后结束前一毫秒仍保留动画层", state.visible)
+        now = firstFrame + durationNanos
+        state.onFrame(now)
+        assertFalse(state.visible)
+        assertEquals(1f, state.progress, 0f)
+    }
+
+    @Test fun 首帧延长播放限期之后重建和后续帧都不能再次延长() {
+        var now = 0L
+        val state = StartupAnimationViewModel(monotonicClock = { now })
+        state.initialize(eligible = true, animationsEnabled = true)
+        state.awaitWindow(1)
+        state.markReady(1)
+        now = 1_000_000_000L
+        state.onFrame(now)
+
+        now = 1_100_000_000L
+        state.releaseWindow(1)
+        state.awaitWindow(2)
+        now = 1_200_000_000L
+        state.markReady(2)
+        now = 1_300_000_000L
+        state.markReady(2)
+        state.markReady(1)
+        state.onFrame(now)
+        assertEquals("旧宿主和重复交接不能二次补足余量", 1600L, state.playbackTimeoutRemainingMillis())
+        assertEquals(300f / 1300f, state.progress, .001f)
+        now = 1_400_000_000L
+        state.onFrame(now)
+        assertEquals("后续帧仍消耗原限期", 1500L, state.playbackTimeoutRemainingMillis())
+
+        now = 1_000_000_000L + StartupAnimationViewModel.PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
+        state.onFrame(1_500_000_000L)
+        assertFalse("暂停后仍按首次帧建立的绝对限期释放", state.visible)
+        assertFalse(state.ready)
+        assertEquals(1f, state.progress, 0f)
     }
 
     @Test fun 播放暂停后单调时钟到期即释放而不根据恢复帧续播() {

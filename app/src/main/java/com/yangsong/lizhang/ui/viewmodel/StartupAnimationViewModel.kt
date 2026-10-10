@@ -95,13 +95,19 @@ class StartupAnimationViewModel(
 
     fun onFrame(frameNanos: Long) {
         if (!visible || !ready) return
+        val now = monotonicClock()
         // 即使主线程超时任务还未执行，恢复派发的帧也不能继续已过期的动画。
-        if (playbackDeadlineNanos?.let { monotonicClock() >= it } == true) {
+        if (playbackDeadlineNanos?.let { now >= it } == true) {
             recordEvent("启动动画截止时间已过", frameNanos = frameNanos)
             finish()
             return
         }
-        val start = firstFrameNanos ?: frameNanos.also { firstFrameNanos = it }
+        val start = firstFrameNanos ?: frameNanos.also {
+            firstFrameNanos = it
+            // 首帧等候仍受原截止时间约束；有效首帧到达后只补足一次完整播放余量。
+            // 重建和重复就绪保留 firstFrameNanos，不能再延长播放截止时间。
+            playbackDeadlineNanos = now + PLAYBACK_TIMEOUT_MILLIS * 1_000_000L
+        }
         progress = ((frameNanos - start) / (DURATION_MILLIS * 1_000_000f)).coerceIn(0f, 1f)
         recordEvent("动画帧回调", frameNanos = frameNanos)
         if (progress >= 1f) finish()

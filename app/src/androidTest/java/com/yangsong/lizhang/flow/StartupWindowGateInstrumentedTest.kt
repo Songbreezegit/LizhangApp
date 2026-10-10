@@ -127,7 +127,7 @@ class StartupWindowGateInstrumentedTest {
                     callbacks.emitExit(newExit)
                     assertTrue("新窗口两项条件都完成后可播放", state.ready)
                     state.onFrame(0L)
-                    state.onFrame(900_000_000L)
+                    state.onFrame(StartupAnimationViewModel.DURATION_MILLIS * 1_000_000L)
                     assertFalse(state.visible)
                     assertEquals(1f, state.progress, 0f)
                 }
