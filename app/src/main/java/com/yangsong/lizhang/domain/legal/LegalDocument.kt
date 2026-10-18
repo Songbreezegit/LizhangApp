@@ -2,7 +2,7 @@ package com.yangsong.lizhang.domain.legal
 
 /** 候选内容标识，不代表政策已生效或已获批准。重大内容更新必须变更此标识。 */
 object LegalPolicy {
-    const val CURRENT_VERSION = "filing-site-policy-20261019"
+    const val CURRENT_VERSION = "privacy-entry-policy-20261019"
 }
 
 enum class LegalDocumentType(val assetName: String, val officialUrl: String) {
@@ -51,10 +51,27 @@ object LegalDocumentParser {
         return LegalDocument(type, sections)
     }
 
-    private fun plainText(line: String): String = line.replace("**", "")
-        .replace(Regex("\\[([^]]+)]\\(([^)]+)\\)")) { match ->
-            val target = match.groupValues[2]
-            if (target.startsWith("https://")) "${match.groupValues[1]}（$target）"
-            else match.groupValues[1]
+    private fun plainText(line: String): String {
+        val text = line.replace("**", "")
+        val output = StringBuilder()
+        var offset = 0
+        // 仅解析文档使用的 [说明](地址)，避免 Android ICU 与桌面 JVM 的字符类语法差异。
+        while (offset < text.length) {
+            val start = text.indexOf('[', offset)
+            if (start < 0) { output.append(text.substring(offset)); break }
+            output.append(text.substring(offset, start))
+            val separator = text.indexOf("](", start + 1)
+            val end = if (separator >= 0) text.indexOf(')', separator + 2) else -1
+            if (separator < 0 || end < 0) {
+                output.append('[')
+                offset = start + 1
+                continue
+            }
+            output.append(text.substring(start + 1, separator))
+            val target = text.substring(separator + 2, end)
+            if (target.startsWith("https://")) output.append("（").append(target).append("）")
+            offset = end + 1
         }
+        return output.toString()
+    }
 }

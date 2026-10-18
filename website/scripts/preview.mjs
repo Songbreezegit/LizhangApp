@@ -50,9 +50,11 @@ const server = createServer((request, response) => {
 });
 server.on('error', error => {
   console.error(error.code === 'EADDRINUSE' ? '预览端口已被占用，请换一个端口。' : '本机预览启动失败：' + error.message);
+  console.error('服务未成功启动；请处理上述错误后再打开浏览器。');
   process.exitCode = 1;
 });
 server.listen(port, '127.0.0.1', () => {
-  console.log('礼账本机预览：http://127.0.0.1:' + port + '/');
-  console.log('仅监听本机回环地址，不记录访问日志。按 Ctrl+C 停止。');
+  console.log('服务已启动。请在这台 Windows 电脑的浏览器打开：http://127.0.0.1:' + port + '/');
+  console.log('仅监听本机回环地址，不记录访问日志。保持此窗口打开，按 Ctrl+C 停止。');
+  console.log('这不是公网官网，也不代表浏览器或 HTTP 验收通过。');
 });

@@ -21,9 +21,7 @@ import com.yangsong.lizhang.domain.privacy.PrivacyConsentState
 import com.yangsong.lizhang.domain.repository.LegalDocumentRepository
 import com.yangsong.lizhang.domain.repository.PrivacyConsentRepository
 import com.yangsong.lizhang.ui.privacy.PrivacyNoticeGate
-import com.yangsong.lizhang.ui.privacy.PrivacyNoticeScreen
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
-import com.yangsong.lizhang.ui.viewmodel.LegalDocumentUiState
 import com.yangsong.lizhang.ui.viewmodel.PrivacyConsentViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.*
@@ -42,32 +40,37 @@ class PrivacyNoticeUiInstrumentedTest {
         runCatching { compose.onNodeWithTag("隐私告知同意").assertIsEnabled(); true }.getOrDefault(false)
     }
 
-    @Test fun 无默认勾选且完整两份正文在同一卡片滚动只有明确同意放行() {
+    @Test fun 摘要无默认同意且两个链接离线打开全文返回后主动同意才放行() {
         val repository = UiConsentRepository()
         val viewModel = PrivacyConsentViewModel(repository)
         var accepted = 0
+        var exited = 0
         compose.setContent { LiZhangTheme {
-            PrivacyNoticeGate(viewModel, documents, { accepted++ }, {})
+            PrivacyNoticeGate(viewModel, documents, { accepted++ }, { exited++ })
         } }
         waitForDocuments()
         compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)).assertCountEquals(0)
-        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_intro)).assertDoesNotExist()
-        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_candidate)).assertDoesNotExist()
-        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_version, LegalPolicy.CURRENT_VERSION))
-            .assertDoesNotExist()
-        compose.onNodeWithTag("告知隐私政策").assertDoesNotExist()
-        compose.onNodeWithTag("告知用户协议").assertDoesNotExist()
-        val agreeBefore = compose.onNodeWithTag("隐私告知同意").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        val declineBefore = compose.onNodeWithTag("隐私告知拒绝").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_intro)).assertExists()
+        compose.onNodeWithText("PRIVACY合成完整正文1。仅用于测试。").assertDoesNotExist()
         for (type in listOf(LegalDocumentType.PRIVACY, LegalDocumentType.TERMS)) {
+            val tag = if (type == LegalDocumentType.PRIVACY) "告知阅读隐私政策" else "告知阅读用户协议"
+            compose.onNodeWithTag(tag).performScrollTo().performClick()
+            compose.onNodeWithTag("legal_open_browser").assertDoesNotExist()
             for (index in 1..6) {
                 compose.onNodeWithText("${type.name}合成完整正文$index。仅用于测试。").performScrollTo().assertIsDisplayed()
             }
+            if (type == LegalDocumentType.PRIVACY) {
+                compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
+            } else {
+                InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                    compose.activity.onBackPressedDispatcher.onBackPressed()
+                }
+            }
+            compose.onNodeWithTag("隐私告知同意").assertIsEnabled()
         }
-        assertEquals(agreeBefore, compose.onNodeWithTag("隐私告知同意").fetchSemanticsNode().boundsInRoot)
-        assertEquals(declineBefore, compose.onNodeWithTag("隐私告知拒绝").fetchSemanticsNode().boundsInRoot)
         assertEquals(0, repository.accepts)
         assertEquals(0, accepted)
+        assertEquals(0, exited)
         compose.onNodeWithTag("隐私告知同意").performClick()
         assertEquals(1, accepted)
         assertTrue(repository.state.value.canProcessPersonalData)
@@ -126,7 +129,7 @@ class PrivacyNoticeUiInstrumentedTest {
             compose.runOnIdle { dark.value = mode }
             val card = compose.onNodeWithTag("首次隐私告知阅读卡片").fetchSemanticsNode().boundsInRoot
             assertTrue("错误提示与两倍字号仍保留可阅读高度", card.height > 48f * compose.activity.resources.displayMetrics.density)
-            compose.onNodeWithText("TERMS合成完整正文6。仅用于测试。").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("告知阅读用户协议").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("隐私告知同意").assertIsDisplayed().assertIsEnabled()
             compose.onNodeWithTag("隐私告知拒绝").assertIsDisplayed().assertIsEnabled()
             compose.onNodeWithTag("隐私确认保存失败").performScrollTo().assertIsDisplayed()
@@ -138,7 +141,7 @@ class PrivacyNoticeUiInstrumentedTest {
         assertFalse(repository.state.value.canProcessPersonalData)
     }
 
-    @Test fun 任一正文加载失败只能重试完整正文成功后才可同意() {
+    @Test fun 全文失败可重试且返回摘要后仍须主动同意() {
         val repository = UiConsentRepository()
         val viewModel = PrivacyConsentViewModel(repository)
         var accepted = 0
@@ -150,36 +153,39 @@ class PrivacyNoticeUiInstrumentedTest {
         compose.setContent { LiZhangTheme {
             PrivacyNoticeGate(viewModel, retryDocuments, { accepted++ }, {})
         } }
-        compose.waitUntil(5000) { compose.onAllNodesWithTag("告知重新读取_terms").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag("隐私告知同意").assertIsNotEnabled()
+        compose.onNodeWithTag("隐私告知同意").assertIsEnabled()
+        compose.onNodeWithTag("告知阅读用户协议").performScrollTo().performClick()
+        val retry = compose.activity.getString(R.string.legal_retry)
+        compose.waitUntil(5000) { compose.onAllNodesWithText(retry).fetchSemanticsNodes().isNotEmpty() }
         assertEquals(0, repository.accepts)
+        assertEquals(0, accepted)
         compose.runOnIdle { failTerms = false }
-        compose.onNodeWithTag("告知重新读取_terms").performScrollTo().performClick()
-        waitForDocuments()
+        compose.onNodeWithText(retry).performScrollTo().performClick()
         compose.onNodeWithText("TERMS完整合成正文").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("隐私告知同意").performClick()
+        compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
+        compose.onNodeWithTag("隐私告知同意").assertIsEnabled().performClick()
         assertEquals(1, accepted)
         assertEquals(1, repository.accepts)
     }
 
-    @Test fun 加载中空正文及类型错误均不能使用摘要同意() {
-        val state = mutableStateOf(LegalDocumentUiState())
-        val terms = LegalDocumentUiState(isLoading = false,
-            document = LegalDocument(LegalDocumentType.TERMS, listOf(LegalDocumentSection(null, "合成协议全文"))))
-        compose.setContent { LiZhangTheme {
-            PrivacyNoticeScreen(privacyState = state.value, termsState = terms, onAgree = {}, onDecline = {})
-        } }
-        for (invalid in listOf(
-            LegalDocumentUiState(),
-            LegalDocumentUiState(isLoading = false, document = LegalDocument(LegalDocumentType.PRIVACY, emptyList())),
-            LegalDocumentUiState(isLoading = false, document = LegalDocument(LegalDocumentType.PRIVACY,
-                listOf(LegalDocumentSection(null, " ")))),
-            terms,
-        )) {
-            compose.runOnIdle { state.value = invalid }
-            compose.onNodeWithTag("隐私告知同意").assertIsNotEnabled()
-            compose.onNodeWithTag("隐私告知拒绝").assertIsEnabled()
+    @Test fun 摘要不预读全文也不自动同意() {
+        val repository = UiConsentRepository()
+        val viewModel = PrivacyConsentViewModel(repository)
+        var reads = 0
+        val unavailable = LegalDocumentRepository {
+            reads++
+            error("合成读取失败")
         }
+        compose.setContent { LiZhangTheme { PrivacyNoticeGate(viewModel, unavailable, {}, {}) } }
+        compose.onNodeWithTag("隐私告知同意").assertIsEnabled()
+        compose.onNodeWithTag("隐私告知拒绝").assertIsEnabled()
+        compose.runOnIdle {
+            assertEquals(0, reads)
+            assertEquals(0, repository.accepts)
+            assertFalse(repository.state.value.canProcessPersonalData)
+        }
+        compose.onNodeWithTag("隐私告知同意").performClick()
+        assertEquals(1, repository.accepts)
     }
 
     @Test fun 保存失败显示错误且不调用业务进入回调() {

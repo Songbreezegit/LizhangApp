@@ -2,9 +2,9 @@
 <resources>
     <string name="privacy_notice_title">Privacy notice</string>
     <string name="privacy_notice_intro">Before keeping records, read this notice and the complete Privacy Policy and User Agreement, then make an explicit choice.</string>
-    <string name="privacy_notice_local_data">LiZhang stores contacts, gift records and reminders you enter or import on this device for bookkeeping, searches and local reminders. The app does not upload them to a server and offers no OCR, image upload or cloud recognition.</string>
-    <string name="privacy_notice_permissions">Only when you request contact import and grant permission are names, full phone numbers and system IDs read for preview. After confirmation, only names and numbers are stored locally. Enabling reminders requests notification permission and gives reminder content to Android to display. Declining either optional permission does not prevent bookkeeping.</string>
-    <string name="privacy_notice_exports">You initiate backup, restore and CSV or Excel export and select the file location. CSV, Excel and unencrypted backups contain readable personal data. Keep files secure; backups can be encrypted with a password.</string>
+    <string name="privacy_notice_local_data">LiZhang stores the contacts, gift records and reminders you enter or import on this device. No account, ads or cloud sync are provided, and the app does not upload this data.</string>
+    <string name="privacy_notice_permissions">Contacts are read for preview, selection and deduplication only after you request import and grant permission. Notification permission is requested when you enable reminders. Both permissions are optional for bookkeeping.</string>
+    <string name="privacy_notice_exports">CSV, Excel and ordinary backups are unencrypted; password encryption is optional for backups. Restore replaces contacts and gift records rather than merging them. Backups exclude reminders and settings. Keep files and passwords secure.</string>
     <string name="privacy_notice_candidate">See the full text for operator details, version, effective date and publication status. In-app consent and operator approval for publication are separate records.</string>
     <string name="privacy_notice_version">Notice content ID: %1$s</string>
     <string name="privacy_notice_read_privacy">Read Privacy Policy offline</string>

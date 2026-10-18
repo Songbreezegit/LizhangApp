@@ -6,7 +6,7 @@
     <string name="legal_candidate_notice">法律文档 · 发布状态与生效日期见正文</string>
     <string name="legal_language_fallback">完整离线正文以简体中文提供，所有应用语言均读取同一全文。当前不提供其他语言的完整译文，也不以摘要替代关键数据处理说明。</string>
     <string name="legal_content_version">内容标识：%1$s（版本与生效日期见正文）</string>
-    <string name="legal_read_failed">离线文档暂时无法读取。请重试；确认告知前应先能查看完整正文。</string>
+    <string name="legal_read_failed">离线全文暂时无法读取。可重试或返回上一页；此错误不会自动记录为同意。</string>
     <string name="legal_retry">重新读取</string>
     <string name="legal_online_explanation">网站由系统浏览器访问，受网络及网站可用性影响；本页全文随安装包保存，无需联网。</string>
     <string name="legal_open_official_site">在浏览器打开官方网站</string>

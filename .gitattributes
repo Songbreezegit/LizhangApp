@@ -9,3 +9,6 @@
 /website/**/*.css text eol=lf
 /website/**/*.conf text eol=lf
 /website/**/*.md text eol=lf
+/website/**/*.ps1 text eol=lf
+/website/**/*.txt text eol=lf
+/website/**/*.cmd text eol=crlf

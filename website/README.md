@@ -11,15 +11,19 @@ node website/scripts/build.mjs --review
 node website/scripts/preview.mjs
 ```
 
-浏览器由用户打开 `http://127.0.0.1:4173/`；Ctrl+C 停止。备用端口为 `node website/scripts/preview.mjs 4174`。预览只监听 `127.0.0.1`；本轮没有启动浏览器或执行 HTTP 验收。也可在 website 目录执行 `npm run build:review` 和 `npm run preview`。
+必须先启动上述预览进程，等终端显示“服务已启动”，再由用户在同一台 Windows 电脑打开终端显示的地址。保持进程窗口打开，Ctrl+C 停止；停止后回环地址不可继续使用。备用端口为 `node website/scripts/preview.mjs 4174`。本轮没有启动服务、浏览器或执行 HTTP 验收，不提供已验证可访问的平台预览入口。也可在 website 目录执行 `npm run build:review` 和 `npm run preview`。
+
+需要可解压交付包时，在仓库根目录构建后执行 `powershell -NoProfile -File website/scripts/package-preview.ps1`。ZIP 位于 `build/deliveries/privacy-entry-preview/`，包含完整 dist、`scripts/preview.mjs`、`START-PREVIEW.cmd` 与简明 README.txt；有同名包时拒绝覆盖，可用 `-ArchiveName 新文件名.zip`。用户完整解压后双击 START-PREVIEW.cmd，先看终端启动结果再打开浏览器。脚本不安装 Node、不修改防火墙、不启动浏览器、不访问公网。
+
+`127.0.0.1` 指向浏览器所在的电脑；远程执行环境中的回环地址不能当成用户 Windows 的地址。未启动本机服务时只打开链接可能收到 ERR_CONNECTION_REFUSED。本包交付不表示当前已存在可访问的预览服务，也不是公网官网部署。
 
 审核产物位于 `website/dist/`，包含五个页面、404、robots、本地 CSS/品牌图及 `BUILD-INFO.json`。始终带审核横幅、候选正文状态和 noindex/禁止抓取，即使批准字段后来填完也不会变成生产产物。不要把审核目录改名后上传公网。直接双击 HTML 无法正确解析站内绝对路径，应使用本机 HTTP 预览。
 
 ## 唯一正文与配置关联
 
-隐私政策、协议、帮助的唯一正文分别为 `app/src/main/assets/legal/privacy.md`、`terms.md`、`help.md`。共享公开资料在同目录 `metadata.properties`。Android 离线加载器和网站构建器都解析正文中 `{{字段名}}`，因此生效日期仅在 `effective_date` 配置一处。未知字段、缺值、残留标记或版本不一致会使加载/构建失败，不以空白或摘要替代全文。
+隐私政策、协议、帮助的唯一正文分别为 `app/src/main/assets/legal/privacy.md`、`terms.md`、`help.md`。共享公开资料在同目录 `metadata.properties`，生效日期仅在 `effective_date` 配置一处。Android 的 `generateOfflineLegalAssets` 在构建时用普通字符串替换展开模板并校对版本，网站构建从同一源生成网页；缺值、残留标记或版本不符时拒绝生成。APK 的 assets/legal/*.md 来自已展开资源，许可等其他资产原样保留，Android 运行时不再解释元数据或模板正则。
 
-`LegalPolicy.CURRENT_VERSION`、正文内容标识、元数据与 `release/legal-approval.properties` 的 `policy_version` 一致；实质内容更新必须一起变更，沿用现有确认记录逻辑重新告知升级用户。首次同意/拒绝、失败时不放行的 UI 和保存逻辑未改。
+`LegalPolicy.CURRENT_VERSION`、正文内容标识、元数据与 `release/legal-approval.properties` 的 `policy_version` 一致，本次更新为 `privacy-entry-policy-20261019`；实质内容更新须一起变更，沿用既有确认记录逻辑重新告知升级用户。首次告知改为摘要和 App 内全文链接，全文读取故障不再禁用摘要上的同意按钮；只有主动同意且确认记录保存成功才能进入业务页面。全文页返回摘要，摘要页拒绝/返回退出，既有账本和业务初始化保护保留。旧文档的“文档读取失败不能进入”是历史行为。
 
 `website/site.config.json` 保留原有 `domain` 和 `icp.approved/number` 数据结构，现为已取得真实 ICP 编号的 `true/渝ICP备2026025309号-1`；构建同时核对元数据及批准配置中的号码和域名。所有正常公开页面页脚统一从同一配置显示编号并链接工信部。`publicSecurity` 为独立未来入口，尚未取得编号时 number/url 都为 null，不展示公安备案号。
 

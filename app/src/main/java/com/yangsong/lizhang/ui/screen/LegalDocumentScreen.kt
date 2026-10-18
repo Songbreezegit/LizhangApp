@@ -42,9 +42,9 @@ import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun LegalDocumentScreen(viewModel: LegalDocumentViewModel, onBack: () -> Unit) {
+fun LegalDocumentScreen(viewModel: LegalDocumentViewModel, onBack: () -> Unit, showOnlineLink: Boolean = true) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LegalDocumentContent(viewModel.type, state, onBack, viewModel::reload)
+    LegalDocumentContent(viewModel.type, state, onBack, viewModel::reload, showOnlineLink)
 }
 
 @Composable
@@ -53,6 +53,7 @@ fun LegalDocumentContent(
     state: LegalDocumentUiState,
     onBack: () -> Unit,
     onRetry: () -> Unit = {},
+    showOnlineLink: Boolean = true,
 ) {
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -87,6 +88,7 @@ fun LegalDocumentContent(
             if (state.failed) item {
                 LegalCard {
                     Text(stringResource(R.string.legal_read_failed), style = MaterialTheme.typography.bodyLarge)
+                    state.debugFailure?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                     SecondaryButton(stringResource(R.string.legal_retry), onRetry, Modifier.fillMaxWidth())
                 }
             }
@@ -103,7 +105,7 @@ fun LegalDocumentContent(
                     }
                 }
             }
-            item(key = "online") {
+            if (showOnlineLink) item(key = "online") {
                 LegalCard {
                     Text(stringResource(R.string.legal_online_explanation),
                         style = MaterialTheme.typography.bodyLarge,

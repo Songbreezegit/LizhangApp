@@ -37,6 +37,52 @@ fun readLegalProperties(source: java.io.File): Properties {
     return Properties().apply { source.reader(Charsets.UTF_8).use { load(it) } }
 }
 
+// 构建阶段以普通字符串展开共享字段，不把正则或元数据解释器留给 Android 的全文加载路径。
+fun renderLegalMarkdown(source: java.io.File, metadata: Properties): String {
+    var rendered = source.readText(Charsets.UTF_8)
+    metadata.stringPropertyNames().filter { it != "publication_status" }.forEach { key ->
+        rendered = rendered.replace("{{${key}}}", metadata.getProperty(key))
+    }
+    rendered = rendered.replace("{{publication_status}}", if (metadata.getProperty("approval_status") == "approved") {
+        "正式文本"
+    } else {
+        "候选定稿 · 尚未正式生效 · 等待用户验收与发布批准"
+    })
+    if (rendered.isBlank() || rendered.contains("{{") || rendered.contains("}}")) {
+        throw GradleException("离线法律文档生成失败：${source.name} 有空白正文或未解析字段。")
+    }
+    return rendered
+}
+
+val generatedOfflineLegalAssets = layout.buildDirectory.dir("generated/offlineLegalAssets")
+val generateOfflineLegalAssets by tasks.registering(Sync::class) {
+    // 许可等既有资产原样复制；法律 Markdown 只打包已展开版本，原始模板不进入 APK。
+    from("src/main/assets") { exclude("legal/*.md") }
+    into(generatedOfflineLegalAssets)
+    inputs.dir(legalAssetDirectory)
+    inputs.file(legalApprovalFile)
+    inputs.file("src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt")
+    doLast {
+        val metadata = readLegalProperties(legalAssetDirectory.resolve("metadata.properties"))
+        val approval = readLegalProperties(legalApprovalFile)
+        val version = Regex("CURRENT_VERSION\\s*=\\s*\"([^\"]+)\"").find(
+            file("src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt").readText(Charsets.UTF_8)
+        )?.groupValues?.get(1)
+        if (version.isNullOrBlank() || metadata.getProperty("policy_version") != version ||
+            approval.getProperty("policy_version") != version) {
+            throw GradleException("离线法律文档生成失败：常量、元数据和批准资料版本不一致。")
+        }
+        val target = generatedOfflineLegalAssets.get().asFile.resolve("legal").apply { mkdirs() }
+        listOf("privacy.md", "terms.md", "help.md").forEach { name ->
+            val source = legalAssetDirectory.resolve(name)
+            if (!source.readText(Charsets.UTF_8).contains(version)) {
+                throw GradleException("离线法律文档生成失败：$name 缺少当前内容标识。")
+            }
+            target.resolve(name).writeText(renderLegalMarkdown(source, metadata), Charsets.UTF_8)
+        }
+    }
+}
+
 // 七语言使用同一待批准标记规则；扫描脚本直接读取此规则，避免只清理中文后误发其他草稿。
 val unapprovedLegalText = Regex(
     rootProject.file("release/unapproved-content-pattern.txt").readText(Charsets.UTF_8).trim(),
@@ -106,13 +152,8 @@ val verifyOfficialReleaseContent by tasks.registering {
         }
         // Markdown 正文通过同一元数据填入日期和公开资料；未知字段不能变成正式空白正文。
         listOf("privacy.md", "terms.md", "help.md").forEach { name ->
-            val rendered = Regex("\\{\\{([a-z_]+)}}").replace(legalAssetDirectory.resolve(name).readText(Charsets.UTF_8)) { match ->
-                if (match.groupValues[1] == "publication_status") "正式文本" else {
-                    metadata.getProperty(match.groupValues[1])?.takeIf { it.isNotBlank() }
-                        ?: throw GradleException("正式发布被阻止：正文缺少统一字段 ${match.groupValues[1]}。")
-                }
-            }
-            if (rendered.contains("{{") || rendered.contains("}}") || unapprovedLegalText.containsMatchIn(rendered)) {
+            val rendered = renderLegalMarkdown(legalAssetDirectory.resolve(name), metadata)
+            if (unapprovedLegalText.containsMatchIn(rendered)) {
                 throw GradleException("正式发布被阻止：$name 仍有未解析或未批准资料。")
             }
         }
@@ -164,8 +205,9 @@ val generateChineseResources by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("generated/chineseResources/values-zh"))
 }
 android.sourceSets.getByName("main").res.srcDir(layout.buildDirectory.dir("generated/chineseResources"))
+android.sourceSets.getByName("main").assets.setSrcDirs(listOf(generatedOfflineLegalAssets))
 tasks.named("preBuild").configure {
-    dependsOn(generateChineseResources)
+    dependsOn(generateChineseResources, generateOfflineLegalAssets)
     if (officialRelease) dependsOn(verifyOfficialReleaseContent)
 }
 

@@ -6,7 +6,7 @@
     <string name="legal_candidate_notice">Documents juridiques · Statut de publication et date d’effet dans le texte intégral</string>
     <string name="legal_language_fallback">Le texte intégral hors ligne est en chinois simplifié. Toutes les langues affichent le même texte complet. Les traductions intégrales ne sont pas proposées actuellement ; les explications essentielles sur les données ne sont jamais remplacées par un résumé.</string>
     <string name="legal_content_version">Identifiant du contenu : %1$s (version et date d’effet dans le texte intégral)</string>
-    <string name="legal_read_failed">Impossible de charger le document hors ligne. Réessayez pour lire le texte intégral avant de confirmer l\'avis.</string>
+    <string name="legal_read_failed">Impossible de lire le texte intégral hors ligne. Réessayez ou revenez à la page précédente. Cette erreur ne vaut pas consentement.</string>
     <string name="legal_retry">Recharger</string>
     <string name="legal_online_explanation">Le navigateur du système ouvre le site, selon la disponibilité du réseau et du site. Le texte intégral de cette page est inclus dans l’application et fonctionne hors ligne.</string>
     <string name="legal_open_official_site">Ouvrir le site officiel dans le navigateur</string>

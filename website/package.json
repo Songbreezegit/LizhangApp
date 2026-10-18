@@ -10,6 +10,7 @@
     "build": "node scripts/build.mjs --review",
     "build:review": "node scripts/build.mjs --review",
     "build:production": "node scripts/build.mjs --production",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "package:review": "powershell -NoProfile -File scripts/package-preview.ps1"
   }
 }

@@ -3,6 +3,7 @@ package com.yangsong.lizhang.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.domain.legal.LegalDocument
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
 import com.yangsong.lizhang.domain.repository.LegalDocumentRepository
@@ -16,6 +17,7 @@ data class LegalDocumentUiState(
     val isLoading: Boolean = true,
     val document: LegalDocument? = null,
     val failed: Boolean = false,
+    val debugFailure: String? = null,
 )
 
 class LegalDocumentViewModel(
@@ -36,8 +38,10 @@ class LegalDocumentViewModel(
                 _state.value = LegalDocumentUiState(isLoading = false, document = repository.load(type))
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
-                _state.value = LegalDocumentUiState(isLoading = false, failed = true)
+            } catch (error: Exception) {
+                // 不显示异常 message、正文或元数据值；Release 不携带诊断详情。
+                _state.value = LegalDocumentUiState(isLoading = false, failed = true,
+                    debugFailure = if (BuildConfig.DEBUG) "${type.name}: ${error.javaClass.simpleName}" else null)
             }
         }
     }

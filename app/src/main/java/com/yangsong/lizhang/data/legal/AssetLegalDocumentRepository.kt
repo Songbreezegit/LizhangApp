@@ -1,15 +1,16 @@
 package com.yangsong.lizhang.data.legal
 
 import android.content.Context
+import android.util.Log
+import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.domain.legal.LegalDocument
 import com.yangsong.lizhang.domain.legal.LegalDocumentParser
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
-import com.yangsong.lizhang.domain.legal.LegalPolicy
 import com.yangsong.lizhang.domain.repository.LegalDocumentRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.Properties
+import kotlinx.coroutines.CancellationException
 
 /** 只读取随安装包交付的正文，未读取业务数据，不依赖网络或浏览器。 */
 class AssetLegalDocumentRepository(
@@ -19,22 +20,23 @@ class AssetLegalDocumentRepository(
     private val assets = context.applicationContext.assets
 
     override suspend fun load(type: LegalDocumentType): LegalDocument = withContext(dispatcher) {
-        val markdown = assets.open("legal/${type.assetName}").bufferedReader(Charsets.UTF_8).use { it.readText() }
-        // 正文和官网共享同一元数据；缺字段或版本不符时沿用原有加载失败门禁。
-        val metadata = Properties().apply {
-            assets.open("legal/metadata.properties").reader(Charsets.UTF_8).use { load(it) }
+        var stage = "读取资源"
+        try {
+            // 模板和版本在构建时处理；安装包中的这个路径已是完整正文。
+            val markdown = assets.open("legal/${type.assetName}").bufferedReader(Charsets.UTF_8).use { it.readText() }
+            stage = "检查正文"
+            require(markdown.isNotBlank() && !markdown.contains("{{") && !markdown.contains("}}")) { "离线正文资源不完整" }
+            stage = "解析正文"
+            LegalDocumentParser.parse(type, markdown)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            if (BuildConfig.DEBUG) {
+                val frame = error.stackTrace.firstOrNull { it.className.startsWith("com.yangsong.lizhang.") }
+                // 仅固定文档类型、阶段、错误类型和应用源码位置；不输出 message、堆栈或正文。
+                Log.w("LiZhangLegal", "离线文档失败 document=${type.name} stage=$stage error=${error.javaClass.simpleName} source=${frame?.fileName}:${frame?.lineNumber}")
+            }
+            throw error
         }
-        require(metadata.getProperty("policy_version") == LegalPolicy.CURRENT_VERSION) { "法律资料版本不一致" }
-        val values = metadata.stringPropertyNames().associateWith { metadata.getProperty(it) }.toMutableMap()
-        values["publication_status"] = if (metadata.getProperty("approval_status") == "approved") {
-            "正式文本"
-        } else {
-            "候选定稿 · 尚未正式生效 · 等待用户验收与发布批准"
-        }
-        val rendered = Regex("\\{\\{([a-z_]+)}}").replace(markdown) { match ->
-            requireNotNull(values[match.groupValues[1]]?.takeIf { it.isNotBlank() }) { "缺少法律资料字段" }
-        }
-        require(!rendered.contains("{{") && !rendered.contains("}}")) { "法律文档仍有未解析字段" }
-        LegalDocumentParser.parse(type, rendered)
     }
 }
