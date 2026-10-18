@@ -2,12 +2,14 @@
   "name": "lizhang-website-minimal",
   "private": true,
   "type": "module",
-  "description": "礼账最简静态官网，本地预览",
+  "description": "礼账纯静态官网，审核构建与经批准的生产构建",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node scripts/build.mjs --review",
+    "build:review": "node scripts/build.mjs --review",
+    "build:production": "node scripts/build.mjs --production",
     "preview": "node scripts/preview.mjs"
   }
 }

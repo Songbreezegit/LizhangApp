@@ -3,12 +3,12 @@
     <string name="legal_help_title">說明文件</string>
     <string name="legal_terms_description">離線閱讀完整使用者協議</string>
     <string name="legal_help_description">查看記帳、權限、備份與還原說明</string>
-    <string name="legal_candidate_notice">候選審核稿 · 尚未生效</string>
-    <string name="legal_language_fallback">離線正文完整提供簡體中文審核稿，所有應用語言均讀取同一全文。其他語言的完整譯文待審核，目前不會以摘要取代關鍵資料處理說明。</string>
-    <string name="legal_content_version">候選內容識別碼：%1$s（正式政策版本待本人確認）</string>
+    <string name="legal_candidate_notice">法律文件 · 發布狀態與生效日期見正文</string>
+    <string name="legal_language_fallback">完整離線正文以簡體中文提供，所有應用語言均讀取同一全文。目前不提供其他語言的完整譯文，也不以摘要取代關鍵資料處理說明。</string>
+    <string name="legal_content_version">內容識別碼：%1$s（版本與生效日期見正文）</string>
     <string name="legal_read_failed">暫時無法讀取離線文件。請重試；確認告知前應先能查看完整正文。</string>
     <string name="legal_retry">重新讀取</string>
-    <string name="legal_online_explanation">網站目前僅提供本機預覽，尚未部署到公網。此網址預留給未來官網，瀏覽器連結可能暫時無法使用；本頁全文無需連網。</string>
+    <string name="legal_online_explanation">網站由系統瀏覽器存取，受網路及網站可用性影響；本頁全文隨安裝套件保存，無需連網。</string>
     <string name="legal_open_official_site">在瀏覽器開啟官方網站</string>
     <string name="legal_browser_failed">無法開啟系統瀏覽器。你仍可在本頁離線閱讀全文。</string>
 </resources>

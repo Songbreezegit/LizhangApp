@@ -1,0 +1,11 @@
+# 批准摘要按文件原始字节计算；这些输入在 Windows/Linux 统一为 LF。
+/app/src/main/assets/legal/* text eol=lf
+/app/src/main/res/**/legal*.xml text eol=lf
+/app/src/main/res/**/privacy*.xml text eol=lf
+/release/*.properties text eol=lf
+/release/unapproved-content-pattern.txt text eol=lf
+/website/**/*.mjs text eol=lf
+/website/**/*.json text eol=lf
+/website/**/*.css text eol=lf
+/website/**/*.conf text eol=lf
+/website/**/*.md text eol=lf

@@ -3,12 +3,12 @@
     <string name="legal_help_title">Documentos de ayuda</string>
     <string name="legal_terms_description">Leer todas las condiciones sin conexión</string>
     <string name="legal_help_description">Guía de registros, permisos, copias y restauración</string>
-    <string name="legal_candidate_notice">Borrador para revisión · Aún no vigente</string>
-    <string name="legal_language_fallback">El borrador completo sin conexión está en chino simplificado. Todos los idiomas muestran el mismo texto íntegro. Las traducciones completas esperan revisión; las explicaciones clave del tratamiento de datos nunca se sustituyen por un resumen.</string>
-    <string name="legal_content_version">ID del contenido candidato: %1$s (la versión oficial espera confirmación del desarrollador)</string>
+    <string name="legal_candidate_notice">Documentos legales · Estado de publicación y fecha de vigencia en el texto completo</string>
+    <string name="legal_language_fallback">El texto completo sin conexión está en chino simplificado. Todos los idiomas muestran el mismo texto íntegro. Actualmente no se ofrecen traducciones completas; las explicaciones clave del tratamiento de datos nunca se sustituyen por un resumen.</string>
+    <string name="legal_content_version">ID del contenido: %1$s (versión y fecha de vigencia en el texto completo)</string>
     <string name="legal_read_failed">No se pudo cargar el documento sin conexión. Reintenta para leer el texto completo antes de confirmar el aviso.</string>
     <string name="legal_retry">Volver a cargar</string>
-    <string name="legal_online_explanation">El sitio solo está disponible como vista previa local y aún no se ha publicado. Esta dirección está reservada para el futuro sitio y puede no estar disponible. El texto completo de esta página funciona sin conexión.</string>
+    <string name="legal_online_explanation">El navegador del sistema abre el sitio, sujeto a la disponibilidad de la red y del sitio. El texto completo de esta página se incluye en la aplicación y funciona sin conexión.</string>
     <string name="legal_open_official_site">Abrir sitio oficial en el navegador</string>
     <string name="legal_browser_failed">No se pudo abrir el navegador del sistema. Puedes leer aquí el texto completo sin conexión.</string>
 </resources>

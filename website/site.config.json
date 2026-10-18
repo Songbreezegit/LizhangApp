@@ -1,7 +1,22 @@
 {
   "domain": "lizhang.songisle.xyz",
   "icp": {
-    "approved": false,
-    "number": null
+    "approved": true,
+    "number": "渝ICP备2026025309号-1"
+  },
+  "publicSecurity": { "number": null, "url": null },
+  "deploymentReview": {
+    "icpDomainStatus": "pending",
+    "icpOperatorStatus": "pending",
+    "accessProviderStatus": "pending",
+    "serverStatus": "pending",
+    "reviewedBy": null,
+    "reviewedAt": null
+  },
+  "productionApproval": {
+    "status": "pending",
+    "reviewedBy": null,
+    "approvedAt": null,
+    "approvedSiteSha256": null
   }
 }

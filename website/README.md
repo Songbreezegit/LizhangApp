@@ -1,43 +1,51 @@
-# 礼账最简官方网站
+# 礼账纯静态官网
 
-目标域名：`lizhang.songisle.xyz`。当前仅供本机预览，ICP 备案仍在审核，未部署到公网。
+域名 `lizhang.songisle.xyz`；个人运营者杨松，联系邮箱 `3173887065@qq.com`，网站 ICP `渝ICP备2026025309号-1`。本轮尚未部署，实际生效日期、法律正文批准、接入/服务器和日志复核仍待用户完成。旧交付文档中的“备案审核中”属于历史记录，当前状态以共享元数据和本说明为准。
 
-## Windows 本机预览
+## Windows 审核预览
 
-需要 Node.js 18 或以上，无 npm 依赖，无需安装包。在本仓库根目录的 PowerShell 执行：
+需要 Node.js 18 或以上，无 npm 依赖。在仓库根目录执行：
 
 ```powershell
-node website/scripts/build.mjs
+node website/scripts/build.mjs --review
 node website/scripts/preview.mjs
 ```
 
-浏览器打开 `http://127.0.0.1:4173/`，按 Ctrl+C 停止。端口占用时可执行 `node website/scripts/preview.mjs 4174`。预览始终只绑定 `127.0.0.1`，不提供绑定公网地址的选项。也可在 website 目录执行 `npm run build` 和 `npm run preview`。
+浏览器由用户打开 `http://127.0.0.1:4173/`；Ctrl+C 停止。备用端口为 `node website/scripts/preview.mjs 4174`。预览只监听 `127.0.0.1`；本轮没有启动浏览器或执行 HTTP 验收。也可在 website 目录执行 `npm run build:review` 和 `npm run preview`。
 
-构建产物位于 `website/dist/`，包含首页、`/privacy/`、`/terms/`、`/help/`、`/contact/`，以及静态样式、品牌图片和 404 页面。请通过本机 HTTP 预览，直接双击 HTML 的 file 地址无法正确解析站内绝对路径。生成目录不提交 Git。
+审核产物位于 `website/dist/`，包含五个页面、404、robots、本地 CSS/品牌图及 `BUILD-INFO.json`。始终带审核横幅、候选正文状态和 noindex/禁止抓取，即使批准字段后来填完也不会变成生产产物。不要把审核目录改名后上传公网。直接双击 HTML 无法正确解析站内绝对路径，应使用本机 HTTP 预览。
 
-## 文档唯一来源
+## 唯一正文与配置关联
 
-隐私政策、用户协议和帮助页完整读取 `app/src/main/assets/legal/privacy.md`、`terms.md`、`help.md`。网站联系资料读取同目录 `metadata.properties`，不要另外维护一套网站政策或联系信息。
+隐私政策、协议、帮助的唯一正文分别为 `app/src/main/assets/legal/privacy.md`、`terms.md`、`help.md`。共享公开资料在同目录 `metadata.properties`。Android 离线加载器和网站构建器都解析正文中 `{{字段名}}`，因此生效日期仅在 `effective_date` 配置一处。未知字段、缺值、残留标记或版本不一致会使加载/构建失败，不以空白或摘要替代全文。
 
-构建会核对文档内容标识、法律元数据、Android `LegalPolicy.CURRENT_VERSION` 和既有发布批准文件中的候选版本是否一致。政策实质更新时须同时更新这些版本，使旧版本确认记录失效、升级用户重新看到告知；不得通过修改版本直接批准正文。
+`LegalPolicy.CURRENT_VERSION`、正文内容标识、元数据与 `release/legal-approval.properties` 的 `policy_version` 一致；实质内容更新必须一起变更，沿用现有确认记录逻辑重新告知升级用户。首次同意/拒绝、失败时不放行的 UI 和保存逻辑未改。
 
-Markdown 仅支持本文使用的标题、段落、列表、表格、粗体、代码和链接。原始 HTML 和全部文本都会转义，链接仅允许已知站内页面或无账号凭据的 HTTPS 地址；不执行嵌入脚本。新增文档语法时应明确扩展构建器，不依赖浏览器执行 Markdown。
+`website/site.config.json` 保留原有 `domain` 和 `icp.approved/number` 数据结构，现为已取得真实 ICP 编号的 `true/渝ICP备2026025309号-1`；构建同时核对元数据及批准配置中的号码和域名。所有正常公开页面页脚统一从同一配置显示编号并链接工信部。`publicSecurity` 为独立未来入口，尚未取得编号时 number/url 都为 null，不展示公安备案号。
 
-品牌图片由构建器从当前 Android 的 `launcher_cat.png` 与 `home_hero_cat.png` 复制，不引入外部图片服务或另一份素材源。样式沿用应用浅色、浅杏与蓝紫色调。
+共享元数据中的 `operator_details_status=confirmed` 仅表示运营者公开资料已确认。法律正文两个 `approval_status`、发布批准日期/人/摘要、签名身份等仍 pending，不能互相代替。网站 ICP 与 APP 备案资料及 Android 签名身份分别核对。
 
-## 本地与发布边界
+七语言提示改为准确说明“完整正文为简体中文，状态/日期见正文”，不再把已确认的运营者资料误称为未知。正文里的候选状态仍按批准记录明确展示。通讯录说明统一使用“导入条目”，与文档候选状态区分；原有禁止发布标记规则、七语言扫描、正文摘要及 Android 正式发布门禁均保留。批准输入通过 `.gitattributes` 统一 LF，避免 Windows/Linux 换行差异改变摘要。
 
-交付内容为纯静态 HTML、CSS 和本地图片，无运行时 JavaScript、后端、数据库、登录、广告、统计、第三方字体 CDN、Cookie 或浏览器存储。Node 仅用于本机生成和预览，不是正式网站后端。预览不记录访问日志。
+## 正式批准与生产构建（本轮不执行）
 
-本构建只生成带明确本地预览状态及 noindex 的候选页面，不提供正式构建或部署参数。既有 Android 正式发布门禁保留，`release/legal-approval.properties` 的 `approval_status=pending`，离线元数据仍为待批准。没有引入新的签名、复杂版本发布或部署系统。
+下面步骤仅供用户完成验收和部署复核后使用，不代表批准已发生：
 
-本轮不操作阿里云、Cloudflare、DNS、备案系统、公网 80/443 或 songisle.xyz 主站。实际响应式效果、浏览器及设备操作由开发者手动验收；未运行自动化测试。
+1. 在共享元数据填写真实 `effective_date`（严格 YYYY-MM-DD）、实际网站日志范围与保留规则；实际日志复核完成后才将 `website_log_review_status=confirmed`。确认政策/协议版本，实质变更时同步告知版本。
+2. 核对真实法律全文、七语言提示和功能后，由用户本人填写元数据及 `release/legal-approval.properties` 的法律批准状态、相同 reviewed_by、effective_date、真实 approved_at。整份法律正文批准必须为 approved；本轮不代填。
+3. 只有核对备案域名、主体、实际接入和服务器现状后，才将 site.config 的四个 `deploymentReview.*Status` 设为 confirmed，填写真实 reviewedBy/reviewedAt；用户还应完成 [部署准备清单](deploy/README.md)。本文不授权 ECS、DNS 或公网操作。
+4. 先运行审核构建，读取输出的 `legal_content_sha256` 与 `site_content_sha256`，审阅这组准确输入。法律摘要与现有 Gradle/PowerShell 使用相同路径、字节、逐文件 SHA-256 和排序；可按需用原摘要工具计算，摘要计算不是批准。
+5. 将本人批准的法律摘要写入 `release/legal-approval.properties` 的 approved_content_sha256；另在 site.config.productionApproval 填入 approved、真实 reviewedBy/approvedAt 和 approvedSiteSha256。网站摘要绑定法律摘要、网站源码、公开配置、Nginx 模板及品牌图，排除 productionApproval 自身以免自引用。它不是 zip/APK 文件哈希。
+6. 批准记录和摘要都齐全后，在仓库根目录执行 `node website/scripts/build.mjs --production`（或 website 目录 `npm run build:production`）。产物在独立 `website/dist-production/`。缺少批准、真实日期、日志/接入复核或摘要不符会在写入产物前拒绝；失败不清除磁盘上可能存在的旧生产目录，切勿把旧目录误当作本次构建。正式交付时核对新构建输出和 BUILD-INFO。
 
-## 备案通过后修改页脚
+生产正常页有 HTTPS canonical，无审核横幅且不强制 noindex，robots 允许抓取；404 仍禁止收录，HTTP 404 状态由本地预览和 Nginx 模板按各自配置提供。构建不会启动/部署服务器或自动修改批准。**本轮未尝试生产构建，也未执行门禁的正反例测试；实现仅作源码静态审阅。**
 
-1. 核对备案通过通知中的实际网站备案号及域名，不能用“审核中”替代备案号。
-2. 编辑 `website/site.config.json`，将 `icp.approved` 改为 `true`，把 `icp.number` 的 `null` 改为本人核实的真实号码字符串。当前状态为 `false/null`。
-3. 重新执行静态构建。页脚会显示真实号码并链接到工信部备案查询首页 `https://beian.miit.gov.cn/`；审核中状态不会生成备案链接。
-4. 这只更新本机页脚，不会部署、修改 DNS 或解除文案批准门禁。正式公开前仍需确认全部运营与法律资料，核对实际服务器日志并更新政策，审阅后移除本地预览与 noindex 标记，再另行授权独立发布。
+网站不要求填写 Android 签名指纹来构建网页；原 Android `officialRelease=true` 的备案、签名身份与指纹门禁仍独立保留。仅有网站批准不能使 Android 自动变为正式版本。
 
-网站 ICP 与应用备案或其他上架材料分别核对，网站备案通过不能替代应用侧所需确认。
+## 隐私与交付范围
+
+保留原页面布局、CSS 和品牌图片，未重构 UI。正文采用安全 Markdown 子集，原始 HTML 和普通文本转义，链接只允许既有站内页面或不含账户凭据的 HTTPS 地址。图片继续从 Android 绘制资源读取。
+
+无运行时 JavaScript、账号、云数据库、表单、广告、统计、Cookie/浏览器存储或第三方字体 CDN。Node.js 仅用于本地构建/预览。正式 Nginx 可能处理 IP、请求及错误/安全日志，具体日志以实际部署复核后的配置和隐私政策为准，不能声称服务器绝对不记录访问。
+
+新部署/回滚资料见 [website/deploy/README.md](deploy/README.md)，复用 ecs-ops 目录与维护边界。两种生成目录、APK、密钥及凭据均不提交 Git。本轮仅交付审核静态包和 Debug APK；未测试，等待用户验收，不合并 main、不发布标签、不改主站、不操作生产环境。

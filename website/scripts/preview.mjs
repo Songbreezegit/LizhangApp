@@ -37,6 +37,7 @@ const server = createServer((request, response) => {
   if (path === '/index.html') path = '/';
   const entry = routes.get(path);
   response.statusCode = entry ? 200 : 404;
+  if (!entry) response.setHeader('X-Robots-Tag', 'noindex, nofollow');
   response.setHeader('Content-Type', entry ? entry[1] : 'text/html; charset=utf-8');
   try {
     const data = readFileSync(resolve(dist, entry ? entry[0] : '404.html'));

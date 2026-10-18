@@ -100,6 +100,22 @@ val verifyOfficialReleaseContent by tasks.registering {
         if (currentVersion != approvedValue("policy_version")) {
             throw GradleException("正式发布被阻止：告知版本常量与批准的政策版本不一致。")
         }
+        if (metadata.getProperty("operator_details_status") != "confirmed" ||
+            metadata.getProperty("website_log_review_status") != "confirmed") {
+            throw GradleException("正式发布被阻止：运营资料及正文涉及的网站实际日志安排均须确认。")
+        }
+        // Markdown 正文通过同一元数据填入日期和公开资料；未知字段不能变成正式空白正文。
+        listOf("privacy.md", "terms.md", "help.md").forEach { name ->
+            val rendered = Regex("\\{\\{([a-z_]+)}}").replace(legalAssetDirectory.resolve(name).readText(Charsets.UTF_8)) { match ->
+                if (match.groupValues[1] == "publication_status") "正式文本" else {
+                    metadata.getProperty(match.groupValues[1])?.takeIf { it.isNotBlank() }
+                        ?: throw GradleException("正式发布被阻止：正文缺少统一字段 ${match.groupValues[1]}。")
+                }
+            }
+            if (rendered.contains("{{") || rendered.contains("}}") || unapprovedLegalText.containsMatchIn(rendered)) {
+                throw GradleException("正式发布被阻止：$name 仍有未解析或未批准资料。")
+            }
+        }
         if (approvedValue("approved_content_sha256") != legalContentDigest()) {
             throw GradleException("正式发布被阻止：正文、元数据或任一语言告知已改变，需本人重新审阅并批准当前摘要。")
         }
