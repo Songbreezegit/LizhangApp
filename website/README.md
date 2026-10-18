@@ -23,7 +23,7 @@ node website/scripts/preview.mjs
 
 隐私政策、协议、帮助的唯一正文分别为 `app/src/main/assets/legal/privacy.md`、`terms.md`、`help.md`。共享公开资料在同目录 `metadata.properties`，生效日期仅在 `effective_date` 配置一处。Android 的 `generateOfflineLegalAssets` 在构建时用普通字符串替换展开模板并校对版本，网站构建从同一源生成网页；缺值、残留标记或版本不符时拒绝生成。APK 的 assets/legal/*.md 来自已展开资源，许可等其他资产原样保留，Android 运行时不再解释元数据或模板正则。
 
-`LegalPolicy.CURRENT_VERSION`、正文内容标识、元数据与 `release/legal-approval.properties` 的 `policy_version` 一致，本次更新为 `privacy-entry-policy-20261019`；实质内容更新须一起变更，沿用既有确认记录逻辑重新告知升级用户。首次告知改为摘要和 App 内全文链接，全文读取故障不再禁用摘要上的同意按钮；只有主动同意且确认记录保存成功才能进入业务页面。全文页返回摘要，摘要页拒绝/返回退出，既有账本和业务初始化保护保留。旧文档的“文档读取失败不能进入”是历史行为。
+`LegalPolicy.CURRENT_VERSION`、正文内容标识、元数据与 `release/legal-approval.properties` 的 `policy_version` 一致，本次更新为 `privacy-scroll-policy-20261019`；实质内容更新须一起变更，沿用既有确认记录逻辑重新告知升级用户。首次告知在同一卡片内滚动显示完整隐私政策和用户协议，两份正文末尾再显示两个 App 内全文链接；全文读取故障不会禁用同意按钮。只有主动同意且确认记录保存成功才能进入业务页面，独立全文页返回原滚动位置，告知页拒绝/返回退出，既有账本和业务初始化保护保留。旧文档中的摘要版布局与“文档读取失败不能进入”分别是历史行为。
 
 `website/site.config.json` 保留原有 `domain` 和 `icp.approved/number` 数据结构，现为已取得真实 ICP 编号的 `true/渝ICP备2026025309号-1`；构建同时核对元数据及批准配置中的号码和域名。所有正常公开页面页脚统一从同一配置显示编号并链接工信部。`publicSecurity` 为独立未来入口，尚未取得编号时 number/url 都为 null，不展示公安备案号。
 

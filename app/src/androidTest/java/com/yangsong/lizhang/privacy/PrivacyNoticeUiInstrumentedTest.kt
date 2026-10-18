@@ -40,7 +40,7 @@ class PrivacyNoticeUiInstrumentedTest {
         runCatching { compose.onNodeWithTag("隐私告知同意").assertIsEnabled(); true }.getOrDefault(false)
     }
 
-    @Test fun 摘要无默认同意且两个链接离线打开全文返回后主动同意才放行() {
+    @Test fun 完整两份正文在卡片内滚动且末尾链接打开独立全文后返回() {
         val repository = UiConsentRepository()
         val viewModel = PrivacyConsentViewModel(repository)
         var accepted = 0
@@ -50,8 +50,12 @@ class PrivacyNoticeUiInstrumentedTest {
         } }
         waitForDocuments()
         compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)).assertCountEquals(0)
-        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_intro)).assertExists()
-        compose.onNodeWithText("PRIVACY合成完整正文1。仅用于测试。").assertDoesNotExist()
+        compose.onNodeWithText(compose.activity.getString(R.string.privacy_notice_intro)).assertDoesNotExist()
+        for (type in listOf(LegalDocumentType.PRIVACY, LegalDocumentType.TERMS)) {
+            for (index in 1..6) {
+                compose.onNodeWithText("${type.name}合成完整正文$index。仅用于测试。").performScrollTo().assertIsDisplayed()
+            }
+        }
         for (type in listOf(LegalDocumentType.PRIVACY, LegalDocumentType.TERMS)) {
             val tag = if (type == LegalDocumentType.PRIVACY) "告知阅读隐私政策" else "告知阅读用户协议"
             compose.onNodeWithTag(tag).performScrollTo().performClick()
@@ -141,7 +145,7 @@ class PrivacyNoticeUiInstrumentedTest {
         assertFalse(repository.state.value.canProcessPersonalData)
     }
 
-    @Test fun 全文失败可重试且返回摘要后仍须主动同意() {
+    @Test fun 全文失败可重试且返回告知后仍须主动同意() {
         val repository = UiConsentRepository()
         val viewModel = PrivacyConsentViewModel(repository)
         var accepted = 0
@@ -168,7 +172,7 @@ class PrivacyNoticeUiInstrumentedTest {
         assertEquals(1, repository.accepts)
     }
 
-    @Test fun 摘要不预读全文也不自动同意() {
+    @Test fun 全文加载失败仍需主动选择且不自动同意() {
         val repository = UiConsentRepository()
         val viewModel = PrivacyConsentViewModel(repository)
         var reads = 0
@@ -177,10 +181,11 @@ class PrivacyNoticeUiInstrumentedTest {
             error("合成读取失败")
         }
         compose.setContent { LiZhangTheme { PrivacyNoticeGate(viewModel, unavailable, {}, {}) } }
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("告知重新读取_privacy").fetchSemanticsNodes().isNotEmpty() && compose.onAllNodesWithTag("告知重新读取_terms").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("隐私告知同意").assertIsEnabled()
         compose.onNodeWithTag("隐私告知拒绝").assertIsEnabled()
         compose.runOnIdle {
-            assertEquals(0, reads)
+            assertEquals(2, reads)
             assertEquals(0, repository.accepts)
             assertFalse(repository.state.value.canProcessPersonalData)
         }
