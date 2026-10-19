@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">LiZhang conserve sur cet appareil les contacts, cadeaux et rappels que vous saisissez ou importez. Il ne propose ni compte, ni publicité, ni synchronisation cloud et ne téléverse pas ces données.</string>
     <string name="privacy_notice_permissions">Les contacts sont lus pour aperçu, sélection et dédoublonnage uniquement après votre demande d’importation et votre autorisation. Les notifications sont demandées à l’activation des rappels. Ces deux autorisations sont facultatives pour les comptes.</string>
     <string name="privacy_notice_exports">CSV, Excel et sauvegardes ordinaires ne sont pas chiffrés ; le chiffrement par mot de passe est facultatif. Restaurer remplace les contacts et cadeaux sans les fusionner. Les rappels et réglages sont exclus. Protégez fichiers et mots de passe.</string>
-    <string name="privacy_notice_candidate">Les coordonnées de l’opérateur, la version, la date d’effet et le statut de publication figurent dans le texte intégral. Le consentement dans l’application et l’approbation de publication par l’opérateur sont des enregistrements distincts.</string>
-    <string name="privacy_notice_version">Identifiant du contenu de l’avis : %1$s</string>
     <string name="privacy_notice_read_privacy">Lire la politique hors ligne</string>
     <string name="privacy_notice_read_terms">Lire les conditions hors ligne</string>
     <string name="privacy_notice_agree">Accepter la politique et les conditions et continuer</string>

@@ -13,12 +13,12 @@ class LegalDocumentTest {
     @Test fun `三份离线完整正文包含关键数据处理说明`() {
         val required = mapOf(
             LegalDocumentType.PRIVACY to listOf("READ_CONTACTS", "POST_NOTIFICATIONS", "PBKDF2-HMAC-SHA256",
-                "AES-256-GCM", "专用扩展名和校验不等于加密", "此前已确认导入的礼账联系人不会自动删除", "同一全文",
-                "独立提醒", "替换当前联系人和礼金", "未设置礼账自身的密码加密", "IP 地址", "未成年人"),
-            LegalDocumentType.TERMS to listOf("手动添加联系人", "密码遗失", "替换当前联系人和礼金", "关联的礼金记录",
-                "锁屏", "不承诺", "第三方", "未成年人"),
-            LegalDocumentType.HELP to listOf("拒绝通知权限不影响记账", "当前礼金备份不包含独立提醒", "替换当前全部联系人",
-                "不能通过礼账的恢复入口导入", "完整译文待审核", "数据备份与恢复"),
+                "AES-256-GCM", "CSV、Excel 和普通备份文件未加密", "撤回权限不会自动删除", "官网访问补充说明",
+                "独立提醒", "替换设备中现有的联系人及礼金记录", "独立密码加密", "依法向有关主管部门投诉", "未成年人"),
+            LegalDocumentType.TERMS to listOf("手动添加联系人", "遗失后我无法替你找回或解密", "替换设备中现有的全部联系人及礼金记录", "关联的礼金记录",
+                "锁屏", "不能保证", "第三方", "未成年人"),
+            LegalDocumentType.HELP to listOf("拒绝通知权限不影响记账", "礼金备份不包含独立提醒", "替换当前联系人和礼金记录",
+                "不能通过礼账恢复", "完整正文为简体中文", "数据备份与恢复"),
         )
         required.forEach { (type, phrases) ->
             val text = File(sourceRoot, "assets/legal/${type.assetName}").readText()
@@ -32,14 +32,14 @@ class LegalDocumentTest {
     @Test fun `表格逐行展开与强调链接处理不丢失完整内容`() {
         val document = LegalDocumentParser.parse(LegalDocumentType.PRIVACY, """
             # 隐私政策
-            **尚未生效**
+            **版本：1.0.0**
             ## 处理与保存
             | 数据 | 用途 | 保留 |
             | --- | --- | --- |
             | 联系人号码 | **选择导入** | 至你删除 |
             详情见[隐私政策](/privacy/)和[官方说明](https://example.invalid/privacy/)。
         """.trimIndent())
-        assertEquals("尚未生效", document.sections.first().body)
+        assertEquals("版本：1.0.0", document.sections.first().body)
         val body = document.sections.last().body
         assertTrue(body.contains("联系人号码：选择导入：至你删除"))
         assertTrue(body.contains("https://example.invalid/privacy/"))
@@ -68,18 +68,26 @@ class LegalDocumentTest {
         }
     }
 
-    @Test fun `候选元数据仍待本人批准且与再次告知标识一致`() {
+    @Test fun `内部审批和告知版本不混入公开法律正文`() {
         val metadata = Properties().apply {
             File(sourceRoot, "assets/legal/metadata.properties").reader(Charsets.UTF_8).use(::load)
         }
         assertEquals(LegalPolicy.CURRENT_VERSION, metadata.getProperty("policy_version"))
-        assertEquals("待批准", metadata.getProperty("approval_status"))
-        for (key in listOf("operator_name", "contact_email", "effective_date", "filing_record", "reviewed_by"))
-            assertEquals(key, "待本人确认", metadata.getProperty(key))
+        assertEquals("pending", metadata.getProperty("approval_status"))
+        assertEquals("杨松", metadata.getProperty("operator_name"))
+        assertEquals("3173887065@qq.com", metadata.getProperty("contact_email"))
+        assertEquals("渝ICP备2026025309号-1", metadata.getProperty("filing_record"))
+        assertEquals("pending", metadata.getProperty("effective_date"))
+        assertFalse(metadata.containsKey("operator_address"))
         LegalDocumentType.entries.forEach { type ->
             val text = File(sourceRoot, "assets/legal/${type.assetName}").readText()
-            assertTrue(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
-            assertTrue(type.name, text.contains("尚未生效"))
+            assertFalse(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
+            assertFalse(type.name, text.contains("{{publication_status}}"))
+            assertFalse(type.name, text.contains("尚未生效"))
+            if (type != LegalDocumentType.HELP) {
+                assertTrue(type.name, text.contains("版本：1.0.0"))
+                assertTrue(type.name, text.contains("{{effective_date}}"))
+            }
         }
     }
 

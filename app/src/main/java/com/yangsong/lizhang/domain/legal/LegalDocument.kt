@@ -1,8 +1,8 @@
 package com.yangsong.lizhang.domain.legal
 
-/** 候选内容标识，不代表政策已生效或已获批准。重大内容更新必须变更此标识。 */
+/** 内部同意记录版本。重大正文更新必须变更此标识；不向用户展示为公开法律版本。 */
 object LegalPolicy {
-    const val CURRENT_VERSION = "privacy-scroll-policy-20261019"
+    const val CURRENT_VERSION = "legal-copy-policy-20261019"
 }
 
 enum class LegalDocumentType(val assetName: String, val officialUrl: String) {

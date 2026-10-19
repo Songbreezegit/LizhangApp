@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">礼账在本机保存您填写或导入的联系人、礼金记录和提醒。无需账号，没有广告或云同步，App 不上传这些数据。</string>
     <string name="privacy_notice_permissions">通讯录仅在您主动导入并授权后读取，用于预览、选择及去重；通知权限在主动开启提醒时申请。拒绝这两项可选权限仍可正常记账。</string>
     <string name="privacy_notice_exports">CSV、Excel 和普通备份未加密，备份可选择密码加密。恢复会替换当前联系人和礼金，不是合并；备份不含提醒和设置。请妥善保管文件与密码。</string>
-    <string name="privacy_notice_candidate">运营者资料、版本、生效日期和发布状态见完整正文。应用内同意记录与运营者的正式发布批准分别管理。</string>
-    <string name="privacy_notice_version">本次告知内容编号：%1$s</string>
     <string name="privacy_notice_read_privacy">离线阅读隐私政策</string>
     <string name="privacy_notice_read_terms">离线阅读用户协议</string>
     <string name="privacy_notice_agree">同意政策与协议并继续</string>

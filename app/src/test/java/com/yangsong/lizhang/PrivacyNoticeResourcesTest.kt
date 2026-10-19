@@ -17,8 +17,8 @@ class PrivacyNoticeResourcesTest {
 
     @Test fun `七语言首次告知关键数据处理说明选择及占位符齐全`() {
         val base = resources("")
-        val required = listOf("intro", "local_data", "permissions", "exports", "candidate", "read_privacy", "read_terms",
-            "agree", "decline", "declined_body", "return", "exit", "save_failed", "version")
+        val required = listOf("intro", "local_data", "permissions", "exports", "read_privacy", "read_terms",
+            "agree", "decline", "declined_body", "return", "exit", "save_failed")
         required.forEach { assertTrue(base.getValue("privacy_notice_$it").isNotBlank()) }
         for (qualifier in listOf("", "-b+zh+Hant", "-en", "-ja", "-ko", "-es", "-fr")) {
             val translated = resources(qualifier)

@@ -33,15 +33,16 @@ export function loadLegal(project, mode) {
   const metadata = properties(resolve(legal, 'metadata.properties'));
   const approval = properties(resolve(project, 'release/legal-approval.properties'));
   const config = JSON.parse(read(resolve(project, 'website/site.config.json')));
+  const websitePrivacyPath = resolve(project, 'website/content/privacy-website.md');
+  const websitePrivacy = properties(resolve(project, 'website/content/privacy-website.properties'));
   const version = /CURRENT_VERSION\s*=\s*"([^"]+)"/.exec(read(resolve(app,
     'src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt')))?.[1];
   if (!version || metadata.policy_version !== version || approval.policy_version !== version) {
     throw new Error('Android 常量、法律元数据与发布批准资料版本不一致。');
   }
-  for (const key of ['app_name', 'english_name', 'operator_type', 'operator_name', 'operator_address',
+  for (const key of ['app_name', 'english_name', 'operator_type', 'operator_name',
     'contact_email', 'effective_date', 'formal_policy_version', 'formal_terms_version',
-    'minor_service_arrangement', 'filing_record', 'website_domain', 'approval_status',
-    'website_log_scope', 'website_log_retention', 'website_log_review_status']) {
+    'minor_service_arrangement', 'filing_record', 'website_domain', 'approval_status']) {
     if (!metadata[key]) throw new Error('缺少法律资料字段：' + key);
   }
   if (config.domain !== 'lizhang.songisle.xyz' || config.domain !== metadata.website_domain ||
@@ -72,6 +73,7 @@ export function loadLegal(project, mode) {
     hash(readFileSync(path)) + '\n').join(''));
   const { productionApproval, ...siteInputs } = config;
   const siteSources = ['scripts/build.mjs', 'scripts/legal.mjs', 'scripts/markdown.mjs', 'src/style.css',
+    'content/privacy-website.md', 'content/privacy-website.properties',
     'deploy/nginx-loopback.conf', 'deploy/nginx-http.conf', 'deploy/nginx-https.conf'];
   const siteDigest = hash(JSON.stringify(siteInputs) + '\n' + legalDigest + '\n' +
     hash(readFileSync(resolve(project, 'release/unapproved-content-pattern.txt'))) + '\n' +
@@ -97,7 +99,10 @@ export function loadLegal(project, mode) {
     if (!validDate(metadata.effective_date) || !validDate(approval.approved_at)) {
       throw new Error('生产构建被阻止：生效日期和批准日期必须为真实 YYYY-MM-DD 日期。');
     }
-    if (metadata.website_log_review_status !== 'confirmed') throw new Error('生产构建被阻止：实际网站日志未确认。');
+    if (websitePrivacy.website_log_review_status !== 'confirmed') throw new Error('生产构建被阻止：实际网站日志未确认。');
+    for (const key of ['website_log_scope', 'website_log_retention', 'website_service_providers']) {
+      ready(websitePrivacy[key], key);
+    }
     for (const [key, value] of Object.entries(metadata)) ready(value, key);
     for (const locale of locales) for (const name of ['legal_strings.xml', 'privacy_notice.xml']) {
       read(resolve(app, 'src/main/res', locale, name));
@@ -119,11 +124,16 @@ export function loadLegal(project, mode) {
   }
 
   function renderDocument(name) {
-    const raw = read(resolve(legal, name));
-    if (!raw.includes(version)) throw new Error(name + ' 缺少当前政策版本。');
-    // 审核构建永远保留候选提示，即使有人提前填写 approved 也不会生成生产状态。
-    const values = { ...metadata, publication_status: mode === 'production'
-      ? '正式文本' : '候选定稿 · 尚未正式生效 · 等待用户验收与发布批准' };
+    let raw = read(resolve(legal, name));
+    const publicVersion = name === 'privacy.md' ? metadata.formal_policy_version
+      : name === 'terms.md' ? metadata.formal_terms_version : null;
+    if (publicVersion && !raw.includes('版本：' + publicVersion)) throw new Error(name + ' 与公开文档版本不一致。');
+    if (!validDate(metadata.effective_date)) {
+      if (mode === 'production' || metadata.effective_date !== 'pending') throw new Error('生效日期必须为本人确认的 YYYY-MM-DD。');
+      raw = raw.split(/\r?\n/).filter(line => line.trim() !== '生效日期：{{effective_date}}').join('\n');
+    }
+    const values = Object.fromEntries(['app_name', 'operator_type', 'operator_name', 'contact_email',
+      'effective_date', 'formal_policy_version', 'formal_terms_version', 'website_domain'].map(key => [key, metadata[key]]));
     const rendered = raw.replace(/\{\{([a-z_]+)}}/g, (_, key) => {
       if (!Object.hasOwn(values, key) || !values[key]) throw new Error('正文缺少统一配置：' + key);
       return values[key];
@@ -132,5 +142,21 @@ export function loadLegal(project, mode) {
     if (mode === 'production' && unapproved.test(rendered)) throw new Error('生产正文仍有未批准说明：' + name);
     return rendered;
   }
-  return { metadata, config, policyVersion: version, legalDigest, siteDigest, renderDocument };
+  function renderWebsitePrivacy() {
+    if (websitePrivacy.website_log_review_status !== 'confirmed') {
+      if (mode === 'production') throw new Error('生产构建被阻止：官网访问说明尚未核实。');
+      return null;
+    }
+    const rendered = read(websitePrivacyPath).replace(/\{\{([a-z_]+)}}/g, (_, key) => {
+      if (!['website_log_scope', 'website_log_retention', 'website_service_providers'].includes(key)) {
+        throw new Error('官网访问说明含未知字段：' + key);
+      }
+      return ready(websitePrivacy[key], key);
+    });
+    if (rendered.includes('{{') || rendered.includes('}}') || unapproved.test(rendered)) {
+      throw new Error('官网访问说明仍有未解析或未确认内容。');
+    }
+    return rendered;
+  }
+  return { metadata, config, policyVersion: version, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy, validDate };
 }

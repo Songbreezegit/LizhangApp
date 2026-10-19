@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">LiZhang guarda en este dispositivo los contactos, regalos y recordatorios que introduce o importa. No ofrece cuentas, anuncios ni sincronización en la nube, y la aplicación no sube estos datos.</string>
     <string name="privacy_notice_permissions">Los contactos solo se leen para previsualizar, seleccionar y eliminar duplicados cuando solicita la importación y concede permiso. El permiso de notificaciones se solicita al activar recordatorios. Ambos son opcionales para llevar registros.</string>
     <string name="privacy_notice_exports">CSV, Excel y las copias ordinarias no están cifrados; puede cifrar las copias con contraseña. Restaurar sustituye contactos y regalos, no los combina. Las copias excluyen recordatorios y ajustes. Proteja archivos y contraseñas.</string>
-    <string name="privacy_notice_candidate">Consulte los datos del operador, la versión, la fecha de vigencia y el estado de publicación en el texto completo. El consentimiento en la aplicación y la aprobación de publicación del operador son registros separados.</string>
-    <string name="privacy_notice_version">ID del contenido del aviso: %1$s</string>
     <string name="privacy_notice_read_privacy">Leer la política sin conexión</string>
     <string name="privacy_notice_read_terms">Leer el acuerdo sin conexión</string>
     <string name="privacy_notice_agree">Aceptar la política y el acuerdo y continuar</string>

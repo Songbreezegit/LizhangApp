@@ -3,9 +3,9 @@
     <string name="legal_help_title">Documentos de ayuda</string>
     <string name="legal_terms_description">Leer todas las condiciones sin conexión</string>
     <string name="legal_help_description">Guía de registros, permisos, copias y restauración</string>
-    <string name="legal_candidate_notice">Documentos legales · Estado de publicación y fecha de vigencia en el texto completo</string>
+    <string name="legal_candidate_notice">Documentos legales</string>
     <string name="legal_language_fallback">El texto completo sin conexión está en chino simplificado. Todos los idiomas muestran el mismo texto íntegro. Actualmente no se ofrecen traducciones completas; las explicaciones clave del tratamiento de datos nunca se sustituyen por un resumen.</string>
-    <string name="legal_content_version">ID del contenido: %1$s (versión y fecha de vigencia en el texto completo)</string>
+    <string name="legal_content_version">Versión del documento: %1$s</string>
     <string name="legal_read_failed">No se pudo leer el texto completo sin conexión. Reintente o vuelva a la página anterior. Este error no registra consentimiento.</string>
     <string name="legal_retry">Volver a cargar</string>
     <string name="legal_online_explanation">El navegador del sistema abre el sitio, sujeto a la disponibilidad de la red y del sitio. El texto completo de esta página se incluye en la aplicación y funciona sin conexión.</string>

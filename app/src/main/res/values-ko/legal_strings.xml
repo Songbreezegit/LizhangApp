@@ -3,9 +3,9 @@
     <string name="legal_help_title">도움말 문서</string>
     <string name="legal_terms_description">전체 약관을 오프라인으로 읽기</string>
     <string name="legal_help_description">기록, 권한, 백업 및 복원 안내</string>
-    <string name="legal_candidate_notice">법률 문서 · 공개 상태와 시행일은 본문 참조</string>
+    <string name="legal_candidate_notice">법률 문서</string>
     <string name="legal_language_fallback">오프라인 전문은 중국어 간체로 제공되며 모든 앱 언어에서 같은 전문을 표시합니다. 현재 다른 언어의 전체 번역은 제공하지 않습니다. 중요한 데이터 처리 설명을 요약으로 대체하지 않습니다.</string>
-    <string name="legal_content_version">내용 ID: %1$s (버전과 시행일은 본문 참조)</string>
+    <string name="legal_content_version">문서 버전: %1$s</string>
     <string name="legal_read_failed">오프라인 전문을 읽을 수 없습니다. 다시 시도하거나 이전 페이지로 돌아가세요. 이 오류로 동의가 기록되지는 않습니다.</string>
     <string name="legal_retry">다시 불러오기</string>
     <string name="legal_online_explanation">웹사이트는 시스템 브라우저로 열리며 네트워크와 사이트 이용 가능 여부에 영향을 받습니다. 이 페이지의 전문은 앱에 포함되어 오프라인으로 읽을 수 있습니다.</string>

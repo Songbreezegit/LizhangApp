@@ -61,7 +61,10 @@ try {
         try {
             $assetDigest = -join ($hashAlgorithm.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') })
         } finally { $stream.Dispose(); $hashAlgorithm.Dispose() }
-        $sourcePath = Join-Path $repoRoot "app\src\main\assets\legal\$name"
+        # Markdown 在构建时展开日期等公开字段，必须比对本次构建的离线资产，不能比对原始模板。
+        $sourcePath = if ($name.EndsWith('.md')) {
+            Join-Path $repoRoot "app\build\generated\offlineLegalAssets\legal\$name"
+        } else { Join-Path $repoRoot "app\src\main\assets\legal\$name" }
         if ($assetDigest -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
             throw "APK 离线正文与当前源码不一致：$name" }
     }

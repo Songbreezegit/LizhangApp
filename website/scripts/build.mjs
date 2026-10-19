@@ -12,7 +12,8 @@ if (process.argv.length > 3 || !['--review', '--production'].includes(argument))
 }
 const mode = argument === '--production' ? 'production' : 'review';
 const dist = resolve(website, mode === 'production' ? 'dist-production' : 'dist');
-const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument } = loadLegal(project, mode);
+const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy, validDate } = loadLegal(project, mode);
+const websitePrivacy = renderWebsitePrivacy();
 
 const routes = [
   { path: '/', label: '首页' },
@@ -25,7 +26,7 @@ const routes = [
   { path: '/contact/', label: '联系与反馈' }
 ];
 const documents = new Map(routes.filter(route => route.file).map(route => {
-  const markdown = renderDocument(route.file);
+  const markdown = renderDocument(route.file) + (route.path === '/privacy/' && websitePrivacy ? '\n\n' + websitePrivacy : '');
   return [route.path, renderMarkdown(markdown)];
 }));
 
@@ -80,7 +81,10 @@ function documentPage(route) {
   const rendered = documents.get(route.path);
   const toc = rendered.contents.map(item => '<li><a href="#' + item.id + '">' + e(item.label) + '</a></li>').join('');
   return '<header class="page-heading"><p class="eyebrow">礼账文档</p><h1>' + route.title +
-    '</h1><p>' + route.intro + '</p></header><div class="document-layout">' +
+    '</h1><p>' + route.intro + '</p></header>' +
+    (route.path === '/privacy/' && mode === 'review' && !websitePrivacy
+      ? '<aside class="callout">审核说明：官网访问补充说明须在核实实际日志范围、保存期限及必要接入方后补齐；当前审核包不能正式发布。</aside>' : '') +
+    '<div class="document-layout">' +
     '<nav class="contents card" aria-label="本页目录"><p>本页内容</p><ol>' + toc + '</ol></nav>' +
     '<article class="document card">' + rendered.html + '</article></div>' +
     '<div class="document-next"><a href="/help/">查看使用帮助</a><a href="/contact/">联系与反馈 →</a></div>';
@@ -116,8 +120,9 @@ function home() {
 
 function contact() {
   const fields = [
-    ['运营者', metadata.operator_name + '（' + metadata.operator_type + '）'], ['公开联系地址', metadata.operator_address],
-    ['隐私联系邮箱', metadata.contact_email], ['政策生效日期', metadata.effective_date],
+    ['运营者', metadata.operator_name + '（' + metadata.operator_type + '）'],
+    ['隐私联系邮箱', metadata.contact_email],
+    ...(validDate(metadata.effective_date) ? [['政策生效日期', metadata.effective_date]] : []),
     ['正式政策版本', metadata.formal_policy_version], ['未成年人服务安排', metadata.minor_service_arrangement]
   ].map(([label, value]) => '<div><dt>' + e(label) + '</dt><dd>' + e(value) + '</dd></div>').join('');
   const emailReady = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(metadata.contact_email);
@@ -127,7 +132,7 @@ function contact() {
   return '<header class="page-heading"><p class="eyebrow">有疑问，先把事情说清楚</p><h1>联系与反馈</h1>' +
     '<p>查看运营者资料，了解功能反馈和隐私请求的联系方法。</p></header>' +
     '<div class="contact-grid"><section class="card contact-details"><h2>开发者与隐私联系</h2>' +
-    '<dl>' + fields + '</dl>' + mail + '<p class="small-text">网站 ICP 备案号：' + e(config.icp.number) + '。个人联系地址不公开。</p></section>' +
+    '<dl>' + fields + '</dl>' + mail + '<p class="small-text">网站 ICP 备案号：' + e(config.icp.number) + '。</p></section>' +
     '<section class="card feedback"><h2>反馈时可以说明什么？</h2><ol><li>礼账版本、Android 版本与手机型号。</li>' +
     '<li>操作步骤、预期结果与实际提示。</li><li>能说明问题的虚构或已遮罩示例。</li></ol>' +
     '<p class="callout">请勿发送真实通讯录、礼金金额、完整账本、备份文件或备份密码。</p>' +

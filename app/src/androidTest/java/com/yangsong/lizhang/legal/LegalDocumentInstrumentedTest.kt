@@ -42,7 +42,8 @@ class LegalDocumentInstrumentedTest {
             val document = repository.load(type)
             assertEquals(type, document.type)
             assertTrue(document.sections.size >= 8)
-            assertTrue(document.sections.first().body.contains("尚未生效"))
+            assertFalse(document.sections.any { it.body.contains("尚未生效") || it.body.contains("{{") })
+            if (type != LegalDocumentType.HELP) assertTrue(document.sections.first().body.contains("版本：1.0.0"))
         }
     }
 
@@ -54,8 +55,8 @@ class LegalDocumentInstrumentedTest {
                 LegalDocumentUiState(isLoading = false, document = document), { returned = true })
         } }
         compose.onNodeWithTag("legal_document_privacy")
-            .performScrollToNode(hasText("10. 文档网站说明"))
-        compose.onNodeWithText("10. 文档网站说明").assertIsDisplayed()
+            .performScrollToNode(hasText("十、政策更新与联系"))
+        compose.onNodeWithText("十、政策更新与联系").assertIsDisplayed()
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
         assertTrue(returned)
     }

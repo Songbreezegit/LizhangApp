@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">禮帳在本機儲存您填寫或匯入的聯絡人、禮金紀錄和提醒。無需帳號，沒有廣告或雲端同步，App 不上傳這些資料。</string>
     <string name="privacy_notice_permissions">通訊錄僅在您主動匯入並授權後讀取，用於預覽、選擇及去重；通知權限在主動開啟提醒時申請。拒絕這兩項可選權限仍可正常記帳。</string>
     <string name="privacy_notice_exports">CSV、Excel 和普通備份未加密，備份可選擇密碼加密。還原會取代目前聯絡人和禮金，不是合併；備份不含提醒和設定。請妥善保管檔案與密碼。</string>
-    <string name="privacy_notice_candidate">營運者資料、版本、生效日期和發布狀態見完整正文。應用內同意紀錄與營運者的正式發布批准分別管理。</string>
-    <string name="privacy_notice_version">本次告知內容編號：%1$s</string>
     <string name="privacy_notice_read_privacy">離線閱讀隱私政策</string>
     <string name="privacy_notice_read_terms">離線閱讀使用者協議</string>
     <string name="privacy_notice_agree">同意政策與協議並繼續</string>

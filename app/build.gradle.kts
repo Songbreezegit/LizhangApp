@@ -37,17 +37,26 @@ fun readLegalProperties(source: java.io.File): Properties {
     return Properties().apply { source.reader(Charsets.UTF_8).use { load(it) } }
 }
 
-// 构建阶段以普通字符串展开共享字段，不把正则或元数据解释器留给 Android 的全文加载路径。
+fun validLegalDate(value: String): Boolean = value.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) &&
+    runCatching { LocalDate.parse(value).toString() == value }.getOrDefault(false)
+
+// 构建阶段仅展开公开字段；内部批准状态和同意记录版本不进入正文。
 fun renderLegalMarkdown(source: java.io.File, metadata: Properties): String {
     var rendered = source.readText(Charsets.UTF_8)
-    metadata.stringPropertyNames().filter { it != "publication_status" }.forEach { key ->
+    val effectiveDate = metadata.getProperty("effective_date").orEmpty()
+    if (!validLegalDate(effectiveDate)) {
+        if (officialRelease || effectiveDate != "pending") {
+            throw GradleException("法律文档生成被阻止：须由用户确认真实 YYYY-MM-DD 生效日期。")
+        }
+        // 仅审核包省略日期行，不把 pending、模板或审批说明显示给用户。
+        rendered = rendered.lineSequence().filterNot {
+            it.trim() == "生效日期：{{effective_date}}"
+        }.joinToString("\n")
+    }
+    listOf("app_name", "operator_type", "operator_name", "contact_email", "effective_date",
+        "formal_policy_version", "formal_terms_version", "website_domain").forEach { key ->
         rendered = rendered.replace("{{${key}}}", metadata.getProperty(key))
     }
-    rendered = rendered.replace("{{publication_status}}", if (metadata.getProperty("approval_status") == "approved") {
-        "正式文本"
-    } else {
-        "候选定稿 · 尚未正式生效 · 等待用户验收与发布批准"
-    })
     if (rendered.isBlank() || rendered.contains("{{") || rendered.contains("}}")) {
         throw GradleException("离线法律文档生成失败：${source.name} 有空白正文或未解析字段。")
     }
@@ -62,6 +71,7 @@ val generateOfflineLegalAssets by tasks.registering(Sync::class) {
     inputs.dir(legalAssetDirectory)
     inputs.file(legalApprovalFile)
     inputs.file("src/main/java/com/yangsong/lizhang/domain/legal/LegalDocument.kt")
+    inputs.property("officialRelease", officialRelease)
     doLast {
         val metadata = readLegalProperties(legalAssetDirectory.resolve("metadata.properties"))
         val approval = readLegalProperties(legalApprovalFile)
@@ -75,8 +85,13 @@ val generateOfflineLegalAssets by tasks.registering(Sync::class) {
         val target = generatedOfflineLegalAssets.get().asFile.resolve("legal").apply { mkdirs() }
         listOf("privacy.md", "terms.md", "help.md").forEach { name ->
             val source = legalAssetDirectory.resolve(name)
-            if (!source.readText(Charsets.UTF_8).contains(version)) {
-                throw GradleException("离线法律文档生成失败：$name 缺少当前内容标识。")
+            val publicVersion = when (name) {
+                "privacy.md" -> metadata.getProperty("formal_policy_version")
+                "terms.md" -> metadata.getProperty("formal_terms_version")
+                else -> null
+            }
+            if (publicVersion != null && !source.readText(Charsets.UTF_8).contains("版本：$publicVersion")) {
+                throw GradleException("离线法律文档生成失败：$name 与公开文档版本不一致。")
             }
             target.resolve(name).writeText(renderLegalMarkdown(source, metadata), Charsets.UTF_8)
         }
@@ -114,7 +129,7 @@ val verifyOfficialReleaseContent by tasks.registering {
             throw GradleException("正式发布被阻止：联系邮箱格式不完整。")
         }
         listOf("effective_date", "approved_at").forEach { key ->
-            try { LocalDate.parse(approvedValue(key)) } catch (_: Exception) {
+            if (!validLegalDate(approvedValue(key))) {
                 throw GradleException("正式发布被阻止：$key 必须是本人确认的 YYYY-MM-DD 日期。")
             }
         }
@@ -146,9 +161,8 @@ val verifyOfficialReleaseContent by tasks.registering {
         if (currentVersion != approvedValue("policy_version")) {
             throw GradleException("正式发布被阻止：告知版本常量与批准的政策版本不一致。")
         }
-        if (metadata.getProperty("operator_details_status") != "confirmed" ||
-            metadata.getProperty("website_log_review_status") != "confirmed") {
-            throw GradleException("正式发布被阻止：运营资料及正文涉及的网站实际日志安排均须确认。")
+        if (metadata.getProperty("operator_details_status") != "confirmed") {
+            throw GradleException("正式发布被阻止：运营资料须确认。")
         }
         // Markdown 正文通过同一元数据填入日期和公开资料；未知字段不能变成正式空白正文。
         listOf("privacy.md", "terms.md", "help.md").forEach { name ->
@@ -181,6 +195,7 @@ android {
         targetSdk = 36
         versionCode = 23
         versionName = if (officialRelease) "1.0.0" else "1.0.0-rc2"
+        buildConfigField("String", "LEGAL_TEXT_VERSION", "\"${readLegalProperties(legalAssetDirectory.resolve("metadata.properties")).getProperty("formal_policy_version")}\"")
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

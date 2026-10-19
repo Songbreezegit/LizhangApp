@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">礼账은 입력하거나 가져온 연락처, 축의금 기록과 알림을 이 기기에 저장합니다. 계정, 광고나 클라우드 동기화가 없으며 앱은 이 데이터를 업로드하지 않습니다.</string>
     <string name="privacy_notice_permissions">연락처는 가져오기를 요청하고 권한을 허용한 경우에만 미리 보기, 선택 및 중복 제거를 위해 읽습니다. 알림 권한은 알림을 켤 때 요청합니다. 두 권한을 거부해도 기록할 수 있습니다.</string>
     <string name="privacy_notice_exports">CSV, Excel 및 일반 백업은 암호화되지 않으며 백업은 비밀번호 암호화를 선택할 수 있습니다. 복원은 연락처와 축의금 기록을 병합하지 않고 교체합니다. 알림과 설정은 백업에 포함되지 않습니다. 파일과 비밀번호를 안전하게 보관하세요.</string>
-    <string name="privacy_notice_candidate">운영자 정보, 버전, 시행일과 공개 상태는 전문을 확인하세요. 앱 내 동의 기록과 운영자의 정식 공개 승인은 별도로 관리됩니다.</string>
-    <string name="privacy_notice_version">안내 내용 ID: %1$s</string>
     <string name="privacy_notice_read_privacy">개인정보 처리방침 오프라인 읽기</string>
     <string name="privacy_notice_read_terms">이용약관 오프라인 읽기</string>
     <string name="privacy_notice_agree">정책과 약관에 동의하고 계속</string>

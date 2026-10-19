@@ -5,8 +5,6 @@
     <string name="privacy_notice_local_data">礼帳は入力・取り込みした連絡先、礼金記録、リマインダーを端末内に保存します。アカウント、広告、クラウド同期はなく、アプリはこれらのデータをアップロードしません。</string>
     <string name="privacy_notice_permissions">連絡先は取り込みを選択して許可した場合にのみ、確認・選択・重複除去のため読み取ります。通知権限はリマインダーを有効にするときに申請します。どちらを拒否しても記帳できます。</string>
     <string name="privacy_notice_exports">CSV、Excel、通常のバックアップは暗号化されません。バックアップはパスワード暗号化を選択できます。復元は連絡先と礼金を置き換え、結合しません。リマインダーと設定は含まれません。ファイルとパスワードを安全に保管してください。</string>
-    <string name="privacy_notice_candidate">運営者情報、バージョン、施行日と公開状況は全文をご覧ください。アプリ内の同意記録と運営者による公開の承認は別々に管理されます。</string>
-    <string name="privacy_notice_version">通知の内容 ID：%1$s</string>
     <string name="privacy_notice_read_privacy">プライバシーポリシーをオフラインで読む</string>
     <string name="privacy_notice_read_terms">利用規約をオフラインで読む</string>
     <string name="privacy_notice_agree">ポリシーと利用規約に同意して続ける</string>

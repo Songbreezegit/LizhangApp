@@ -66,7 +66,7 @@ Cloudflare 仅新增/更新 `lizhang` 子域的 A 记录到**部署前核实的*
 
 复用现有 `certbot.timer`，不要创建重复 cron/timer。续期成功后通过 deploy hook 在 Nginx 配置校验成功时 reload；先检查现有 hook、路径、权限与重复调用。真实证书链、域名、HTTPS 跳转和续期均由用户在后续授权阶段验收。Certbot 当前官方文档可能高于 Ubuntu 既有包版本，实际可用参数以届时安装版本为准。
 
-Nginx 模板沿用 `/var/log/nginx/lizhang-privacy-access.log` 和 `lizhang-privacy-error.log warn`。保留时间不在本轮猜测：需复核继承的 `log_format`、是否记录 URI 查询参数/IP/User-Agent/Referer、error/system/security 日志、`/etc/logrotate.d/nginx`、轮转频率/份数/压缩/备份及实际访问权限。复核后在法律元数据的 `website_log_scope`、`website_log_retention` 写入准确描述，将 `website_log_review_status=confirmed`，再重新审阅法律摘要。网站日志不包含 App 主动上传的账本；不据此声称服务器没有访问记录。
+Nginx 模板沿用 `/var/log/nginx/lizhang-privacy-access.log` 和 `lizhang-privacy-error.log warn`。保留时间不在本轮猜测：需复核继承的 `log_format`、是否记录 URI 查询参数/IP/User-Agent/Referer、error/system/security 日志、`/etc/logrotate.d/nginx`、轮转频率/份数/压缩/备份及实际访问权限。复核后在 `website/content/privacy-website.properties` 的 `website_log_scope`、`website_log_retention` 写入准确描述，并据实填写 `website_service_providers`（实际服务器/接入服务提供方及其处理范围，包括 Cloudflare 是仅 DNS 还是启用代理），将 `website_log_review_status=confirmed`，审阅网站专用补充说明并重新批准网站摘要。网站日志不进入 Android 资产。网站日志不包含 App 主动上传的账本；不据此声称服务器没有访问记录。
 
 ## 静态产物上传与发布
 
