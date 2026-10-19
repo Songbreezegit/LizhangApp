@@ -17,9 +17,9 @@
     "reviewedAt": "2026-10-20"
   },
   "productionApproval": {
-    "status": "pending",
-    "reviewedBy": null,
-    "approvedAt": null,
-    "approvedSiteSha256": null
+    "status": "approved",
+    "reviewedBy": "杨松",
+    "approvedAt": "2026-10-20",
+    "approvedSiteSha256": "0cf006d12b4d4b184a08272ae643562809e1c32f2fc07e84d2a99a71596e5bf3"
   }
 }
