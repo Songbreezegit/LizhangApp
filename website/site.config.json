@@ -13,8 +13,8 @@
     "icpOperatorStatus": "confirmed",
     "accessProviderStatus": "confirmed",
     "serverStatus": "confirmed",
-    "reviewedBy": null,
-    "reviewedAt": null
+    "reviewedBy": "杨松",
+    "reviewedAt": "2026-10-20"
   },
   "productionApproval": {
     "status": "pending",
