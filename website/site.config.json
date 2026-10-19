@@ -4,12 +4,15 @@
     "approved": true,
     "number": "渝ICP备2026025309号-1"
   },
-  "publicSecurity": { "number": null, "url": null },
+  "publicSecurity": {
+    "number": null,
+    "url": null
+  },
   "deploymentReview": {
-    "icpDomainStatus": "pending",
-    "icpOperatorStatus": "pending",
-    "accessProviderStatus": "pending",
-    "serverStatus": "pending",
+    "icpDomainStatus": "confirmed",
+    "icpOperatorStatus": "confirmed",
+    "accessProviderStatus": "confirmed",
+    "serverStatus": "confirmed",
     "reviewedBy": null,
     "reviewedAt": null
   },
