@@ -5,7 +5,6 @@
     <string name="legal_help_description">Guide des écritures, autorisations, sauvegardes et restaurations</string>
     <string name="legal_candidate_notice">Documents juridiques</string>
     <string name="legal_language_fallback">Le texte intégral hors ligne est en chinois simplifié. Toutes les langues affichent le même texte complet. Les traductions intégrales ne sont pas proposées actuellement ; les explications essentielles sur les données ne sont jamais remplacées par un résumé.</string>
-    <string name="legal_content_version">Version du document : %1$s</string>
     <string name="legal_read_failed">Impossible de lire le texte intégral hors ligne. Réessayez ou revenez à la page précédente. Cette erreur ne vaut pas consentement.</string>
     <string name="legal_retry">Recharger</string>
     <string name="legal_online_explanation">Le navigateur du système ouvre le site, selon la disponibilité du réseau et du site. Le texte intégral de cette page est inclus dans l’application et fonctionne hors ligne.</string>

@@ -23,7 +23,7 @@ if ($VerifyCandidateCoverage) {
             $resourceNames = if ($resourceFile -eq 'privacy_notice.xml') {
                 @('privacy_notice_title', 'privacy_notice_agree', 'privacy_notice_decline')
             } else {
-                @('legal_candidate_notice', 'legal_language_fallback', 'legal_content_version', 'legal_online_explanation') }
+                @('legal_candidate_notice', 'legal_language_fallback', 'legal_online_explanation') }
             foreach ($name in $resourceNames) {
                 $node = $xml.SelectSingleNode("/resources/string[@name='$name']")
                 if (!$node -or [string]::IsNullOrWhiteSpace($node.InnerText) -or $matcher.IsMatch($node.InnerText)) {

@@ -33,7 +33,7 @@ node website/scripts/preview.mjs
 
 共享元数据中的 `operator_details_status=confirmed` 仅表示运营者公开资料已确认。法律正文两个 `approval_status`、发布批准日期/人/摘要、签名身份等仍 pending，不能互相代替。网站 ICP 与 APP 备案资料及 Android 签名身份分别核对。
 
-七语言法律页仅展示阅读说明和公开版本，移除未使用的首次告知审批提示。禁止发布标记规则保持不变，七语言资源仍纳入法律内容摘要与正式发布扫描；内部审批资料继续阻止未批准发布。`scan-unapproved-legal-content.ps1` 的旧 `VerifyCandidateCoverage` 开关兼容保留，改为检查现行阅读提示齐备且不含审批措辞。`verify-rc2-release.ps1` 改为对比构建时展开的 Markdown 资产。两份核验脚本本轮均未运行。批准输入通过 `.gitattributes` 统一 LF，避免 Windows/Linux 换行差异改变摘要。
+七语言法律页保留阅读说明；公开版本仅来自各份离线 Markdown 正文，顶部不再重复显示，帮助页不套用隐私政策版本。无用的 `BuildConfig.LEGAL_TEXT_VERSION` 与七语言 `legal_content_version` 资源已移除，内部同意记录版本保持不变。禁止发布标记规则保持不变，七语言资源仍纳入法律内容摘要与正式发布扫描；内部审批资料继续阻止未批准发布。`scan-unapproved-legal-content.ps1` 的旧 `VerifyCandidateCoverage` 开关兼容保留，同步移除已删除版本资源的检查要求，其余阅读提示及禁止发布标记检查保留。`verify-rc2-release.ps1` 仍对比构建时展开的 Markdown 资产。两份核验脚本本轮均未运行。批准输入通过 `.gitattributes` 统一 LF，避免 Windows/Linux 换行差异改变摘要。
 
 ## 正式批准与生产构建（本轮不执行）
 
@@ -44,7 +44,9 @@ node website/scripts/preview.mjs
 3. 只有核对备案域名、主体、实际接入和服务器现状后，才将 site.config 的四个 `deploymentReview.*Status` 设为 confirmed，填写真实 reviewedBy/reviewedAt；用户还应完成 [部署准备清单](deploy/README.md)。本文不授权 ECS、DNS 或公网操作。
 4. 先运行审核构建，读取输出的 `legal_content_sha256` 与 `site_content_sha256`，审阅这组准确输入。法律摘要与现有 Gradle/PowerShell 使用相同路径、字节、逐文件 SHA-256 和排序；可按需用原摘要工具计算，摘要计算不是批准。
 5. 将本人批准的法律摘要写入 `release/legal-approval.properties` 的 approved_content_sha256；另在 site.config.productionApproval 填入 approved、真实 reviewedBy/approvedAt 和 approvedSiteSha256。网站摘要绑定法律摘要、网站源码、官网访问补充说明及日志配置、公开配置、Nginx 模板及品牌图，排除 productionApproval 自身以免自引用。它不是 zip/APK 文件哈希。
-6. 批准记录和摘要都齐全后，在仓库根目录执行 `node website/scripts/build.mjs --production`（或 website 目录 `npm run build:production`）。产物在独立 `website/dist-production/`。缺少批准、真实日期、日志/接入复核或摘要不符会在写入产物前拒绝；失败不清除磁盘上可能存在的旧生产目录，切勿把旧目录误当作本次构建。正式交付时核对新构建输出和 BUILD-INFO。
+6. 批准记录和摘要都齐全后，在仓库根目录执行 `node website/scripts/build.mjs --production`（或 website 目录 `npm run build:production`）。先在仓库内 `build/website-production-<随机后缀>/public/` 干净生成全部静态文件，再将原 `website/dist-production/` 整体移至同一内部构建目录的 `previous-output/` 并替换为新产物；替换失败时尝试恢复旧目录。输出目录或内部构建根目录若为链接或解析到预期目录外则拒绝处理，不递归删除任何目录。门禁或生成失败不会使旧目录成为本次可交付产物，必须以构建成功日志为准。
+
+生产公开目录不生成 `BUILD-INFO.json`；内容标识、法律/网站摘要及审批信息保存在 `build/website-production-<随机后缀>/BUILD-INFO.json`，日志输出内部记录路径及摘要。该内部目录及旧产物均不可部署。审核模式仍在 `website/dist/BUILD-INFO.json` 保留原审核信息、横幅和 noindex。HTTPS Nginx 模板额外拒绝任意层级的 `BUILD-INFO.json`（不区分大小写）；该模板没有应用到线上。后续部署只将本次成功生产构建的公开文件释放到新的空版本目录，再切换 current，禁止在现有线上目录覆盖式上传，以免旧内部文件残留。
 
 生产正常页有 HTTPS canonical，无审核横幅且不强制 noindex，robots 允许抓取；404 仍禁止收录，HTTP 404 状态由本地预览和 Nginx 模板按各自配置提供。构建不会启动/部署服务器或自动修改批准。**本轮未尝试生产构建，也未执行门禁的正反例测试；实现仅作源码静态审阅。**
 

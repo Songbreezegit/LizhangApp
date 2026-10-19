@@ -195,7 +195,6 @@ android {
         targetSdk = 36
         versionCode = 23
         versionName = if (officialRelease) "1.0.0" else "1.0.0-rc2"
-        buildConfigField("String", "LEGAL_TEXT_VERSION", "\"${readLegalProperties(legalAssetDirectory.resolve("metadata.properties")).getProperty("formal_policy_version")}\"")
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

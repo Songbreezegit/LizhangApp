@@ -1,4 +1,5 @@
-import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, copyFileSync, mkdtempSync,
+  existsSync, lstatSync, realpathSync, renameSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { escapeHtml as e, renderMarkdown } from './markdown.mjs';
@@ -11,7 +12,7 @@ if (process.argv.length > 3 || !['--review', '--production'].includes(argument))
   throw new Error('只接受 --review（默认）或 --production；构建不会部署。');
 }
 const mode = argument === '--production' ? 'production' : 'review';
-const dist = resolve(website, mode === 'production' ? 'dist-production' : 'dist');
+const output = resolve(website, mode === 'production' ? 'dist-production' : 'dist');
 const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy, validDate } = loadLegal(project, mode);
 const websitePrivacy = renderWebsitePrivacy();
 
@@ -141,7 +142,17 @@ function contact() {
     '<a class="text-link" href="/privacy/#section-8">查看信息管理方式 →</a></section></div>';
 }
 
-// 所有输入先读取并校验，再写入独立的生成目录。
+// 生产门禁先通过，再在公开目录之外生成全新产物，不增量覆盖旧文件。
+let productionBuild = null;
+if (mode === 'production') {
+  const buildRoot = resolve(project, 'build');
+  mkdirSync(buildRoot, { recursive: true });
+  if (lstatSync(buildRoot).isSymbolicLink() || realpathSync(buildRoot) !== resolve(realpathSync(project), 'build')) {
+    throw new Error('生产构建记录目录必须为仓库内的真实目录，不能指向其他位置。');
+  }
+  productionBuild = mkdtempSync(resolve(buildRoot, 'website-production-'));
+}
+const dist = productionBuild ? resolve(productionBuild, 'public') : output;
 mkdirSync(resolve(dist, 'assets'), { recursive: true });
 copyFileSync(resolve(website, 'src/style.css'), resolve(dist, 'assets/style.css'));
 for (const asset of images) copyFileSync(resolve(drawable, asset.source), resolve(dist, 'assets', asset.target));
@@ -156,10 +167,34 @@ writeFileSync(resolve(dist, '404.html'), layout('', '页面未找到', '请通�
   '<section class="page-heading"><p class="eyebrow">404</p><h1>暂时没有这个页面。</h1><p>可以返回首页，或通过导航查看帮助。</p><a class="button primary" href="/">返回首页</a></section>'), 'utf8');
 writeFileSync(resolve(dist, 'robots.txt'), mode === 'production'
   ? 'User-agent: *\nAllow: /\nDisallow: /404.html\n' : 'User-agent: *\nDisallow: /\n', 'utf8');
-writeFileSync(resolve(dist, 'BUILD-INFO.json'), JSON.stringify({ mode, domain: config.domain, policyVersion,
+const buildInfo = { mode, domain: config.domain, policyVersion,
   legalContentSha256: legalDigest, siteContentSha256: siteDigest,
-  acceptance: '未测试，等待用户验收', deployable: mode === 'production' }, null, 2) + '\n', 'utf8');
-console.log('礼账静态网站已生成：' + dist);
+  acceptance: '未测试，等待用户验收', deployable: mode === 'production' };
+if (mode === 'review') {
+  writeFileSync(resolve(dist, 'BUILD-INFO.json'), JSON.stringify(buildInfo, null, 2) + '\n', 'utf8');
+} else {
+  // 内部来源、摘要及审批记录不进入公开产物；旧目录只归档，不递归删除任何路径。
+  writeFileSync(resolve(productionBuild, 'BUILD-INFO.json'), JSON.stringify({ ...buildInfo,
+    legalApproval: { status: metadata.approval_status, reviewedBy: metadata.reviewed_by,
+      effectiveDate: metadata.effective_date }, websiteApproval: config.productionApproval }, null, 2) + '\n', 'utf8');
+  const previous = resolve(productionBuild, 'previous-output');
+  const hadOutput = existsSync(output);
+  if (hadOutput) {
+    if (!lstatSync(output).isDirectory() || lstatSync(output).isSymbolicLink() ||
+      realpathSync(output) !== resolve(realpathSync(website), 'dist-production')) {
+      throw new Error('拒绝替换非真实目录的生产输出，请先人工核对：' + output);
+    }
+    renameSync(output, previous);
+  }
+  try {
+    renameSync(dist, output);
+  } catch (error) {
+    if (hadOutput) renameSync(previous, output);
+    throw error;
+  }
+  console.log('内部构建记录（不可部署）：' + productionBuild);
+}
+console.log('礼账静态网站已生成：' + output);
 console.log('模式：' + mode + '；内容标识：' + policyVersion + '；未测试，等待用户验收。');
 console.log('legal_content_sha256=' + legalDigest);
 console.log('site_content_sha256=' + siteDigest);

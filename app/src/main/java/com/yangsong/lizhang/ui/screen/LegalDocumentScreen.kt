@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
-import com.yangsong.lizhang.BuildConfig
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
@@ -80,8 +79,6 @@ fun LegalDocumentContent(
                     Text(stringResource(R.string.legal_language_fallback),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(stringResource(R.string.legal_content_version, BuildConfig.LEGAL_TEXT_VERSION),
-                        style = MaterialTheme.typography.bodyMedium)
                 }
             }
             if (state.isLoading) item { CircularProgressIndicator() }

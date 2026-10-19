@@ -5,7 +5,6 @@
     <string name="legal_help_description">記帳、権限、バックアップと復元の説明</string>
     <string name="legal_candidate_notice">法的文書</string>
     <string name="legal_language_fallback">オフラインの全文は簡体字中国語で提供され、すべてのアプリ言語で同じ全文を表示します。現在、他言語の全文翻訳は提供していません。重要なデータ処理の説明を要約に置き換えることはありません。</string>
-    <string name="legal_content_version">文書バージョン：%1$s</string>
     <string name="legal_read_failed">オフラインの全文を読み取れません。再試行するか前のページに戻ってください。このエラーで同意が記録されることはありません。</string>
     <string name="legal_retry">再読み込み</string>
     <string name="legal_online_explanation">ウェブサイトはシステムブラウザで開き、通信やサイトの利用状況に左右されます。本ページの全文はアプリに含まれ、通信不要です。</string>
