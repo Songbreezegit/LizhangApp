@@ -47,6 +47,11 @@ function image(name, alt, className = '', lazy = false) {
 
 function layout(path, title, description, body) {
   const filing = '<a href="https://beian.miit.gov.cn/" rel="noreferrer">' + e(config.icp.number) + '</a>';
+  // 公安联网备案尚未取得时不展示；取得真实编号及链接后与 ICP 一并居中显示。
+  const publicSecurity = config.publicSecurity?.number && config.publicSecurity?.url
+    ? ' · <a href="' + e(config.publicSecurity.url) + '" rel="noreferrer">' +
+      e(config.publicSecurity.number) + '</a>'
+    : '';
   const indexing = mode === 'review' || !path
     ? '<meta name="robots" content="noindex, nofollow">\n' : '';
   const canonical = mode === 'production' && path
@@ -70,7 +75,7 @@ function layout(path, title, description, body) {
     '<a href="/privacy/">隐私政策</a><a href="/terms/">用户协议</a><a href="/help/">使用帮助</a></nav>' +
     '<p class="footer-contact"><span>联系邮箱</span><a href="mailto:' + e(metadata.contact_email) + '">' +
     e(metadata.contact_email) + '</a></p></div></div>' +
-    '<p class="footer-filing">' + filing + '</p></footer>\n</body>\n</html>\n';
+    '<p class="footer-filing">' + filing + publicSecurity + '</p></footer>\n</body>\n</html>\n';
 }
 
 function documentPage(route) {
