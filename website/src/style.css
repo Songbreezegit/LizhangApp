@@ -42,15 +42,12 @@ h3 { font-size: 1.1875rem; }
 .wrap { width: min(70rem, calc(100% - 2rem)); margin-inline: auto; }
 .preview-banner { padding: .375rem 1rem; text-align: center; color: #655045; background: #fff0e6; font-size: .75rem; line-height: 1.6; }
 
-/* 手机品牌单独成行，导航只在自身区域滚动，所有入口保留可见选中态。 */
-.site-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .625rem 1.5rem; padding-block: 1rem .5rem; }
-.brand { display: flex; align-items: center; gap: .625rem; color: var(--ink); text-decoration: none; min-width: 0; }
+/* 头部仅保留品牌，紧凑衔接原有首屏和文档标题。 */
+.site-header { padding-block: 1rem .5rem; }
+.brand { display: inline-flex; align-items: center; gap: .625rem; color: var(--ink); text-decoration: none; min-width: 0; max-width: 100%; }
 .brand img { width: 2.625rem; height: 2.625rem; object-fit: contain; flex-shrink: 0; }
 .brand > span { font-size: 1.25rem; font-weight: 650; line-height: 1.4; }
 .brand small { display: block; font-size: .75rem; color: var(--muted); font-weight: 400; margin-top: .125rem; }
-.site-header nav { display: flex; flex-wrap: nowrap; width: 100%; min-width: 0; max-width: 100%; gap: .25rem; overflow-x: auto; padding: .25rem .25rem .5rem; font-size: .875rem; scrollbar-width: thin; }
-.site-header nav a { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: 2.75rem; padding: .5rem .625rem; border-bottom: 2px solid transparent; border-radius: .5rem .5rem 0 0; text-decoration: none; white-space: nowrap; color: var(--muted); }
-.site-header nav a[aria-current="page"] { color: var(--blue); border-bottom-color: var(--orange); background: #edf2fc; font-weight: 600; }
 .skip-link { position: absolute; left: 1rem; top: -10rem; z-index: 2; padding: .5rem 1rem; background: #fff; }
 .skip-link:focus { top: 1rem; }
 .eyebrow { color: var(--blue); font-size: var(--label-size); font-weight: 650; line-height: 1.6; margin-bottom: .5rem; }
@@ -148,18 +145,24 @@ th:first-child, td:first-child { width: 25%; }
 .feedback li { margin-bottom: .5rem; }
 .feedback > p:not(.callout) { color: var(--muted); margin-bottom: .875rem; }
 .feedback .callout + h2 { margin-top: 1.5rem; }
-.site-footer { margin-top: 2rem; border-top: 1px solid var(--line); padding-block: 1.5rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; font-size: .875rem; color: var(--muted); }
+/* 上层品牌与导航/邮箱分组；底层仅保留独立居中的备案链接。 */
+.site-footer { margin-top: 1.75rem; border-top: 1px solid var(--line); padding-block: 1.25rem .75rem; font-size: .875rem; color: var(--muted); }
+.footer-main { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: .75rem; }
+.footer-intro, .footer-resources { min-width: 0; }
+.footer-intro p { max-width: 26rem; margin-top: .25rem; }
 .footer-brand { font-weight: 650; color: var(--ink); text-decoration: none; font-size: 1.125rem; }
-.footer-links { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
-.footer-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.footer-status { grid-column: 1 / -1; font-size: var(--label-size); }
+.footer-resources { display: grid; gap: .125rem; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 0 1.25rem; }
+.footer-contact { display: flex; flex-wrap: wrap; align-items: center; gap: 0 .75rem; }
+.footer-links a, .footer-contact a, .footer-filing a { display: inline-flex; align-items: center; min-height: 2.75rem; max-width: 100%; overflow-wrap: anywhere; }
+.footer-filing { margin-top: .75rem; padding-top: .5rem; border-top: 1px solid var(--line); text-align: center; font-size: var(--label-size); }
 
 /* 48rem 起让功能卡片成两列；法律正文仍占完整一行。 */
 @media (min-width: 48rem) {
   .wrap { width: min(70rem, calc(100% - 4rem)); }
   h1 { font-size: clamp(2.125rem, 4.4vw, 3.25rem); }
   h2 { font-size: clamp(1.5rem, 2.3vw, 1.875rem); }
-  .site-header { padding-block: 1.25rem .75rem; }
+  .site-header { padding-block: 1.25rem .5rem; }
   .brand img { width: 3rem; height: 3rem; }
   .hero { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 1.5rem; padding-block: 2rem 2.5rem; }
   .hero-description { margin-block: 1.25rem 1.5rem; }
@@ -180,13 +183,12 @@ th:first-child, td:first-child { width: 25%; }
   .contact-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 1.5rem; }
   .contact-details, .feedback { padding: 1.75rem; }
   .contact-action .button { width: auto; }
-  .site-footer { grid-template-columns: minmax(0, 1fr) auto; margin-top: 2.5rem; padding-block: 1.75rem; gap: 1.25rem; }
+  .site-footer { margin-top: 2rem; }
+  .footer-main { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 2rem; }
 }
 
 /* 大屏只显示侧栏目录；小屏 details 保留原生默认收起状态。 */
 @media (min-width: 64rem) {
-  .site-header { flex-wrap: nowrap; padding-block: 1.5rem; }
-  .site-header nav { width: auto; font-size: .9375rem; }
   .hero { gap: 2rem; }
   .backup-panel { flex-direction: row; align-items: center; gap: 1.5rem; }
   .backup-panel > .text-link { flex: 0 0 12rem; }
