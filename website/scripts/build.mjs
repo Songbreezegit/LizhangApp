@@ -13,7 +13,7 @@ if (process.argv.length > 3 || !['--review', '--production'].includes(argument))
 }
 const mode = argument === '--production' ? 'production' : 'review';
 const output = resolve(website, mode === 'production' ? 'dist-production' : 'dist');
-const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy, validDate } = loadLegal(project, mode);
+const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy } = loadLegal(project, mode);
 const websitePrivacy = renderWebsitePrivacy();
 
 const routes = [
@@ -64,7 +64,7 @@ function layout(path, title, description, body) {
     '<link rel="icon" href="/assets/logo-cat.png" type="image/png">\n' +
     '<link rel="stylesheet" href="/assets/style.css">\n</head>\n<body>\n' +
     '<a class="skip-link" href="#main">跳到正文</a>\n' +
-    (mode === 'review' ? '<div class="preview-banner">审核预览 · 运营者资料及备案号已确认 · 法律正文、生效日期和部署仍待本人验收批准</div>\n' : '') +
+    (mode === 'review' ? '<div class="preview-banner">官网 v1.1 审核预览 · 仅供本地审阅，尚未测试；本次视觉调整仍待本人验收及新的发布摘要批准</div>\n' : '') +
     '<header class="site-header wrap"><a class="brand" href="/" aria-label="礼账首页">' +
     image('logo-cat.png', '') + '<span>礼账<small>让往来清楚，让心意留住</small></span></a>' +
     '<nav aria-label="主导航">' + navigation + '</nav></header>\n' +
@@ -86,7 +86,11 @@ function documentPage(route) {
     (route.path === '/privacy/' && mode === 'review' && !websitePrivacy
       ? '<aside class="callout">审核说明：官网访问补充说明须在核实实际日志范围、保存期限及必要接入方后补齐；当前审核包不能正式发布。</aside>' : '') +
     '<div class="document-layout">' +
-    '<nav class="contents card" aria-label="本页目录"><p>本页内容</p><ol>' + toc + '</ol></nav>' +
+    // 两种目录共用同一组真实锚点；通过 CSS 互斥显示，不复制正文或生成额外 ID。
+    '<nav class="contents contents-desktop card" aria-label="本页目录"><p>本页目录</p><ol>' + toc + '</ol></nav>' +
+    '<details class="contents contents-mobile card"><summary>本页目录' +
+    '<span class="contents-expand"> · 点击展开</span><span class="contents-collapse"> · 点击收起</span></summary>' +
+    '<nav aria-label="本页目录"><ol>' + toc + '</ol></nav></details>' +
     '<article class="document card">' + rendered.html + '</article></div>' +
     '<div class="document-next"><a href="/help/">查看使用帮助</a><a href="/contact/">联系与反馈 →</a></div>';
 }
@@ -110,7 +114,7 @@ function home() {
     '<h2 id="features">需要的功能，放在顺手的地方。</h2></div><div class="features">' + features + '</div></section>' +
     '<section class="backup-panel card"><div><p class="eyebrow">自己保管，也能安心迁移</p>' +
     '<h2>给记录留一份副本。</h2><p>导出 Excel 或 CSV，方便查看与整理；创建礼账备份，保留完整的联系人和礼金关系。需要保护备份内容时，可选择密码备份。</p>' +
-    '<p class="backup-note">普通备份和表格文件未加密；恢复会替换现有账本，提醒与设置不在备份中。</p></div>' +
+    '<p class="backup-note"><strong>普通备份和表格文件未加密；恢复会替换现有账本</strong>，提醒与设置不在备份中。</p></div>' +
     '<a class="text-link" href="/help/#section-6">阅读备份与恢复说明 →</a></section>' +
     '<section class="reading-panel section"><div><p class="eyebrow">开始之前，把规则说清楚</p>' +
     '<h2>关于数据，你随时可以查阅。</h2><p>通讯录与通知由你主动授权。政策、协议和帮助在应用内也可完整离线阅读。</p></div>' +
@@ -120,20 +124,19 @@ function home() {
 }
 
 function contact() {
+  const emailReady = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(metadata.contact_email);
   const fields = [
     ['运营者', metadata.operator_name + '（' + metadata.operator_type + '）'],
-    ['隐私联系邮箱', metadata.contact_email],
-    ...(validDate(metadata.effective_date) ? [['政策生效日期', metadata.effective_date]] : []),
-    ['正式政策版本', metadata.formal_policy_version], ['未成年人服务安排', metadata.minor_service_arrangement]
-  ].map(([label, value]) => '<div><dt>' + e(label) + '</dt><dd>' + e(value) + '</dd></div>').join('');
-  const emailReady = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(metadata.contact_email);
+    ['隐私联系邮箱', metadata.contact_email]
+  ].map(([label, value]) => '<div><dt>' + e(label) + '</dt><dd>' +
+    (label === '隐私联系邮箱' && emailReady ? '<a href="mailto:' + e(value) + '">' + e(value) + '</a>' : e(value)) + '</dd></div>').join('');
   const mail = emailReady
-    ? '<p><a class="button primary" href="mailto:' + e(metadata.contact_email) + '">通过邮箱联系</a></p>'
+    ? '<p class="contact-action"><a class="button primary" href="mailto:' + e(metadata.contact_email) + '">通过邮箱联系</a></p>'
     : '<p class="callout">真实联系方式待开发者本人确认，当前占位不能用于实际投递。正式发布前须补齐有效渠道。</p>';
   return '<header class="page-heading"><p class="eyebrow">有疑问，先把事情说清楚</p><h1>联系与反馈</h1>' +
     '<p>查看运营者资料，了解功能反馈和隐私请求的联系方法。</p></header>' +
     '<div class="contact-grid"><section class="card contact-details"><h2>开发者与隐私联系</h2>' +
-    '<dl>' + fields + '</dl>' + mail + '<p class="small-text">网站 ICP 备案号：' + e(config.icp.number) + '。</p></section>' +
+    '<dl>' + fields + '</dl>' + mail + '</section>' +
     '<section class="card feedback"><h2>反馈时可以说明什么？</h2><ol><li>礼账版本、Android 版本与手机型号。</li>' +
     '<li>操作步骤、预期结果与实际提示。</li><li>能说明问题的虚构或已遮罩示例。</li></ol>' +
     '<p class="callout">请勿发送真实通讯录、礼金金额、完整账本、备份文件或备份密码。</p>' +
