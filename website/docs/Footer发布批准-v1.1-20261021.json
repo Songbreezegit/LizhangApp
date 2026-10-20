@@ -1,0 +1,11 @@
+{
+  "approvedBy": "杨松",
+  "approvedAt": "2026-10-21",
+  "sourceCommit": "9d0811196527778df876e90c9930f57e97d1fda2",
+  "baselineCommit": "6be208ee095a50984ca4a76f063a08545b88ce83",
+  "siteContentSha256": "a5359c3f978561f15ff922e5c0189b8f31440ea8ad8e0d17a0e0d549536e650a",
+  "legalContentSha256": "33103cfff666a00ec8485a0f8ebe025776ca66a8631a326c9dec21d73e061978",
+  "authorization": "用户针对本轮准确 Footer Commit 与网站输入摘要明确答复：批准该 Commit 与摘要上线。",
+  "scope": "只发布已批准的 Footer HTML/CSS；保留原法律批准、备案核对、生效日期、日志事实与生产门禁。",
+  "acceptance": "发布批准不表示产品测试通过；产品测试与最终验收由用户本人负责。"
+}
