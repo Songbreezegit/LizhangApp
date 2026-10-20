@@ -69,13 +69,19 @@ function layout(path, title, description, body) {
     image('logo-cat.png', '') + '<span>礼账<small>让往来清楚，让心意留住</small></span></a>' +
     '<nav aria-label="主导航">' + navigation + '</nav></header>\n' +
     '<main id="main" class="wrap">' + body + '</main>\n' +
-    '<footer class="site-footer wrap"><div><a class="footer-brand" href="/">礼账</a>' +
-    '<p>本机记录人情往来，认真保管每一份心意。</p></div><div class="footer-links">' +
-    '<a href="/privacy/">隐私政策</a><a href="/terms/">用户协议</a><a href="/contact/">联系与反馈</a></div>' +
-    '<p class="footer-status">' + e(config.domain) + ' · ' + filing + publicSecurity +
-    '<br>运营者：' + e(metadata.operator_name) + '（' + e(metadata.operator_type) + '） · ' +
-    '<a href="mailto:' + e(metadata.contact_email) + '">' + e(metadata.contact_email) + '</a>' +
-    (mode === 'review' ? '<br>审核产物，不能直接用于正式发布。' : '') + '</p></footer>\n</body>\n</html>\n';
+    '<footer class="site-footer wrap"><div class="footer-main">' +
+    '<div class="footer-about"><a class="footer-brand" href="/">礼账</a>' +
+    '<p class="footer-intro">本机记录人情往来，认真保管每一份心意。</p></div>' +
+    '<nav class="footer-navigation" aria-label="页脚导航"><h2 class="footer-heading">网站导航</h2>' +
+    '<ul class="footer-links"><li><a href="/privacy/">隐私政策</a></li>' +
+    '<li><a href="/terms/">用户协议</a></li><li><a href="/help/">使用帮助</a></li></ul></nav>' +
+    '<div class="footer-contact"><h2 class="footer-heading">联系开发者</h2>' +
+    '<div class="footer-contact-details"><p>' + e(metadata.operator_name) + '（个人开发者）</p>' +
+    '<a class="footer-email" href="mailto:' + e(metadata.contact_email) + '">' + e(metadata.contact_email) + '</a></div></div></div>' +
+    '<div class="footer-meta"><p class="footer-registration"><span>' + e(config.domain) + '</span>' +
+    '<span>' + filing + publicSecurity + '</span></p>' +
+    (mode === 'review' ? '<p class="footer-review">审核产物，不能直接用于正式发布。</p>' : '') +
+    '</div></footer>\n</body>\n</html>\n';
 }
 
 function documentPage(route) {

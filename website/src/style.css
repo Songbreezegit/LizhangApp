@@ -148,11 +148,22 @@ th:first-child, td:first-child { width: 25%; }
 .feedback li { margin-bottom: .5rem; }
 .feedback > p:not(.callout) { color: var(--muted); margin-bottom: .875rem; }
 .feedback .callout + h2 { margin-top: 1.5rem; }
-.site-footer { margin-top: 2rem; border-top: 1px solid var(--line); padding-block: 1.5rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; font-size: .875rem; color: var(--muted); }
-.footer-brand { font-weight: 650; color: var(--ink); text-decoration: none; font-size: 1.125rem; }
-.footer-links { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
-.footer-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.footer-status { grid-column: 1 / -1; font-size: var(--label-size); }
+.site-footer { margin-top: 2rem; border-top: 1px solid var(--line); padding-block: 1rem; font-size: .875rem; color: var(--muted); }
+.footer-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; align-items: start; }
+.footer-about, .footer-navigation, .footer-contact { min-width: 0; }
+.footer-brand { display: inline-flex; align-items: center; min-height: 2rem; font-weight: 650; color: var(--ink); text-decoration: none; font-size: 1.125rem; line-height: 1.4; }
+.footer-intro { max-width: 22rem; line-height: 1.65; }
+.footer-heading { color: var(--ink); font-size: .875rem; font-weight: 600; line-height: 1.5; }
+.footer-navigation { display: grid; gap: .125rem; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 0 1.125rem; margin: 0; padding: 0; list-style: none; }
+.footer-links a, .footer-email { display: inline-flex; align-items: center; min-height: 2.75rem; padding-block: .25rem; max-width: 100%; text-decoration: none; }
+.footer-contact > .footer-heading { margin-bottom: .125rem; }
+.footer-contact-details { display: flex; flex-wrap: wrap; align-items: center; gap: 0 .75rem; }
+.footer-email { min-width: 0; overflow-wrap: anywhere; }
+.footer-meta { margin-top: .625rem; padding-top: .625rem; border-top: 1px solid var(--line); font-size: var(--label-size); }
+.footer-registration { display: flex; flex-wrap: wrap; gap: .125rem .875rem; }
+.footer-registration > span { min-width: 0; }
+.footer-review { margin-top: .25rem; }
 
 /* 48rem 起让功能卡片成两列；法律正文仍占完整一行。 */
 @media (min-width: 48rem) {
@@ -180,7 +191,12 @@ th:first-child, td:first-child { width: 25%; }
   .contact-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 1.5rem; }
   .contact-details, .feedback { padding: 1.75rem; }
   .contact-action .button { width: auto; }
-  .site-footer { grid-template-columns: minmax(0, 1fr) auto; margin-top: 2.5rem; padding-block: 1.75rem; gap: 1.25rem; }
+  .site-footer { margin-top: 2.5rem; }
+  .footer-main { grid-template-columns: minmax(0, 1.1fr) minmax(0, .8fr) minmax(0, 1.1fr); column-gap: 2rem; }
+  .footer-links { display: grid; gap: 0; }
+  .footer-links a, .footer-email { min-height: 1.625rem; padding-block: 0; }
+  .footer-contact-details { display: block; }
+  .footer-meta { margin-top: .5rem; padding-top: .5rem; }
 }
 
 /* 大屏只显示侧栏目录；小屏 details 保留原生默认收起状态。 */
