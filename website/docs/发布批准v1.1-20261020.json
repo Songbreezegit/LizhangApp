@@ -1,0 +1,11 @@
+{
+  "approvalDate": "2026-10-20",
+  "approvedBy": "杨松",
+  "sourceCommit": "a60e9fef7b5aa57ca262a64fc979b1fda086664c",
+  "previousDeploymentCommit": "42bbde5dc5b05d04b3ada3179ee31f05ab88dce9",
+  "siteContentSha256": "8a64755ae9f1c6b183d3ef5e32981506adf6738bad697740da49e27476fcaca7",
+  "legalContentSha256": "33103cfff666a00ec8485a0f8ebe025776ca66a8631a326c9dec21d73e061978",
+  "approvalScope": "用户在本会话明确批准固定 Commit 的官网 UI 发布及 ECS 静态版本切换；仅更新网站生产批准摘要。",
+  "preserved": "原法律批准、生效日期、ICP备案、日志配置、部署复核、生产门禁和基础设施配置均保留。",
+  "acceptance": "本批准授权发布，不表示产品测试通过；全部产品测试和最终验收由用户本人负责。"
+}
