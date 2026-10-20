@@ -1,0 +1,11 @@
+{
+  "approvedBy": "杨松",
+  "approvedAt": "2026-10-21",
+  "sourceCommit": "21134e9c11c9fb627ac6fb532f69bae3be2582af",
+  "siteContentSha256": "4f07de5f7d9361ffabd28418bc848147fa0ab733f73012eea565f5c84e34a8f0",
+  "legalContentSha256": "33103cfff666a00ec8485a0f8ebe025776ca66a8631a326c9dec21d73e061978",
+  "authorization": "用户明确批准立即部署固定 Commit 21134e9c11c9fb627ac6fb532f69bae3be2582af，并授权重新计算摘要、登记批准配置及完成 ECS 静态版本切换。",
+  "scope": "删除顶部导航；精简页脚与联系展示；备案居中；保留公安联网备案条件渲染。不得引入新的 UI 改动。",
+  "preserved": "原法律正文、批准摘要、生效日期、日志、备案复核状态、生产门禁与基础设施均保持不变。",
+  "acceptance": "未执行产品测试；正式构建与切换不代表最终验收通过，验收由用户本人完成。"
+}
