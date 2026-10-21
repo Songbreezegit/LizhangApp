@@ -185,6 +185,10 @@
     <string name="font_guide_layout_body">较大字号下，部分内容会换行或需要上下滚动，这是为了保证姓名、金额和操作文字保持完整可读。</string>
     <string name="font_guide_open_settings">打开系统显示设置</string>
     <string name="about_title">关于礼账</string>
+    <string name="about_filing_title">备案信息</string>
+    <string name="about_filing_number">APP 备案号：%1$s</string>
+    <string name="about_filing_query">前往工信部查询</string>
+    <string name="about_filing_browser_failed">无法打开备案查询页面，请检查浏览器是否可用后重试。</string>
     <string name="about_introduction">礼账用于清楚记录收礼、送礼和联系人往来，让家庭人情账目更容易查询、核对与保存。</string>
     <string name="about_version_title">应用版本</string>
     <string name="about_principle_title">产品原则</string>

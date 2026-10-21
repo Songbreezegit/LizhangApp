@@ -19,6 +19,37 @@ val officialRelease = providers.gradleProperty("officialRelease").map { it == "t
 val legalAssetDirectory = file("src/main/assets/legal")
 val legalApprovalFile = rootProject.file("release/legal-approval.properties")
 
+// APP 备案独立于网站备案；只把本人已核对并批准的真实编号写入安装包。
+val appFilingProperties = Properties().apply {
+    try {
+        providers.fileContents(rootProject.layout.projectDirectory.file("release/app-filing.properties"))
+            .asText.get().reader().use { load(it) }
+    } catch (_: Exception) {
+        throw GradleException("APP 备案配置无法读取，请核对 release/app-filing.properties。")
+    }
+}
+val appFilingStatus = appFilingProperties.getProperty("app_filing_status").orEmpty()
+val appFilingDeveloperConfirmed = appFilingProperties.getProperty("app_filing_developer_confirmed", "false")
+val appFilingNumber = appFilingProperties.getProperty("app_filing_number").orEmpty()
+if (appFilingProperties.stringPropertyNames().any {
+        it !in setOf("app_filing_status", "app_filing_number", "app_filing_developer_confirmed")
+    } || appFilingDeveloperConfirmed !in setOf("true", "false")) {
+    throw GradleException("APP 备案配置包含未知字段或无效的本人确认状态。")
+}
+val publishedAppFilingNumber = when (appFilingStatus) {
+    "pending" -> ""
+    "approved" -> {
+        if (appFilingDeveloperConfirmed != "true" || appFilingNumber.isBlank()) {
+            throw GradleException("APP 备案展示被阻止：须由开发者本人核对真实核发编号并明确确认。")
+        }
+        if (appFilingNumber != appFilingNumber.trim() || appFilingNumber.any { Character.isISOControl(it) }) {
+            throw GradleException("APP 备案展示被阻止：编号须为逐字核对的单行原文，不得包含首尾空白或控制字符。")
+        }
+        appFilingNumber
+    }
+    else -> throw GradleException("APP 备案状态仅允许 pending 或 approved，不得推测审批结果。")
+}
+
 // 在接触本机签名资料前拒绝配置缓存；普通构建完全不读取签名文件或签名环境变量。
 if (officialRelease && gradle.startParameter.isConfigurationCacheRequested) {
     throw GradleException("正式签名禁止配置缓存，请使用 --no-configuration-cache --no-daemon。")
@@ -300,6 +331,8 @@ android {
         targetSdk = 36
         versionCode = 23
         versionName = if (officialRelease) "1.0.0" else "1.0.0-rc2"
+        buildConfigField("String", "APP_FILING_NUMBER",
+            "\"${publishedAppFilingNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

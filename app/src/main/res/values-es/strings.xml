@@ -189,6 +189,10 @@
     <string name="font_guide_layout_body">Con texto grande, algunos contenidos pueden ocupar varias líneas o requerir desplazamiento para que los nombres, importes y acciones se lean completos.</string>
     <string name="font_guide_open_settings">Abrir ajustes de pantalla</string>
     <string name="about_title">Acerca de Lizhang</string>
+    <string name="about_filing_title">Información de registro</string>
+    <string name="about_filing_number">Número de registro ICP de la aplicación: %1$s</string>
+    <string name="about_filing_query">Consultar en el sitio del MIIT</string>
+    <string name="about_filing_browser_failed">No se puede abrir la página de consulta del registro. Comprueba que haya un navegador disponible e inténtalo de nuevo.</string>
     <string name="about_introduction">Lizhang registra los regalos monetarios recibidos y entregados y los intercambios con tus contactos, para que sea más fácil consultar, comprobar y conservar el libro de regalos familiar.</string>
     <string name="about_version_title">Versión de la aplicación</string>
     <string name="about_principle_title">Nuestros principios</string>

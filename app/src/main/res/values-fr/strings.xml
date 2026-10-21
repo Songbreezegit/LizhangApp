@@ -189,6 +189,10 @@
     <string name="font_guide_layout_body">Avec une grande taille de texte, certains contenus passent à la ligne ou nécessitent un défilement pour que les noms, montants et actions restent lisibles.</string>
     <string name="font_guide_open_settings">Ouvrir les paramètres d\'affichage</string>
     <string name="about_title">À propos de Lizhang</string>
+    <string name="about_filing_title">Informations d’enregistrement</string>
+    <string name="about_filing_number">Numéro d’enregistrement ICP de l’application : %1$s</string>
+    <string name="about_filing_query">Consulter sur le site du MIIT</string>
+    <string name="about_filing_browser_failed">Impossible d’ouvrir la page de consultation. Vérifiez qu’un navigateur est disponible, puis réessayez.</string>
     <string name="about_introduction">Lizhang vous aide à suivre les cadeaux en argent reçus et offerts, ainsi que vos échanges avec vos contacts, pour consulter, vérifier et conserver facilement le carnet de cadeaux de votre famille.</string>
     <string name="about_version_title">Version de l\'application</string>
     <string name="about_principle_title">Nos principes</string>

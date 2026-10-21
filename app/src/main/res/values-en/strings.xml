@@ -187,6 +187,10 @@
     <string name="font_guide_layout_body">With larger text, some content may wrap or require scrolling so names, amounts, and actions remain readable.</string>
     <string name="font_guide_open_settings">Open Display Settings</string>
     <string name="about_title">About Lizhang</string>
+    <string name="about_filing_title">Filing Information</string>
+    <string name="about_filing_number">App ICP filing number: %1$s</string>
+    <string name="about_filing_query">Look up on the MIIT website</string>
+    <string name="about_filing_browser_failed">Unable to open the filing lookup page. Check that a browser is available, then try again.</string>
     <string name="about_introduction">Lizhang tracks gifts received and given, along with your contacts, to make your household gift ledger easier to find, check, and keep.</string>
     <string name="about_version_title">App Version</string>
     <string name="about_principle_title">Our Principles</string>

@@ -185,6 +185,10 @@
     <string name="font_guide_layout_body">字體較大時，部分內容會換行或需要上下捲動，以確保姓名、金額和操作文字保持完整可讀。</string>
     <string name="font_guide_open_settings">開啟系統顯示設定</string>
     <string name="about_title">關於禮帳</string>
+    <string name="about_filing_title">備案資訊</string>
+    <string name="about_filing_number">APP 備案號：%1$s</string>
+    <string name="about_filing_query">前往工信部查詢</string>
+    <string name="about_filing_browser_failed">無法開啟備案查詢頁面，請確認瀏覽器可用後再試。</string>
     <string name="about_introduction">禮帳用於清楚記錄收禮、送禮和聯絡人往來，讓家庭人情帳目更容易查詢、核對與保存。</string>
     <string name="about_version_title">應用程式版本</string>
     <string name="about_principle_title">產品原則</string>

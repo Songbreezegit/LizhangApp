@@ -185,6 +185,10 @@
     <string name="font_guide_layout_body">큰 글자를 사용하면 이름, 금액, 버튼 문구를 읽기 쉽도록 일부 내용이 줄바꿈되거나 스크롤이 필요할 수 있습니다.</string>
     <string name="font_guide_open_settings">디스플레이 설정 열기</string>
     <string name="about_title">Lizhang 정보</string>
+    <string name="about_filing_title">등록 정보</string>
+    <string name="about_filing_number">앱 ICP 등록 번호: %1$s</string>
+    <string name="about_filing_query">중국 공업정보화부 사이트에서 조회</string>
+    <string name="about_filing_browser_failed">등록 조회 페이지를 열 수 없습니다. 브라우저를 사용할 수 있는지 확인한 후 다시 시도해 주세요.</string>
     <string name="about_introduction">Lizhang은 주고받은 경조금과 연락처별 내역을 기록하여 가족의 경조금 장부를 쉽게 찾고 확인하고 보관할 수 있도록 돕습니다.</string>
     <string name="about_version_title">앱 버전</string>
     <string name="about_principle_title">제품 원칙</string>

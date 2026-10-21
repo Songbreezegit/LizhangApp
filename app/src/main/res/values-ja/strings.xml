@@ -185,6 +185,10 @@
     <string name="font_guide_layout_body">文字を大きくすると、名前や金額、操作を読みやすくするために、一部の内容が折り返されたりスクロールが必要になったりします。</string>
     <string name="font_guide_open_settings">ディスプレイ設定を開く</string>
     <string name="about_title">Lizhangについて</string>
+    <string name="about_filing_title">届出情報</string>
+    <string name="about_filing_number">アプリの ICP 届出番号：%1$s</string>
+    <string name="about_filing_query">工業情報化部のサイトで確認</string>
+    <string name="about_filing_browser_failed">届出番号の照会ページを開けません。ブラウザが利用できることを確認して、もう一度お試しください。</string>
     <string name="about_introduction">Lizhangは受け取った贈り物や贈った金額、連絡先とのやり取りを記録し、家庭の贈答記録の検索・確認・保存を簡単にします。</string>
     <string name="about_version_title">アプリのバージョン</string>
     <string name="about_principle_title">大切にしていること</string>
