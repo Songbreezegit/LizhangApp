@@ -1,6 +1,6 @@
 # 礼账 Android App
 
-2026-10-21 Release 签名准备：新增仅在 `officialRelease=true` 启用的本机正式签名配置，实际证书须与本人批准的 SHA-256 一致；原有备案及签名身份三个 `pending` 字段不变。用户确认从未正式发行，原忘记密码的 JKS 保留，新长期 RSA 密钥由本人另用文件名在 Windows 创建。新增本地备案提取脚本，输出完整模数、证书 MD5 / SHA-256 至 Git 忽略的 `build/filing/android-filing-info.txt`；真实数值等待新证书。未运行产品测试、Lint 或 APK 构建，未发布或合并 main。操作步骤与边界见 [Release 签名与 APP 备案准备](docs/Release签名与APP备案准备2026-10-21.md)。
+2026-10-21 Release 签名准备：新增仅在 `officialRelease=true` 启用的本机正式签名配置，实际证书须与本人批准的 SHA-256 一致；原有备案及签名身份三个 `pending` 字段不变。用户确认从未正式发行，原忘记密码的 JKS 保留；新密钥已由本人在 Windows 创建，用户明确调整原位数要求并选用本次 RSA 2048 位长期身份。新增本地备案提取脚本，输出完整模数、证书 MD5 / SHA-256 至 Git 忽略的 `build/filing/android-filing-info.txt`；真实证书信息已在本机导出，模数进制和指纹格式静态核对完成；实际模数、指纹和本机配置仅留本地。未运行产品测试、Lint 或 APK 构建，未发布或合并 main。操作步骤与边界见 [Release 签名与 APP 备案准备](docs/Release签名与APP备案准备2026-10-21.md)。
 
 2026-10-20 官网生产部署：从指定 `80cc41610458081d1c1ad74703ca70688f5b9d9e` 创建独立分支 `deploy/website-production-20261020`，已完成 [礼账官网](https://lizhang.songisle.xyz) 的静态版本切换和 HTTPS 配置。本人分别批准法律正文、准确网站输入、公网发布范围及实际 CA 条款，生效日期 `2026-10-21`；生产包由现有门禁生成，服务器文件摘要核对一致。实际构建源提交为 `d3b9e2ccf0acf83ce955c6d9356e21414651ea33`。未合并 main，Android 签名仍独立保留；产品测试和最终验收由用户本人完成。见 [生产发布交付](docs/官网生产发布交付2026-10-20.md)、[执行边界记录](docs/官网部署第一阶段核对2026-10-20.md)。
 

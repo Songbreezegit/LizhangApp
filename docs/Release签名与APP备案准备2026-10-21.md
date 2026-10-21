@@ -8,7 +8,9 @@
 - 原密钥库 `D:/AndroidKeys/LizhangApp/lizhang-release.jks` 保留原状。本轮仅看到公开别名 `lizhang`、PKCS12 格式及密钥条目；无密码的公开查询无法取得证书。用户反馈忘记密码，本轮不猜测、不破解、不读取保存的密码。
 - Git 历史未发现 `signingConfigs` / `storeFile` 配置，历史交付记录为 Debug 或未签名候选；本轮 GitHub Releases 查询为空，本地无标签。在已检查的 AndroidKeys、AndroidProjects、AndroidBuilds、用户桌面、文档、下载目录中未发现另一份礼账密钥。以上为有限范围证据，不能单独证明仓库外从未发行。
 - 用户已进一步确认礼账从未正式对外发行，授权准备不同文件名的新长期密钥；旧 JKS 不删除、不覆盖、不修改。
-- **新密钥须由用户本人在 Windows 本机创建和备份。当前未取得新证书，真实模数、MD5、SHA-256 均待导出，不能用示例值代填。**
+- **新密钥已由用户本人在 Windows 创建，随后本人在本地运行提取脚本并隐藏输入密码。公开报告已生成：实际为 RSA 2048 位，有效期至 2076 年。用户明确调整原先 3072/4096 位要求，选择沿用本次 RSA 2048 位长期密钥。**
+- 已对本地报告静态核对：模数为 2048 位，十六进制 512 字符、十进制 617 位，两种表示为相同正整数；MD5 为 32 位十六进制，SHA-256 为 64 位十六进制，模数无额外 `00` 符号填充。实际完整模数、证书指纹和本机签名配置只保存在本地，不写入本交付文档或 Git。
+- 本机已按本人选定的路径和别名补齐 `release-signing.local.properties`，仅含非秘密元数据，受 Git 忽略；没有读取或保存密码，也没有访问私钥。
 - `release/legal-approval.properties` 整份保持不变，尤其 `filing_status=pending`、`signing_identity_status=pending`、`signing_certificate_sha256=pending`。不会因创建密钥或导出指纹自动确认备案和签名身份。
 
 ## 长期密钥方案
@@ -17,32 +19,26 @@
 
 若以前正式发行过 APK，必须优先找回原身份并核对历史 APK 证书，不能按此流程直接换钥。本项目此次已由用户确认从未正式发行，才进入新钥准备流程。
 
-## 用户在 Windows 创建新密钥
+## 用户在 Windows 选择和保管现有长期密钥
 
-1. 打开 Android Studio → **Build → Generate Signed Bundle / APK → APK → Create new**。
-2. 使用不同于原 JKS 的路径，例如 `D:/AndroidKeys/LizhangApp/lizhang-app-signing-2026.jks`，别名可用 `lizhang`。密钥库与 Key 密码由本人设置和保管，不发到聊天，不保存在仓库或日志中。
-3. 使用 RSA 3072 或 4096 位（建议 4096），证书有效期至少 25 年，按本人真实情况填写证书 Subject。
-4. **部分 Android Studio 版本的 Create new 对话框没有密钥位数设置，不能把默认位数当成 4096。** 如无法明确设置，先取消该创建对话框，改在本机终端运行下方 JDK 命令，再用 **Choose existing** 选择生成的文件；这仍是本人在本地创建和管理密钥。
-5. 创建后不必继续向导构建 APK。本轮不要求正式包；原 JKS 和新 JKS 分别保管，新密钥做本人控制的离线加密备份，密码单独保管。
+本次长期密钥已创建并选定，不再创建替代密钥。原先新建 RSA 3072/4096 的建议已由用户明确调整为使用本次 RSA 2048 位证书。
 
-下面命令仅供本人在 Windows PowerShell 手动运行，Codex 不代为创建。JKS 类型支持不同的库密码与 Key 密码；若两个密码相同，在 Key 密码提示处按工具说明操作。密钥目录已存在时无需重新创建：
+1. Android Studio → **Build → Generate Signed Bundle / APK → APK → Choose existing**，选择本机私有配置中记录的现有长期密钥文件。
+2. 使用本地公开报告中的准确 Key Alias。密钥库密码与 Key 密码始终由本人本地输入，不发到聊天、不写入 Git 或日志。
+3. 不必继续向导构建 APK；本轮仅准备证书特征信息。沿用同一把密钥及同一张证书，避免重新签发证书导致 MD5 / SHA-256 改变。
+4. 新密钥做本人控制的离线加密备份，密码单独保管；忘记密码的原 JKS 继续保留，不删除、不覆盖、不修改。
+5. 后续国内商店、官网 APK 和 Play App Signing 的应用签名身份沿用这一选择；Upload Key 待未来接入 Play Console 时再处理。
 
-```powershell
-$newKey = 'D:\AndroidKeys\LizhangApp\lizhang-app-signing-2026.jks'
-if (Test-Path -LiteralPath $newKey) { throw '目标文件已存在，请使用另一个新文件名。' }
-# 本机 JDK 位置不同则调整工具路径。密码由 keytool 在终端交互询问。
-& 'C:\Program Files\Java\jdk-17\bin\keytool.exe' -genkeypair -v -storetype JKS -keystore $newKey -alias lizhang -keyalg RSA -keysize 4096 -sigalg SHA256withRSA -validity 10000
-if ($LASTEXITCODE -ne 0) { throw '创建未完成，请本人检查本地提示；不要自动重试或覆盖文件。' }
-```
+选择长期密钥仅确定本次签名准备方案，不代表 APP 备案已通过或正式发布审批已启用。
 
 ## 本机 Gradle 签名配置
 
-将 `release/signing.properties.example` 复制到仓库根目录 `release-signing.local.properties`（已忽略），仅填写非秘密字段：
+本分支工作树已生成 `release-signing.local.properties`（已忽略），记录本人实际选择的路径与别名，不含密码。在其他工作树使用时，可从 `release/signing.properties.example` 复制后填写本机实际字段。以下仅为占位格式，不是本机已选值：
 
 ```properties
-storeFile=D:/AndroidKeys/LizhangApp/lizhang-app-signing-2026.jks
-keyAlias=lizhang
-storeType=JKS
+storeFile=D:/AndroidKeys/LizhangApp/your-app-signing.jks
+keyAlias=your-key-alias
+# storeType 可省略，不能由扩展名推断。
 ```
 
 也可把此配置放在仓库外，通过当前进程变量 `LIZHANG_SIGNING_PROPERTIES` 指定其路径。`storeType` 可不填，由 JDK 自动识别，不能从 `.jks` 扩展名推断实际格式。Windows properties 路径统一用正斜杠。
@@ -83,12 +79,12 @@ Gradle 仅在 `officialRelease=true` 时为 Release 绑定正式 `signingConfigs
 
 ## 导出真实备案信息（无需构建 APK）
 
-创建新密钥后，在本分支工作树根目录的 Windows PowerShell / Windows Terminal 中运行：
+本次已由用户本人完成导出，无需重复输入密码。未来需要重新提取时，在本分支工作树根目录的 Windows PowerShell / Windows Terminal 中运行，替换为本人实际路径和别名：
 
 ```powershell
 .\scripts\export-android-filing-info.ps1 `
-    -KeyStorePath 'D:\AndroidKeys\LizhangApp\lizhang-app-signing-2026.jks' `
-    -KeyAlias 'lizhang' `
+    -KeyStorePath 'D:\AndroidKeys\LizhangApp\your-app-signing.jks' `
+    -KeyAlias 'your-key-alias' `
     -JdkHome 'C:\Program Files\Java\jdk-17'
 ```
 
@@ -97,7 +93,7 @@ Gradle 仅在 `officialRelease=true` 时为 Release 绑定正式 `signingConfigs
 若已有本人导出的单张公开证书，也可不打开密钥库：
 
 ```powershell
-.\scripts\export-android-filing-info.ps1 -PublicCertificatePath 'D:\PrivateFiling\lizhang-public.cer' -KeyAlias 'lizhang' -JdkHome 'C:\Program Files\Java\jdk-17'
+.\scripts\export-android-filing-info.ps1 -PublicCertificatePath 'D:\PrivateFiling\lizhang-public.cer' -KeyAlias 'your-key-alias' -JdkHome 'C:\Program Files\Java\jdk-17'
 ```
 
 此模式的别名由本人提供，仅作来源标记；X.509 证书自身不包含密钥库别名，也不能据此证明私钥仍可用。只接受单张公开证书，不输入私钥、JKS、P12 或 APK。
@@ -125,7 +121,7 @@ Gradle 仅在 `officialRelease=true` 时为 Release 绑定正式 `signingConfigs
 
 ## 本轮执行边界
 
-仅做源码静态审阅、PowerShell 语法解析、JDK 公开证书解析工具的源码编译及 Git 差异/忽略规则核对。未执行产品测试、Lint、浏览器自动化、模拟器、实机或 APK/AAB 构建；不把工具源码语法核对称为产品测试通过。全部产品验证与最终验收由用户本人完成。没有改动法律正文、Room、页面、版本代码、网站或 ECS，没有上传 JKS、APK 或任何签名秘密，不合并 main。
+仅做源码静态审阅、PowerShell 语法解析、JDK 公开证书解析工具的源码编译、本地公开报告的格式与进制核对，以及 Git 差异/忽略规则核对。证书导出由用户本人在本地输入密码执行，Codex 未读取密码或私钥。未执行产品测试、Lint、浏览器自动化、模拟器、实机或 APK/AAB 构建；不把工具源码语法核对称为产品测试通过。全部产品验证与最终验收由用户本人完成。没有改动法律正文、Room、页面、版本代码、网站或 ECS，没有上传 JKS、APK 或任何签名秘密，不合并 main。
 
 参考：
 
