@@ -1,0 +1,39 @@
+{
+  "description": "由现有 Android 图标资源派生的商店方形素材；不是设备截图或产品验收结果。",
+  "source_commit": "c3bbd5c7a8623ef491913245e3b8dd733365d177",
+  "sources": [
+    {
+      "path": "app/src/main/res/drawable-nodpi/launcher_cat.png",
+      "sha256": "dce28e0d573cebb55ac3c6e76a80a28c60f22e141ee317a152407e04b8398cd4"
+    },
+    {
+      "path": "app/src/main/res/drawable/ic_launcher_foreground.xml",
+      "sha256": "545a3163e14f474ad733bc9b30578e6789ce6478ec42be35267e10371e97ffec"
+    },
+    {
+      "path": "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "sha256": "2f9bc0d127697159d1761ded81f927198fa853422496d63937f6fd37e337c019"
+    },
+    {
+      "path": "app/src/main/res/values/launcher_colors.xml",
+      "sha256": "dfdd028c92385e584fae781db98818744bcad289f1d0bc9721f95fff53cd2ac7"
+    }
+  ],
+  "source_image_size": [
+    1254,
+    1254
+  ],
+  "background": "#FFF8F1",
+  "foreground_inset": "18%",
+  "adaptive_extra_inset_fraction": 0.25,
+  "supersample": 4,
+  "render": "System.Drawing，高质量双三次插值，方形视口，不附加厂商蒙版",
+  "output": {
+    "path": "release/store-listing/icons/lizhang-store-icon-512.png",
+    "width": 512,
+    "height": 512,
+    "format": "PNG",
+    "color_mode": "RGB",
+    "sha256": "23cad27b664daa1674a01a96f9007b061e889d849577aa6aa25a825c41e87c25"
+  }
+}
