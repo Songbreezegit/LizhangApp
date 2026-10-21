@@ -2,11 +2,13 @@
 
 日期：2026-10-21。仓库：`Songbreezegit/LizhangApp`。分支：`chore/release-signing-preparation`。基线为本轮拉取的最新 `origin/main`：`fc76b584d5bc6b9adcfae1fded21d93095a6302a`。本轮只准备长期签名配置与备案工具，不发布 v1.0.0。
 
+> 2026-10-22 静态审查修订：删除本文中的真实本机密钥路径，示例统一使用虚构目录。普通构建已改为完全不读取签名资料；正式构建在读取资料前拒绝配置缓存，并只允许三个非密码配置字段。相关路径错误改为固定提示。发现问题后按 M1.1 约定暂停合并与后续阶段，详见 [审查与修复记录](M1.1签名静态审查与修复2026-10-22.md)。下文关于已创建密钥和导出报告的叙述是 2026-10-21 历史记录，本次未重新访问或核验这些本地文件。
+
 ## 已核查的现状与待办
 
 - `applicationId=com.yangsong.lizhang`，版本代码仍为 23；候选版本仍为 `1.0.0-rc2`，正式开关仍由原有内容门禁控制。
-- 原密钥库 `D:/AndroidKeys/LizhangApp/lizhang-release.jks` 保留原状。本轮仅看到公开别名 `lizhang`、PKCS12 格式及密钥条目；无密码的公开查询无法取得证书。用户反馈忘记密码，本轮不猜测、不破解、不读取保存的密码。
-- Git 历史未发现 `signingConfigs` / `storeFile` 配置，历史交付记录为 Debug 或未签名候选；本轮 GitHub Releases 查询为空，本地无标签。在已检查的 AndroidKeys、AndroidProjects、AndroidBuilds、用户桌面、文档、下载目录中未发现另一份礼账密钥。以上为有限范围证据，不能单独证明仓库外从未发行。
+- 原密钥库保留原状；实际路径和别名不在文档中记录。历史核查仅取得密钥库格式及条目信息，无密码的公开查询无法取得证书。用户反馈忘记密码，不猜测、不破解、不读取保存的密码。
+- 当时 Git 历史未发现 `signingConfigs` / `storeFile` 配置，历史交付记录为 Debug 或未签名候选；当时 GitHub Releases 查询为空，本地无标签。先前在有限的本地开发和用户资料目录中未发现另一份礼账密钥。以上为历史有限范围证据，不能单独证明仓库外从未发行。
 - 用户已进一步确认礼账从未正式对外发行，授权准备不同文件名的新长期密钥；旧 JKS 不删除、不覆盖、不修改。
 - **新密钥已由用户本人在 Windows 创建，随后本人在本地运行提取脚本并隐藏输入密码。公开报告已生成：实际为 RSA 2048 位，有效期至 2076 年。用户明确调整原先 3072/4096 位要求，选择沿用本次 RSA 2048 位长期密钥。**
 - 已对本地报告静态核对：模数为 2048 位，十六进制 512 字符、十进制 617 位，两种表示为相同正整数；MD5 为 32 位十六进制，SHA-256 为 64 位十六进制，模数无额外 `00` 符号填充。实际完整模数、证书指纹和本机签名配置只保存在本地，不写入本交付文档或 Git。
@@ -36,7 +38,7 @@
 本分支工作树已生成 `release-signing.local.properties`（已忽略），记录本人实际选择的路径与别名，不含密码。在其他工作树使用时，可从 `release/signing.properties.example` 复制后填写本机实际字段。以下仅为占位格式，不是本机已选值：
 
 ```properties
-storeFile=D:/AndroidKeys/LizhangApp/your-app-signing.jks
+storeFile=D:/PrivateSigning/your-app-signing.jks
 keyAlias=your-key-alias
 # storeType 可省略，不能由扩展名推断。
 ```
@@ -73,7 +75,7 @@ try {
 }
 ```
 
-Gradle 仅在 `officialRelease=true` 时为 Release 绑定正式 `signingConfigs`。保留原有 `verifyOfficialReleaseContent`，并新增 `verifyReleaseSigning`：检查完整配置、仓库外路径、非 Debug、RSA 公钥、证书有效期，以及实际公开证书 SHA-256 与本人批准的指纹一致。配置错误仅输出固定提示，不附带底层异常。缺配置时不会回退到 Debug 密钥或产出正式签名 APK。正式构建拒绝配置缓存，避免签名参数被缓存到磁盘。
+Gradle 仅在 `officialRelease=true` 时读取本机签名文件和签名环境变量，并为 Release 绑定正式 `signingConfigs`；普通 Debug / 未签名候选构建不读取这些资料。读取前先拒绝配置缓存；properties 只允许 `storeFile`、`keyAlias`、`storeType`，误填密码或其他字段立即阻止。保留原有 `verifyOfficialReleaseContent` 和 `verifyReleaseSigning`：检查完整配置、仓库外路径、非 Debug、RSA 公钥、证书有效期，以及实际公开证书 SHA-256 与本人批准的指纹一致。签名资料读取和路径解析错误使用固定提示，不附带底层异常。缺配置时不会回退到 Debug 密钥或产出正式签名 APK。这些为源码静态结论，尚未执行 Gradle 验证。
 
 普通 Release 继续为明确的未签名候选 `app-release-unsigned.apk`，版本名带 `rc2`，不能安装或当正式发行包；Debug 行为不变。直接调用 Release 打包、签名任务也连接正式签名门禁。`.gitignore` 额外保护密钥、证书、私有配置和本地备案导出，但忽略规则不能替代本人保管，禁止强制添加这些文件。
 
@@ -83,7 +85,7 @@ Gradle 仅在 `officialRelease=true` 时为 Release 绑定正式 `signingConfigs
 
 ```powershell
 .\scripts\export-android-filing-info.ps1 `
-    -KeyStorePath 'D:\AndroidKeys\LizhangApp\your-app-signing.jks' `
+    -KeyStorePath 'D:\PrivateSigning\your-app-signing.jks' `
     -KeyAlias 'your-key-alias' `
     -JdkHome 'C:\Program Files\Java\jdk-17'
 ```

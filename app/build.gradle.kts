@@ -19,23 +19,46 @@ val officialRelease = providers.gradleProperty("officialRelease").map { it == "t
 val legalAssetDirectory = file("src/main/assets/legal")
 val legalApprovalFile = rootProject.file("release/legal-approval.properties")
 
-// 本机配置只保存路径、别名和可选类型；密码仅从当前进程环境读取。
-val signingPropertiesPath = providers.environmentVariable("LIZHANG_SIGNING_PROPERTIES").orNull
-val signingPropertiesFile = signingPropertiesPath?.let { rootProject.file(it) }
-    ?: rootProject.file("release-signing.local.properties")
+// 在接触本机签名资料前拒绝配置缓存；普通构建完全不读取签名文件或签名环境变量。
+if (officialRelease && gradle.startParameter.isConfigurationCacheRequested) {
+    throw GradleException("正式签名禁止配置缓存，请使用 --no-configuration-cache --no-daemon。")
+}
+val signingPropertiesPath = if (officialRelease) providers.environmentVariable("LIZHANG_SIGNING_PROPERTIES").orNull else null
+val signingPropertiesFile = try {
+    signingPropertiesPath?.let { rootProject.file(it) }
+        ?: rootProject.file("release-signing.local.properties")
+} catch (_: Exception) {
+    throw GradleException("正式签名被阻止：本机签名配置路径无效，请在本机核对。")
+}
 val signingProperties = Properties().apply {
-    if (signingPropertiesFile.isFile) signingPropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+    if (officialRelease) {
+        try {
+            if (signingPropertiesPath != null && !signingPropertiesFile.isFile) {
+                throw IllegalArgumentException()
+            }
+            if (signingPropertiesFile.isFile) signingPropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+        } catch (_: Exception) {
+            // 不附带底层异常，避免无效路径或配置内容进入日志。
+            throw GradleException("正式签名被阻止：本机签名配置不存在、无法读取或格式无效。")
+        }
+        if (stringPropertyNames().any { it !in setOf("storeFile", "keyAlias", "storeType") }) {
+            throw GradleException("正式签名被阻止：本机配置仅允许路径、别名和类型；不得保存密码或其他字段。")
+        }
+    }
 }
 fun signingSetting(environment: String, property: String): String? =
-    providers.environmentVariable(environment).orNull?.takeIf { it.isNotBlank() }
-        ?: signingProperties.getProperty(property)?.trim()?.takeIf { it.isNotBlank() }
+    if (officialRelease) {
+        providers.environmentVariable(environment).orNull?.takeIf { it.isNotBlank() }
+            ?: signingProperties.getProperty(property)?.trim()?.takeIf { it.isNotBlank() }
+    } else null
 
 val releaseStorePath = signingSetting("LIZHANG_SIGNING_STORE_FILE", "storeFile")
 val releaseKeyAlias = signingSetting("LIZHANG_SIGNING_KEY_ALIAS", "keyAlias")
 val releaseStoreType = signingSetting("LIZHANG_SIGNING_STORE_TYPE", "storeType")
-// 正式构建禁止配置缓存将 signingConfig 中的密码持久化到磁盘。
-if (officialRelease && gradle.startParameter.isConfigurationCacheRequested) {
-    throw GradleException("正式签名禁止配置缓存，请使用 --no-configuration-cache --no-daemon。")
+val releaseStoreFile = releaseStorePath?.let { path ->
+    try { rootProject.file(path).canonicalFile } catch (_: Exception) {
+        throw GradleException("正式签名被阻止：密钥库路径无效，请在本机核对。")
+    }
 }
 // 普通 Debug / 未签名候选配置不读取签名密码。
 val releaseStorePassword = if (officialRelease) providers.environmentVariable("LIZHANG_SIGNING_STORE_PASSWORD").orNull else null
@@ -210,21 +233,14 @@ val verifyReleaseSigning by tasks.registering {
     dependsOn(verifyOfficialReleaseContent)
     doLast {
         if (!officialRelease) throw GradleException("正式签名检查仅用于 officialRelease=true。")
-        if (signingPropertiesPath != null && !signingPropertiesFile.isFile) {
-            throw GradleException("正式签名被阻止：指定的本机签名配置文件不存在。")
-        }
-        if (signingProperties.containsKey("storePassword") || signingProperties.containsKey("keyPassword")) {
-            throw GradleException("正式签名被阻止：本机配置不得保存明文密码，请改用进程环境变量。")
-        }
-        val storePath = releaseStorePath
+        val store = releaseStoreFile
         val alias = releaseKeyAlias
         val storePassword = releaseStorePassword
         val keyPassword = releaseKeyPassword
-        if (storePath.isNullOrBlank() || alias.isNullOrBlank() ||
+        if (store == null || alias.isNullOrBlank() ||
             storePassword.isNullOrEmpty() || keyPassword.isNullOrEmpty()) {
             throw GradleException("正式签名被阻止：缺少路径、别名或进程内签名密码；不会使用 Debug 密钥。")
         }
-        val store = rootProject.file(storePath).canonicalFile
         val insideRepository = generateSequence(store.parentFile) { it.parentFile }
             .any { it.resolve(".git").exists() }
         if (!store.isFile || store.toPath().startsWith(rootDir.canonicalFile.toPath()) || insideRepository) {
@@ -293,7 +309,7 @@ android {
     if (officialRelease) {
         signingConfigs {
             create("release") {
-                storeFile = releaseStorePath?.let { rootProject.file(it) }
+                storeFile = releaseStoreFile
                 keyAlias = releaseKeyAlias
                 storePassword = releaseStorePassword
                 keyPassword = releaseKeyPassword

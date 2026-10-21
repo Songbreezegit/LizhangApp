@@ -45,16 +45,24 @@ try {
     if ($PSCmdlet.ParameterSetName -eq 'KeyStore') {
         if (!$KeyStorePath) { $KeyStorePath = Read-Host '已选定的正式密钥库完整路径（仓库之外）' }
         Assert-NativeArgument $KeyStorePath
-        $keyStoreFile = Get-Item -LiteralPath $KeyStorePath
+        try {
+            $keyStoreFile = Get-Item -LiteralPath $KeyStorePath
+        } catch {
+            throw '正式密钥库路径无效或不可读，请在本机核对；不输出实际路径。'
+        }
         if ($keyStoreFile.PSIsContainer -or $keyStoreFile.Name -ieq 'debug.keystore') {
             throw '需要仓库之外的正式密钥库文件，禁止使用 Debug 密钥。'
         }
-        $ancestor = $keyStoreFile.Directory
-        while ($null -ne $ancestor) {
-            if (Test-Path -LiteralPath (Join-Path $ancestor.FullName '.git')) {
-                throw '密钥库必须放在 Git 仓库之外的本机私有目录。'
+        try {
+            $ancestor = $keyStoreFile.Directory
+            while ($null -ne $ancestor) {
+                if (Test-Path -LiteralPath (Join-Path $ancestor.FullName '.git')) {
+                    throw '密钥库位置不符合要求。'
+                }
+                $ancestor = $ancestor.Parent
             }
-            $ancestor = $ancestor.Parent
+        } catch {
+            throw '无法确认密钥库位于 Git 仓库之外，请在本机核对私有目录。'
         }
         # 隐藏输入；仅传给 keytool 子进程环境，不写密码文件、不放入命令行或父进程环境。
         $secret = Read-Host '密钥库密码（仅本机隐藏输入；不需要 Key 密码）' -AsSecureString
@@ -81,6 +89,8 @@ try {
             [void]$stdout.GetAwaiter().GetResult()
             [void]$stderr.GetAwaiter().GetResult()
             if ($process.ExitCode -ne 0) { throw '公开证书导出失败；请在本机核对路径、别名和密码，不自动重试。' }
+        } catch {
+            throw '公开证书导出失败；请在本机核对 JDK、路径、别名和密码，不自动重试。'
         } finally {
             $start.EnvironmentVariables.Remove('LIZHANG_FILING_STORE_PASSWORD')
             if ($buffer -ne [IntPtr]::Zero) { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($buffer) }
@@ -90,7 +100,11 @@ try {
         $certificatePath = $tempCertificate
     } else {
         # 可接受本人已通过 keytool 或 Android Studio 导出的单张公开 X.509 证书。
-        $certificatePath = (Get-Item -LiteralPath $PublicCertificatePath).FullName
+        try {
+            $certificatePath = (Get-Item -LiteralPath $PublicCertificatePath).FullName
+        } catch {
+            throw '公开证书路径无效或不可读，请在本机核对。'
+        }
         if ([IO.Path]::GetExtension($certificatePath) -notin '.cer', '.crt', '.der', '.pem') {
             throw '仅接受公开 X.509 证书文件，不接受 JKS、PKCS12、私钥或 APK。'
         }

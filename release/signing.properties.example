@@ -1,7 +1,7 @@
 # 仅为非秘密字段示例。复制到仓库根目录 release-signing.local.properties，或仓库外私有目录。
 # Windows 路径使用正斜杠；不要填写 storePassword 或 keyPassword。
 # 必须由本人选择已确认的长期签名密钥；以下文件名不表示密钥已存在。
-storeFile=D:/AndroidKeys/LizhangApp/your-app-signing.jks
+storeFile=D:/PrivateSigning/your-app-signing.jks
 keyAlias=your-key-alias
 # 可选，按实际文件格式填写；.jks 扩展名不代表内容一定是 JKS。
 # storeType=PKCS12
