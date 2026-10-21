@@ -1,4 +1,7 @@
 import java.security.MessageDigest
+import java.security.KeyStore
+import java.security.cert.X509Certificate
+import java.security.interfaces.RSAPublicKey
 import java.time.LocalDate
 import java.util.Properties
 
@@ -15,6 +18,28 @@ plugins {
 val officialRelease = providers.gradleProperty("officialRelease").map { it == "true" }.getOrElse(false)
 val legalAssetDirectory = file("src/main/assets/legal")
 val legalApprovalFile = rootProject.file("release/legal-approval.properties")
+
+// 本机配置只保存路径、别名和可选类型；密码仅从当前进程环境读取。
+val signingPropertiesPath = providers.environmentVariable("LIZHANG_SIGNING_PROPERTIES").orNull
+val signingPropertiesFile = signingPropertiesPath?.let { rootProject.file(it) }
+    ?: rootProject.file("release-signing.local.properties")
+val signingProperties = Properties().apply {
+    if (signingPropertiesFile.isFile) signingPropertiesFile.reader(Charsets.UTF_8).use { load(it) }
+}
+fun signingSetting(environment: String, property: String): String? =
+    providers.environmentVariable(environment).orNull?.takeIf { it.isNotBlank() }
+        ?: signingProperties.getProperty(property)?.trim()?.takeIf { it.isNotBlank() }
+
+val releaseStorePath = signingSetting("LIZHANG_SIGNING_STORE_FILE", "storeFile")
+val releaseKeyAlias = signingSetting("LIZHANG_SIGNING_KEY_ALIAS", "keyAlias")
+val releaseStoreType = signingSetting("LIZHANG_SIGNING_STORE_TYPE", "storeType")
+// 正式构建禁止配置缓存将 signingConfig 中的密码持久化到磁盘。
+if (officialRelease && gradle.startParameter.isConfigurationCacheRequested) {
+    throw GradleException("正式签名禁止配置缓存，请使用 --no-configuration-cache --no-daemon。")
+}
+// 普通 Debug / 未签名候选配置不读取签名密码。
+val releaseStorePassword = if (officialRelease) providers.environmentVariable("LIZHANG_SIGNING_STORE_PASSWORD").orNull else null
+val releaseKeyPassword = if (officialRelease) providers.environmentVariable("LIZHANG_SIGNING_KEY_PASSWORD").orNull else null
 
 fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
     .digest(bytes).joinToString("") { "%02x".format(it.toInt() and 0xff) }
@@ -178,6 +203,70 @@ val verifyOfficialReleaseContent by tasks.registering {
     }
 }
 
+// 只读取公开证书进行身份比对，不获取私钥；私钥仅交给 Android 签名工具使用。
+val verifyReleaseSigning by tasks.registering {
+    group = "verification"
+    description = "检查正式签名配置及公开证书与本人批准指纹的一致性，不输出密码。"
+    dependsOn(verifyOfficialReleaseContent)
+    doLast {
+        if (!officialRelease) throw GradleException("正式签名检查仅用于 officialRelease=true。")
+        if (signingPropertiesPath != null && !signingPropertiesFile.isFile) {
+            throw GradleException("正式签名被阻止：指定的本机签名配置文件不存在。")
+        }
+        if (signingProperties.containsKey("storePassword") || signingProperties.containsKey("keyPassword")) {
+            throw GradleException("正式签名被阻止：本机配置不得保存明文密码，请改用进程环境变量。")
+        }
+        val storePath = releaseStorePath
+        val alias = releaseKeyAlias
+        val storePassword = releaseStorePassword
+        val keyPassword = releaseKeyPassword
+        if (storePath.isNullOrBlank() || alias.isNullOrBlank() ||
+            storePassword.isNullOrEmpty() || keyPassword.isNullOrEmpty()) {
+            throw GradleException("正式签名被阻止：缺少路径、别名或进程内签名密码；不会使用 Debug 密钥。")
+        }
+        val store = rootProject.file(storePath).canonicalFile
+        val insideRepository = generateSequence(store.parentFile) { it.parentFile }
+            .any { it.resolve(".git").exists() }
+        if (!store.isFile || store.toPath().startsWith(rootDir.canonicalFile.toPath()) || insideRepository) {
+            throw GradleException("正式签名被阻止：密钥库必须位于 Git 仓库之外的本机私有目录。")
+        }
+        if (store.name.equals("debug.keystore", ignoreCase = true) ||
+            alias.equals("androiddebugkey", ignoreCase = true)) {
+            throw GradleException("正式签名被阻止：禁止使用 Android 默认 Debug 密钥。")
+        }
+        val password = storePassword.toCharArray()
+        val certificate = try {
+            val keyStore = if (releaseStoreType == null) {
+                KeyStore.getInstance(store, password)
+            } else {
+                KeyStore.getInstance(releaseStoreType).apply { store.inputStream().use { load(it, password) } }
+            }
+            if (!keyStore.isKeyEntry(alias)) {
+                throw GradleException("正式签名被阻止：所选别名没有签名密钥条目。")
+            }
+            keyStore.getCertificate(alias) as? X509Certificate
+                ?: throw GradleException("正式签名被阻止：所选别名缺少 X.509 公开证书。")
+        } catch (_: Exception) {
+            // 不拼接底层异常，防止配置值或凭据出现在日志中。
+            throw GradleException("正式签名被阻止：无法读取所选公开证书，请在本机核对配置与密码。")
+        } finally { password.fill('\u0000') }
+        val rsaKey = certificate.publicKey as? RSAPublicKey
+            ?: throw GradleException("正式签名被阻止：APP 备案签名身份须使用 RSA 公钥。")
+        if (rsaKey.modulus.bitLength() < 2048 ||
+            certificate.subjectX500Principal.name.contains("CN=Android Debug", ignoreCase = true)) {
+            throw GradleException("正式签名被阻止：证书为 Debug 身份或 RSA 密钥长度不足。")
+        }
+        try { certificate.checkValidity() } catch (_: Exception) {
+            throw GradleException("正式签名被阻止：证书尚未生效或已过期。")
+        }
+        val approved = readLegalProperties(legalApprovalFile).getProperty("signing_certificate_sha256")
+        if (!sha256(certificate.encoded).equals(approved, ignoreCase = true)) {
+            throw GradleException("正式签名被阻止：实际公开证书与本人批准的 SHA-256 指纹不一致。")
+        }
+        logger.lifecycle("正式签名公开证书身份比对通过；尚未表示 APK 或商店验收完成。")
+    }
+}
+
 tasks.register("printLegalContentDigest") {
     group = "verification"
     description = "输出待本人审阅的法律正文、元数据及七语言告知内容摘要，不表示批准。"
@@ -198,6 +287,22 @@ android {
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // 常规 Release 保持未签名候选；正式签名只能与现有批准开关一起启用。
+    if (officialRelease) {
+        signingConfigs {
+            create("release") {
+                storeFile = releaseStorePath?.let { rootProject.file(it) }
+                keyAlias = releaseKeyAlias
+                storePassword = releaseStorePassword
+                keyPassword = releaseKeyPassword
+                releaseStoreType?.let { storeType = it }
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+        buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
 
     buildFeatures {
@@ -222,7 +327,14 @@ android.sourceSets.getByName("main").res.srcDir(layout.buildDirectory.dir("gener
 android.sourceSets.getByName("main").assets.setSrcDirs(listOf(generatedOfflineLegalAssets))
 tasks.named("preBuild").configure {
     dependsOn(generateChineseResources, generateOfflineLegalAssets)
-    if (officialRelease) dependsOn(verifyOfficialReleaseContent)
+    if (officialRelease) dependsOn(verifyOfficialReleaseContent, verifyReleaseSigning)
+}
+
+// 直接调用打包或签名任务也必须先检查批准和签名身份。
+tasks.configureEach {
+    if (officialRelease && name in setOf("validateSigningRelease", "packageRelease", "packageReleaseBundle", "signReleaseBundle")) {
+        dependsOn(verifyReleaseSigning)
+    }
 }
 
 kotlin {

@@ -12,3 +12,20 @@ captures/
 # Android Studio 本机状态（.idea/ 已整体忽略，以下规则用于明确约束）
 .idea/workspace.xml
 .idea/caches/
+
+# 签名密钥、本机配置和本地备案导出不得提交
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+*.cer
+*.crt
+*.der
+*.pem
+release-signing.local.properties
+release-signing.*.local.properties
+keystore.properties
+key.properties
+build/filing/
+android-filing-info*.txt
