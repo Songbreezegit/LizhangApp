@@ -21,7 +21,8 @@ import java.io.File
 /** 空白测试设备的设置页证据；不读取或创建联系人、金额、备份。 */
 class TransitionVisualInstrumentedTest {
     @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 1) val completedGuides: org.junit.rules.TestRule = AppearanceGuidesRule()
+    @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val app get() = compose.activity.application as LiZhangApplication
 
@@ -31,7 +32,7 @@ class TransitionVisualInstrumentedTest {
             app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT)
         }
         compose.waitForIdle()
-        compose.onNodeWithText("我的").performClick()
+        compose.onNodeWithTag("底部导航项settings").performClick()
         compose.onNodeWithText("深色模式").performScrollTo()
     }
 
@@ -68,25 +69,35 @@ class TransitionVisualInstrumentedTest {
         compose.onNodeWithText("主题设置").performClick()
         val dialogBounds = compose.onNode(isDialog()).fetchSemanticsNode().boundsInWindow
         compose.onAllNodes(isSelectable() and hasAnyAncestor(isDialog()))[2].performClick()
+        compose.waitUntil(2500) { !compose.activity.appearanceState.isThemeTransitioning }
         frame("弹窗深色预览")
         compose.onNode(isDialog()).assertExists()
         assertEquals(dialogBounds, compose.onNode(isDialog()).fetchSemanticsNode().boundsInWindow)
         compose.onAllNodes(isSelectable() and hasAnyAncestor(isDialog()))[1].performClick()
+        compose.waitUntil(2500) { !compose.activity.appearanceState.isThemeTransitioning }
         frame("弹窗浅色预览")
         compose.onNode(isDialog()).assertExists()
         compose.onNodeWithText("完成").performClick()
     }
 
-    @Test fun 连续操作旋转与后台后释放画面并保留最后目标() {
+    @Test fun 动画期间忽略重复操作且后台与旋转释放画面和主题锁() {
         val switch = compose.onNode(isToggleable())
         switch.performClick()
-        switch.performClick()
-        switch.performClick()
+        // 回调集中在同一主线程批次；测试框架的空闲等待不能把重复点击变成独立操作。
+        compose.runOnUiThread {
+            if (compose.activity.appearanceState.isThemeTransitioning) repeat(10) {
+                compose.activity.appearanceHost.circular(androidx.compose.ui.geometry.Offset.Zero, false) {
+                    error("主题进行期间不应接收反向目标")
+                }
+            }
+        }
         compose.waitUntil(3000) { compose.activity.appearanceState.snapshot == null }
         switch.assertIsOn()
+        assertFalse(compose.activity.appearanceState.isThemeTransitioning)
         switch.performClick()
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         assertNull(compose.activity.appearanceState.snapshot)
+        assertFalse(compose.activity.appearanceState.isThemeTransitioning)
         compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         compose.onNodeWithText("语言").assertIsDisplayed()
         compose.activityRule.scenario.onActivity { it.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }

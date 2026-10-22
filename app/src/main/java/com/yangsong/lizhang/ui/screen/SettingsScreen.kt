@@ -115,9 +115,15 @@ fun SettingsScreen(
     var showCreateBackupPassword by remember { mutableStateOf(false) }
     var showThemeOptions by remember { mutableStateOf(false) }
     val transition = LocalAppearanceActions.current
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val changeTheme: (AppThemeMode) -> Unit = { mode ->
         if (mode != state.themeMode) {
-            if (transition != null) transition.colors { viewModel.setThemeMode(mode) }
+            val targetDark = when (mode) {
+                AppThemeMode.SYSTEM -> systemDark
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+            }
+            if (transition != null) transition.colors(targetDark) { viewModel.setThemeMode(mode) }
             else viewModel.setThemeMode(mode)
         }
     }

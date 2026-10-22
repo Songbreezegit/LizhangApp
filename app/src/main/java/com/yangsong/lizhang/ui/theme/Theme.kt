@@ -91,12 +91,15 @@ val LocalEffectiveDarkTheme = staticCompositionLocalOf { false }
 /** 页面和独立 Dialog 继承同一进度，圆形切换直接使用目标配色。 */
 @Composable
 fun LiZhangTheme(darkTheme: Boolean = isSystemInDarkTheme(), animateColors: Boolean = false,
+    colorTransitionId: Long? = null, onColorsFinished: (Long, Boolean) -> Unit = { _, _ -> },
     content: @Composable () -> Unit) {
     val progress = remember { Animatable(if (darkTheme) 1f else 0f) }
-    LaunchedEffect(darkTheme, animateColors) {
+    val colorsFinished by rememberUpdatedState(onColorsFinished)
+    LaunchedEffect(darkTheme, animateColors, colorTransitionId) {
         val target = if (darkTheme) 1f else 0f
         if (animateColors && progress.value != target) progress.animateTo(target, tween(240, easing = FastOutSlowInEasing))
         else progress.snapTo(target)
+        colorTransitionId?.let { colorsFinished(it, darkTheme) }
     }
     val fraction = if (animateColors) progress.value else if (darkTheme) 1f else 0f
     CompositionLocalProvider(LocalThemeDarkFraction provides fraction, LocalEffectiveDarkTheme provides darkTheme) {

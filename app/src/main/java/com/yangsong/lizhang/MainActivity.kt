@@ -124,7 +124,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors) {
+            LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors,
+                colorTransitionId = appearanceState.themeRequest?.takeIf { it.colors }?.id,
+                onColorsFinished = appearanceHost::colorsFinished) {
                 AppearanceTransition(appearanceHost, darkTheme, appearanceState.languagePreference,
                     resourceLocales) {
                     CompositionLocalProvider(LocalPendingDark provides appearanceState.pendingDark,
