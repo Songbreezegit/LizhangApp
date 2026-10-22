@@ -1,6 +1,5 @@
 package com.yangsong.lizhang.ui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -59,7 +57,6 @@ fun FrostedYearMenu(
             val selected = year == selectedYear
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .12f) else Color.Transparent)
                     .testTag("年份选项-$year")
                     .pressSelectable(selected, role = Role.RadioButton, onClick = { onYearSelected(year) })
                     .padding(horizontal = 14.dp, vertical = 6.dp),
