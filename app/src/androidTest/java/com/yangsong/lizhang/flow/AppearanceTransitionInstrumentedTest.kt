@@ -19,7 +19,65 @@ import org.junit.Test
 /** 不创建隐私数据；实际 Canvas 像素和 Activity 页面均在模拟器验证。 */
 class AppearanceTransitionInstrumentedTest {
     @get:org.junit.Rule(order = 0) val acceptedPrivacy = com.yangsong.lizhang.fixtures.AcceptedPrivacyRule()
-    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 1) val completedGuides: org.junit.rules.TestRule = AppearanceGuidesRule()
+    @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()
+
+    @Test fun 原生动画结束前保持互斥且结束后立即接受反向请求() {
+        org.junit.Assume.assumeTrue(android.animation.ValueAnimator.areAnimatorsEnabled())
+        lateinit var host: AppearanceTransitionHost
+        lateinit var state: AppearanceTransitionViewModel
+        lateinit var animation: android.animation.ValueAnimator
+        var captures = 0
+        var submissions = 0
+        compose.runOnIdle {
+            state = AppearanceTransitionViewModel()
+            host = AppearanceTransitionHost(compose.activity, state,
+                captureWindowForTest = { _, completed -> captures++; completed(android.view.PixelCopy.SUCCESS) },
+                animatorForTest = {
+                    android.animation.ValueAnimator.ofFloat(0f, 1f).also {
+                        animation = it
+                        it.addListener(object : android.animation.AnimatorListenerAdapter() {
+                            override fun onAnimationStart(animation: android.animation.Animator) { animation.pause() }
+                        })
+                    }
+                },
+            ).also { it.attach(); it.navigationReady(true) }
+            host.updateDrawTarget(true, com.yangsong.lizhang.ui.component.currentAppLanguage(),
+                compose.activity.resources.configuration.locales.toLanguageTags())
+            host.circular(androidx.compose.ui.geometry.Offset.Zero, true) { submissions++ }
+            assertTrue("捕获完成、等待目标帧期间仍然锁定", state.isThemeTransitioning)
+            assertFalse(state.snapshot!!.started)
+        }
+        try {
+            compose.waitUntil(2000) { state.snapshot?.started == true }
+            compose.runOnIdle {
+                assertTrue(state.isThemeTransitioning)
+                assertTrue(animation.isPaused)
+                repeat(10) { host.circular(androidx.compose.ui.geometry.Offset.Zero, false) { submissions++ } }
+                assertEquals(1, captures)
+                assertEquals(1, submissions)
+                assertEquals(1, state.circularHandoffs)
+                animation.end()
+                assertNull(state.snapshot)
+                assertFalse("真实 End 回调在覆盖移除后解锁", state.isThemeTransitioning)
+                host.circular(androidx.compose.ui.geometry.Offset.Zero, false) { submissions++ }
+                assertEquals(2, captures)
+                assertEquals(2, submissions)
+                assertTrue(state.isThemeTransitioning)
+                host.updateDrawTarget(false, com.yangsong.lizhang.ui.component.currentAppLanguage(),
+                    compose.activity.resources.configuration.locales.toLanguageTags())
+            }
+            compose.waitUntil(2000) { state.snapshot?.started == true }
+            compose.runOnIdle {
+                assertEquals(2, state.circularHandoffs)
+                assertTrue(animation.isPaused)
+                animation.cancel()
+                animation.cancel()
+                assertNull(state.snapshot)
+                assertFalse("Cancel 和 End 重复回调均幂等解锁", state.isThemeTransitioning)
+            }
+        } finally { compose.runOnIdle { host.detach(false); state.clear() } }
+    }
 
     @Test fun 重复挂载幂等且解除的布局监听不清理后续宿主快照() {
         compose.runOnIdle {
@@ -160,4 +218,22 @@ class AppearanceTransitionInstrumentedTest {
         compose.onNodeWithText("语言").assertIsDisplayed()
         compose.runOnIdle { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
     }
+}
+
+/** 外观专项从无页面引导遮挡的空白设备开始，不改写产品首次引导逻辑。 */
+internal fun prepareAppearanceGuides() {
+    val app = androidx.test.core.app.ApplicationProvider.getApplicationContext<com.yangsong.lizhang.LiZhangApplication>()
+    InstrumentationRegistry.getInstrumentation().runOnMainSync {
+        val repository = app.appContainer.onboardingRepository
+        repository.complete()
+        repository.completeFeatureGuide()
+        com.yangsong.lizhang.domain.onboarding.FeatureGuidePage.entries.forEach(repository::completePageGuide)
+    }
+}
+
+internal class AppearanceGuidesRule : org.junit.rules.TestRule {
+    override fun apply(base: org.junit.runners.model.Statement, description: org.junit.runner.Description) =
+        object : org.junit.runners.model.Statement() {
+            override fun evaluate() { prepareAppearanceGuides(); base.evaluate() }
+        }
 }

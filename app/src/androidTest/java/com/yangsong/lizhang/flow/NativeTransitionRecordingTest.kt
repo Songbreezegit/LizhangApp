@@ -63,10 +63,7 @@ class NativeTransitionRecordingTest {
     private val app get() = ApplicationProvider.getApplicationContext<LiZhangApplication>()
     private val legacyLocator get() = InstrumentationRegistry.getArguments().getString("themeLocator", "precise") == "legacy"
     @Before fun 明确空白专项设备的引导前置条件() {
-        instrumentation.runOnMainSync {
-            app.appContainer.onboardingRepository.complete()
-            app.appContainer.onboardingRepository.completeFeatureGuide()
-        }
+        prepareAppearanceGuides()
         assertTrue("主题验收从已完成引导的首页开始", app.appContainer.onboardingRepository.state.value.completed)
     }
     @After fun 保存专项诊断时间线() {
@@ -101,14 +98,28 @@ class NativeTransitionRecordingTest {
         bitmap.recycle()
     }
     private fun awaitThemeFrame(dark: Boolean, dimmed: Boolean = false) {
-        awaitPage {
-            val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return@awaitPage false
-            // 卡片外的实际渐变像素，避免仅凭偏好提交或空闲事件保存错误端点。
-            val color = bitmap.getPixel(bitmap.width / 100, bitmap.height / 3)
-            bitmap.recycle()
-            val light = android.graphics.Color.red(color) + android.graphics.Color.green(color) + android.graphics.Color.blue(color)
-            if (dark) light < if (dimmed) 90 else 190 else light > if (dimmed) 220 else 500
-        }
+        // 当前深色背景是蓝粉靛色图片，不能继续用历史近黑色渐变的亮度阈值。
+        val reference = requireNotNull(android.graphics.BitmapFactory.decodeResource(app.resources,
+            if (dark) R.drawable.blue_pink_indigo_gradient else R.drawable.cream_periwinkle_gradient,
+            android.graphics.BitmapFactory.Options().apply { inScaled = false }))
+        try {
+            awaitPage {
+                val bitmap = instrumentation.uiAutomation.takeScreenshot() ?: return@awaitPage false
+                try {
+                    listOf(.01f to .33f, .99f to .33f, .01f to .66f, .99f to .66f).all { (x, y) ->
+                        fun channels(color: Int) = intArrayOf(android.graphics.Color.red(color),
+                            android.graphics.Color.green(color), android.graphics.Color.blue(color))
+                        val actual = channels(bitmap.getPixel((bitmap.width * x).toInt(), (bitmap.height * y).toInt()))
+                        val expected = channels(reference.getPixel((reference.width * x).toInt(), (reference.height * y).toInt()))
+                        // Dialog 的窗口暗化只改变亮度；仍须匹配同一资源在四处的实际色彩。
+                        val scale = if (dimmed) actual.sum().toFloat() / expected.sum() else 1f
+                        (!dimmed || scale in .35f.. .85f) && actual.indices.all {
+                            kotlin.math.abs(actual[it] - expected[it] * scale) <= 24f
+                        }
+                    }
+                } finally { bitmap.recycle() }
+            }
+        } finally { reference.recycle() }
     }
     private fun activity(): MainActivity {
         var value: MainActivity? = null
@@ -147,7 +158,7 @@ class NativeTransitionRecordingTest {
             val current = activity()
             app.appContainer.themeRepository.themeMode.value == mode && current.hasWindowFocus() &&
                 current.appearanceHost.isNavigationReady && current.appearanceState.snapshot == null &&
-                current.appearanceState.pendingDark == null
+                current.appearanceState.pendingDark == null && !current.appearanceState.isThemeTransitioning
         }
         awaitThemeFrame(dark)
         device.waitForIdle()
@@ -305,7 +316,7 @@ class NativeTransitionRecordingTest {
         it.substringAfter("t=").substringBefore(' ').toLongOrNull()?.let { time -> time >= start } == true &&
             it.contains("stage=$stage ")
     }
-    @Test fun 真实行与开关分别单次提交且快速连续操作保持最后意图() {
+    @Test fun 真实行与开关单次提交且动画期间忽略重复操作完成后接受下一次() {
         openChineseLightSettings()
         val handoffs = activity().appearanceState.circularHandoffs
         for ((tag, dark) in listOf("深色模式行" to true, "深色模式开关" to false)) {
@@ -325,19 +336,34 @@ class NativeTransitionRecordingTest {
         }
         val expectedMotion = android.animation.ValueAnimator.areAnimatorsEnabled()
         assertEquals(handoffs + if (expectedMotion) 2 else 0, activity().appearanceState.circularHandoffs)
-        var lastTarget = false
+        // 同一主线程批次触发真实宿主回调，避免 UIAutomator 自带空闲等待跨过整段动画。
+        val current = activity()
+        val rapidHandoffs = current.appearanceState.circularHandoffs
         val rapidStart = SystemClock.uptimeMillis()
-        repeat(4) {
-            lastTarget = !themeSwitch(allowScroll = false).isChecked
-            // 只等有效开关意图显现，不等待上一个圆形覆盖结束。
-            freshControl("深色模式开关").click()
-            awaitPage { themeSwitch(allowScroll = false).isChecked == lastTarget }
+        instrumentation.runOnMainSync {
+            val center = current.appearanceHost.themeInputSnapshot().switchBounds!!.let {
+                androidx.compose.ui.geometry.Offset(it.centerX(), it.centerY())
+            }
+            current.appearanceHost.circular(center, true) { app.appContainer.themeRepository.setThemeMode(AppThemeMode.DARK) }
+            if (expectedMotion) {
+                val id = current.appearanceState.requestId
+                repeat(10) {
+                    current.appearanceHost.circular(center, false) { app.appContainer.themeRepository.setThemeMode(AppThemeMode.LIGHT) }
+                }
+                assertEquals(id, current.appearanceState.requestId)
+                assertTrue(current.appearanceState.isThemeTransitioning)
+            }
         }
-        awaitThemeMode(if (lastTarget) AppThemeMode.DARK else AppThemeMode.LIGHT, lastTarget)
-        assertEquals(4, submissionsSince(rapidStart, "callback.switch"))
-        assertEquals(lastTarget, themeSwitch(allowScroll = false).isChecked)
+        awaitThemeMode(AppThemeMode.DARK, true)
+        assertEquals("只有首次请求提交主题仓库", 1, submissionsSince(rapidStart, "ThemeRepository.setThemeMode"))
+        assertEquals(rapidHandoffs + if (expectedMotion) 1 else 0, current.appearanceState.circularHandoffs)
+        assertTrue(themeSwitch(allowScroll = false).isChecked)
         assertNull(activity().appearanceState.snapshot)
         assertNull(activity().appearanceState.pendingDark)
+        assertFalse(activity().appearanceState.isThemeTransitioning)
+        tapThemeSwitch()
+        awaitThemeMode(AppThemeMode.LIGHT, false)
+        assertEquals(rapidHandoffs + if (expectedMotion) 2 else 0, current.appearanceState.circularHandoffs)
     }
     @Test fun 正常渲染下圆形弹窗语言和提醒页面走查() = runFullLanguageScenario(1)
     @Test fun 十二次语言切换后真实开关双向切换() = runFullLanguageScenario(2)

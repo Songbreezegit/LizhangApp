@@ -11,6 +11,10 @@ import com.yangsong.lizhang.domain.model.AppLanguage
 
 /** Activity 作用域只保留一张内存画面，不参与保存或持久化。 */
 class AppearanceTransitionViewModel : ViewModel() {
+    data class ThemeRequest(val id: Long, val hostId: Long, val targetDark: Boolean, val colors: Boolean)
+    var themeRequest by mutableStateOf<ThemeRequest?>(null)
+        private set
+    val isThemeTransitioning get() = themeRequest != null
     data class ListPosition(val index: Int, val offset: Int, val viewportWidth: Int, val viewportHeight: Int)
     class LanguageRequest(val id: Long, val target: AppLanguage, val originHost: Long,
         val listPosition: ListPosition?, var listRestored: Boolean = listPosition == null,
@@ -58,23 +62,47 @@ class AppearanceTransitionViewModel : ViewModel() {
         onSnapshotChanged = null
     }
     private val handler = Handler(Looper.getMainLooper())
-    private val timeout = Runnable { clear() }
+    private var timeout: Runnable? = null
+    /** 所有入口在主线程同步校验和占用，先锁定再开始异步捕获。新宿主可替代失效宿主。 */
+    @androidx.annotation.MainThread
+    internal fun beginTheme(hostId: Long, targetDark: Boolean, colors: Boolean = false): ThemeRequest? {
+        check(Looper.myLooper() == Looper.getMainLooper())
+        if (!ownsSnapshotObserver(hostId) || themeRequest?.hostId == hostId) return null
+        val request = ThemeRequest(nextRequest(), hostId, targetDark, colors)
+        themeRequest = request
+        scheduleTimeout(request.id, 1500L)
+        return request
+    }
+    private fun scheduleTimeout(id: Long, duration: Long) {
+        timeout?.let(handler::removeCallbacks)
+        timeout = Runnable { clear(id) }.also { handler.postDelayed(it, duration) }
+    }
     fun nextRequest(): Long { clear(); return ++requestId }
     fun install(value: Snapshot) {
-        clear()
+        if (value.id != requestId) return
+        clearSnapshot()
         snapshot = value
-        handler.postDelayed(timeout, if (value.language == null) 1500L else 4000L)
+        scheduleTimeout(value.id, if (value.language == null) 1500L else 4000L)
         onSnapshotChanged?.invoke()
     }
     fun prepareLanguage(value: LanguageRequest) {
         lastLanguagePosition = value.listPosition
         lastLanguageTarget = value.target
         languageRequest = value
-        handler.removeCallbacks(timeout)
-        handler.postDelayed(timeout, 4000L)
+        scheduleTimeout(value.id, 4000L)
     }
-    fun clear() {
-        handler.removeCallbacks(timeout)
+    /** 先移除覆盖并取消原生动画，再按请求归属幂等解锁；迟到回调不能释放新锁。 */
+    fun clear(id: Long = requestId) {
+        if (id != requestId) return
+        clearSnapshot()
+        if (themeRequest?.id == id) {
+            pendingDark = null
+            themeRequest = null
+        }
+    }
+    private fun clearSnapshot() {
+        timeout?.let(handler::removeCallbacks)
+        timeout = null
         snapshot?.let { shot ->
             com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("overlay.release",
                 com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.Operation(shot.id, shot.originHost, shot.targetDark, 0),

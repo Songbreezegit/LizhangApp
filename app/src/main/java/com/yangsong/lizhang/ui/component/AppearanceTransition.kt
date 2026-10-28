@@ -52,7 +52,7 @@ import kotlinx.coroutines.flow.first
 /** 坐标均为窗口坐标；捕获与覆盖共享 content 根的原点和尺寸。 */
 interface AppearanceActions {
     fun circular(center: Offset, targetDark: Boolean, change: () -> Unit)
-    fun colors(change: () -> Unit)
+    fun colors(targetDark: Boolean, change: () -> Unit)
     fun language(target: AppLanguage)
     fun cancel()
 }
@@ -73,13 +73,15 @@ class AppearanceTransitionHost(
     private val activity: Activity,
     private val state: AppearanceTransitionViewModel,
     private val captureWindowForTest: ((Bitmap, (Int) -> Unit) -> Unit)? = null,
+    private val bitmapForTest: ((Int, Int) -> Bitmap)? = null,
+    private val animatorForTest: (() -> ValueAnimator)? = null,
 ) : AppearanceActions {
     private val handler = Handler(Looper.getMainLooper())
     private val hostId = state.nextHost()
     private val root = activity.findViewById<FrameLayout>(android.R.id.content)
     private val overlay = SnapshotOverlay(activity, state)
     private var animator: ValueAnimator? = null
-    private var capturing = false
+    private var capturingId: Long? = null
     private var latest: (() -> Unit)? = null
     private var pendingApply: (() -> Unit)? = null
     private var pendingLanguage: AppLanguage? = null
@@ -120,7 +122,7 @@ class AppearanceTransitionHost(
     fun observeThemeTouch(event: MotionEvent) {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             touchActive = themeRowBounds?.contains(event.x, event.y) == true
-            if (touchActive) themeOperation = ThemeOperationDiagnostics.Operation(
+            if (touchActive && state.themeRequest == null) themeOperation = ThemeOperationDiagnostics.Operation(
                 state.requestId + 1, hostId, !themeChecked, ThemeOperationDiagnostics.nextTouchId())
             if (touchActive) ThemeOperationDiagnostics.observe(themeOperation)
         }
@@ -142,10 +144,11 @@ class AppearanceTransitionHost(
         if (switch) themeSwitchBounds = value else themeRowBounds = value
     }
     internal fun themeCallback(source: String, targetDark: Boolean, suppliedDark: Boolean? = null) {
-        themeOperation = ThemeOperationDiagnostics.Operation(state.requestId + 1, hostId, targetDark,
+        val operation = ThemeOperationDiagnostics.Operation(state.requestId + 1, hostId, targetDark,
             themeOperation?.touchId ?: 0)
-        ThemeOperationDiagnostics.observe(themeOperation)
-        ThemeOperationDiagnostics.record("callback.$source", themeOperation, "suppliedDark=$suppliedDark")
+        if (state.themeRequest == null) themeOperation = operation
+        ThemeOperationDiagnostics.observe(operation)
+        ThemeOperationDiagnostics.record("callback.$source", operation, "suppliedDark=$suppliedDark")
     }
     internal var isNavigationReady = false
         private set
@@ -259,32 +262,46 @@ class AppearanceTransitionHost(
         }
     }
     override fun circular(center: Offset, targetDark: Boolean, change: () -> Unit) {
-        themeOperation = ThemeOperationDiagnostics.Operation(state.requestId + 1, hostId, targetDark,
+        if (!attached || detached || activity.isFinishing || activity.isDestroyed || !ownsState ||
+            state.themeRequest?.hostId == hostId) return
+        val interruptedLanguage = pendingLanguage != null
+        if (interruptedLanguage) cancel()
+        val request = state.beginTheme(hostId, targetDark) ?: return
+        themeOperation = ThemeOperationDiagnostics.Operation(request.id, hostId, targetDark,
             themeOperation?.touchId ?: 0)
         ThemeOperationDiagnostics.record("host.circular", themeOperation, "detached=$detached pendingLanguage=$pendingLanguage")
-        if (detached || !ownsState) return
-        if (pendingLanguage != null) {
+        if (interruptedLanguage) {
             // 新主题操作中断语言覆盖，但两个不同设置的用户意图都要提交。
-            cancel()
-            ThemeOperationDiagnostics.during(themeOperation, change)
+            try { ThemeOperationDiagnostics.during(themeOperation, change) }
+            finally { state.clear(request.id) }
             return
         }
         state.animateColors = false
         state.pendingDark = targetDark
-        capture(targetDark = targetDark, center = center, change = change)
+        capture(targetDark = targetDark, center = center, themeRequestId = request.id, change = change)
     }
-    override fun colors(change: () -> Unit) {
-        if (detached || !ownsState) return
+    override fun colors(targetDark: Boolean, change: () -> Unit) {
+        if (!attached || detached || activity.isFinishing || activity.isDestroyed || !ownsState ||
+            state.themeRequest?.hostId == hostId) return
         if (pendingLanguage != null) cancel()
+        val request = state.beginTheme(hostId, targetDark, colors = true) ?: return
         latest = null
         pendingApply = null
         pendingLanguage = null
         pendingCaptureStart = null
         coveredLanguageApply = null
         state.pendingDark = null
-        state.nextRequest()
+        pendingId = request.id
         state.animateColors = ValueAnimator.areAnimatorsEnabled()
-        change()
+        try { change() }
+        catch (failure: RuntimeException) { state.clear(request.id); throw failure }
+        if (!state.animateColors) state.clear(request.id)
+    }
+    /** 由现有 Compose Animatable 的真实完成回调解锁，保持原有渐变时长和曲线。 */
+    internal fun colorsFinished(id: Long, dark: Boolean) {
+        val request = state.themeRequest ?: return
+        if (!detached && ownsState && request.id == id && request.hostId == hostId &&
+            request.colors && request.targetDark == dark) state.clear(id)
     }
     override fun language(target: AppLanguage) {
         language(target, currentListPosition)
@@ -295,7 +312,7 @@ class AppearanceTransitionHost(
             if (pendingLanguage != null) { pendingApply = null; cancel() }
             return
         }
-        if (pendingApply != null && pendingLanguage == null) cancel()
+        if (state.themeRequest != null || (pendingApply != null && pendingLanguage == null)) cancel()
         state.animateColors = false
         state.pendingDark = null
         // 捕获前固定原有列表位置；覆盖层接入或窗口 Insets 派发不能改写本次恢复目标。
@@ -329,20 +346,21 @@ class AppearanceTransitionHost(
         targetDark: Boolean? = null,
         center: Offset = Offset.Zero,
         language: AppLanguage? = null,
+        themeRequestId: Long? = null,
         change: () -> Unit,
     ) {
         // 失效宿主不得分配新请求；已经接受且未被替代的目标由 cancel / detach 收尾。
         if (detached || !ownsState) return
         pendingCaptureStart = null
         coveredLanguageApply = null
-        val id = state.nextRequest()
+        val id = themeRequestId ?: state.nextRequest()
         val operation = if (targetDark != null) themeOperation?.copy(requestId = id) else null
         if (operation != null) themeOperation = operation
         pendingId = id
         pendingApply = change
         pendingLanguage = language
         val apply = {
-            if (pendingId == id && pendingApply != null) {
+            if (pendingId == id && id == state.requestId && ownsState && pendingApply != null) {
                 pendingCaptureStart = null
                 coveredLanguageApply = null
                 pendingApply = null
@@ -352,22 +370,21 @@ class AppearanceTransitionHost(
                 state.pendingDark = null
             }
         }
-        // 捕获也有超时；窗口不可用时直接应用最新意图，不等待或永久遮挡。
+        // 捕获也有超时；窗口不可用时提交本次已接受目标，并使迟到捕获失效。
         handler.postDelayed({
             if (!detached && id == state.requestId && pendingApply != null) {
                 ThemeOperationDiagnostics.record("capture.timeout", operation)
-                latest = null
-                state.nextRequest()
-                apply()
+                // cancel 会先使捕获失效，再收尾已接受目标；语言提交产生的恢复请求继续保留。
+                cancel()
             }
         }, 600L)
         lateinit var start: () -> Unit
         start = start@{
-            if (detached || id != state.requestId) return@start
+            if (detached || !ownsState || id != state.requestId) return@start
             if ((!ValueAnimator.areAnimatorsEnabled() && language == null) || root.width == 0 || root.height == 0) {
                 ThemeOperationDiagnostics.record("capture.bypass", operation,
                     "animations=${ValueAnimator.areAnimatorsEnabled()} width=${root.width} height=${root.height}")
-                apply()
+                try { apply() } finally { if (targetDark != null) state.clear(id) }
                 return@start
             }
             if (language != null && !activity.hasWindowFocus()) {
@@ -379,43 +396,51 @@ class AppearanceTransitionHost(
             val width = root.width
             val height = root.height
             val (bw, bh) = snapshotSize(width, height)
-            val bitmap = try { Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888) }
-                catch (_: OutOfMemoryError) { apply(); return@start }
-            capturing = true
+            val bitmap = try { bitmapForTest?.invoke(bw, bh) ?: Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888) }
+                catch (_: OutOfMemoryError) {
+                    try { apply() } finally { if (targetDark != null) state.clear(id) }
+                    return@start
+                }
+            capturingId = id
             ThemeOperationDiagnostics.record("PixelCopy.start", operation, "width=$width height=$height")
             try {
                 val completed: (Int) -> Unit = { result ->
-                        ThemeOperationDiagnostics.record("PixelCopy.result", operation, "result=$result detached=$detached currentRequest=${state.requestId}")
-                        capturing = false
-                        if (!detached && id == state.requestId) {
-                            if (result == PixelCopy.SUCCESS) {
-                                state.install(AppearanceTransitionViewModel.Snapshot(
-                                    id, bitmap, width, height,
-                                    (center.x - position[0]).coerceIn(0f, width.toFloat()),
-                                    (center.y - position[1]).coerceIn(0f, height.toFloat()),
-                                    targetDark, language, originHost = hostId,
-                                ))
-                            } else bitmap.recycle()
-                            try {
-                                if (result == PixelCopy.SUCCESS && language != null) coveredLanguageApply = apply
-                                else apply()
-                                root.postInvalidateOnAnimation()
-                            } catch (_: RuntimeException) { state.clear() }
+                    ThemeOperationDiagnostics.record("PixelCopy.result", operation, "result=$result detached=$detached currentRequest=${state.requestId}")
+                    if (capturingId == id) capturingId = null
+                    if (!detached && ownsState && id == state.requestId) {
+                        if (result == PixelCopy.SUCCESS) {
+                            state.install(AppearanceTransitionViewModel.Snapshot(
+                                id, bitmap, width, height,
+                                (center.x - position[0]).coerceIn(0f, width.toFloat()),
+                                (center.y - position[1]).coerceIn(0f, height.toFloat()),
+                                targetDark, language, originHost = hostId,
+                            ))
                         } else bitmap.recycle()
-                        latest?.also { latest = null }?.invoke()
-                    }
+                        try {
+                            if (result == PixelCopy.SUCCESS && language != null) coveredLanguageApply = apply
+                            else {
+                                apply()
+                                if (result != PixelCopy.SUCCESS && targetDark != null) state.clear(id)
+                            }
+                            root.postInvalidateOnAnimation()
+                        } catch (_: RuntimeException) { state.clear(id) }
+                    } else bitmap.recycle()
+                    if (capturingId == null) latest?.also { latest = null }?.invoke()
+                }
                 if (captureWindowForTest != null) captureWindowForTest.invoke(bitmap, completed)
                 else PixelCopy.request(activity.window,
                     Rect(position[0], position[1], position[0] + width, position[1] + height), bitmap, completed, handler)
             } catch (_: RuntimeException) {
                 ThemeOperationDiagnostics.record("PixelCopy.exception", operation)
-                capturing = false
+                if (capturingId == id) capturingId = null
                 bitmap.recycle()
-                if (id == state.requestId && !detached) apply()
+                if (id == state.requestId && !detached && ownsState) {
+                    try { apply() } finally { if (targetDark != null) state.clear(id) }
+                }
             }
         }
-        // 未完成捕获时只保留最新意图，释放旧目标后再分配画面。
-        if (capturing) latest = start else start()
+        // 主题重复请求已在宿主入口拒绝；此处仅保留原有语言捕获的交接机制。
+        if (capturingId != null) latest = start else start()
     }
     /** 从 OnPreDraw 登记当前帧，不能在 OnDraw 之后误登记到下一帧。 */
     fun pageDrawn(dark: Boolean, language: AppLanguage, resourceLocales: String) {
@@ -483,7 +508,7 @@ class AppearanceTransitionHost(
         val operation = themeOperation?.takeIf { it.requestId == shot.id }
         ThemeOperationDiagnostics.record("transition.start", operation, "snapshotId=${shot.id}")
         if (shot.language == null) state.circularHandoffs++ else state.languageHandoffs++
-        animator = ValueAnimator.ofFloat(0f, 1f).apply {
+        animator = (animatorForTest?.invoke() ?: ValueAnimator.ofFloat(0f, 1f)).apply {
             duration = if (shot.language == null) 420L else 140L
             interpolator = android.animation.TimeInterpolator { FastOutSlowInEasing.transform(it) }
             addUpdateListener {
@@ -493,9 +518,12 @@ class AppearanceTransitionHost(
                 }
             }
             addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationCancel(animation: Animator) {
+                    if (!detached && ownsState && state.snapshot === shot) state.clear(shot.id)
+                }
                 override fun onAnimationEnd(animation: Animator) {
                     ThemeOperationDiagnostics.record("transition.end", operation, "snapshotId=${shot.id}")
-                    if (!detached && ownsState && state.snapshot === shot) state.clear()
+                    if (!detached && ownsState && state.snapshot === shot) state.clear(shot.id)
                 }
             })
             start()
@@ -504,6 +532,7 @@ class AppearanceTransitionHost(
     override fun cancel() {
         ThemeOperationDiagnostics.record("host.cancel", themeOperation, "detached=$detached currentRequest=${state.requestId}")
         if (detached) return
+        capturingId = null
         if (!ownsState) {
             // 旧宿主只收尾自己的待提交目标；新请求已替代时不得反向提交或清理共享状态。
             val apply = pendingApply.takeIf { pendingId == state.requestId }
@@ -512,11 +541,14 @@ class AppearanceTransitionHost(
             pendingCaptureStart = null
             coveredLanguageApply = null
             latest = null
-            ThemeOperationDiagnostics.during(themeOperation) { apply?.invoke() }
-            if (apply != null && pendingId == state.requestId) state.pendingDark = null
+            try { ThemeOperationDiagnostics.during(themeOperation) { apply?.invoke() } }
+            finally {
+                if (state.themeRequest?.hostId == hostId) state.clear(pendingId)
+                if (apply != null && pendingId == state.requestId) state.pendingDark = null
+            }
             return
         }
-        val apply = pendingApply
+        val apply = pendingApply.takeIf { pendingId == state.requestId }
         pendingApply = null
         pendingLanguage = null
         pendingCaptureStart = null
@@ -524,8 +556,8 @@ class AppearanceTransitionHost(
         latest = null
         state.nextRequest()
         state.animateColors = false
-        ThemeOperationDiagnostics.during(themeOperation) { apply?.invoke() }
-        state.pendingDark = null
+        try { ThemeOperationDiagnostics.during(themeOperation) { apply?.invoke() } }
+        finally { state.pendingDark = null }
     }
     fun detach(preserveLanguage: Boolean) {
         ThemeOperationDiagnostics.record("host.detach", ThemeOperationDiagnostics.Operation(state.requestId, hostId, state.pendingDark, 0), "detached=$detached preserveLanguage=$preserveLanguage")
@@ -538,9 +570,11 @@ class AppearanceTransitionHost(
         pendingCaptureStart = null
         coveredLanguageApply = null
         detached = true
+        capturingId = null
         cancelFrameCommit()
         if (change != null) runCatching { ThemeOperationDiagnostics.during(themeOperation, change) }
         if (ownsState || (change != null && pendingId == state.requestId)) state.pendingDark = null
+        if (!ownsState && state.themeRequest?.hostId == hostId) state.clear(state.themeRequest!!.id)
         listState = null
         latest = null
         animator?.cancel()

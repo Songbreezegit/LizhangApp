@@ -26,6 +26,56 @@ import org.junit.Test
 class SettingsAndYearMenuInstrumentedTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun 待切换目标保留开关无障碍操作且行与开关共用主题入口() {
+        val targets = mutableListOf<Boolean>()
+        var backupCalls = 0
+        var submissions = 0
+        val pending = mutableStateOf<Boolean?>(true)
+        val actions = object : com.yangsong.lizhang.ui.component.AppearanceActions {
+            override fun circular(center: Offset, targetDark: Boolean, change: () -> Unit) { targets += targetDark }
+            override fun colors(targetDark: Boolean, change: () -> Unit) { error("此测试不应调用弹窗入口") }
+            override fun language(target: com.yangsong.lizhang.domain.model.AppLanguage) {}
+            override fun cancel() {}
+        }
+        compose.setChineseContent {
+            CompositionLocalProvider(com.yangsong.lizhang.ui.component.LocalAppearanceActions provides actions,
+                com.yangsong.lizhang.ui.component.LocalPendingDark provides pending.value) {
+                LiZhangTheme(darkTheme = false) {
+                    SettingsContent(SettingsUiState(themeMode = AppThemeMode.SYSTEM), {}, {}, { backupCalls++ }, { submissions++ })
+                }
+            }
+        }
+        compose.onNodeWithTag("深色模式行").performScrollTo().performClick()
+        compose.onNodeWithTag("深色模式开关").assertIsEnabled().assertIsOn().assertHasClickAction().performClick()
+        compose.runOnIdle {
+            assertEquals(listOf(false, false), targets)
+            assertEquals("主题提交交给同一个宿主入口", 0, submissions)
+            pending.value = null
+        }
+        compose.onNodeWithTag("深色模式开关").assertIsOff()
+        compose.onNodeWithText("数据备份与恢复").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, backupCalls) }
+    }
+
+    @Test fun 主题渐变由Compose动画时钟完成后报告所属请求() {
+        val dark = mutableStateOf(false)
+        val request = mutableStateOf<Long?>(null)
+        val completions = mutableListOf<Pair<Long, Boolean>>()
+        compose.setContent {
+            LiZhangTheme(darkTheme = dark.value, animateColors = true, colorTransitionId = request.value,
+                onColorsFinished = { id, target -> completions += id to target }) { Box {} }
+        }
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.runOnIdle { dark.value = true; request.value = 7L }
+            compose.mainClock.advanceTimeByFrame()
+            compose.mainClock.advanceTimeBy(100)
+            compose.runOnIdle { assertTrue("渐变尚未完成时不能报告解锁", completions.isEmpty()) }
+            compose.mainClock.advanceTimeBy(300)
+            compose.runOnIdle { assertEquals(listOf(7L to true), completions) }
+        } finally { compose.mainClock.autoAdvance = true }
+    }
+
     @Test fun 设置页删除大类标题且保留三张卡片与16dp间隔() {
         val dark = mutableStateOf(false)
         var density = 1f
