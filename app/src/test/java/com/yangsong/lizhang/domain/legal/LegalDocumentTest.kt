@@ -1,6 +1,7 @@
 package com.yangsong.lizhang.domain.legal
 
 import java.io.File
+import java.time.LocalDate
 import java.util.Properties
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.*
@@ -72,18 +73,35 @@ class LegalDocumentTest {
         val metadata = Properties().apply {
             File(sourceRoot, "assets/legal/metadata.properties").reader(Charsets.UTF_8).use(::load)
         }
+        val approval = Properties().apply {
+            File(sourceRoot, "../../../release/legal-approval.properties").reader(Charsets.UTF_8).use(::load)
+        }
         assertEquals(LegalPolicy.CURRENT_VERSION, metadata.getProperty("policy_version"))
-        assertEquals("pending", metadata.getProperty("approval_status"))
+        assertEquals(LegalPolicy.CURRENT_VERSION, approval.getProperty("policy_version"))
+        assertEquals("approved", approval.getProperty("approval_status"))
+        assertEquals(approval.getProperty("approval_status"), metadata.getProperty("approval_status"))
         assertEquals("杨松", metadata.getProperty("operator_name"))
         assertEquals("3173887065@qq.com", metadata.getProperty("contact_email"))
         assertEquals("渝ICP备2026025309号-1", metadata.getProperty("filing_record"))
-        assertEquals("pending", metadata.getProperty("effective_date"))
+        assertEquals(approval.getProperty("filing_record"), metadata.getProperty("filing_record"))
+        val effectiveDate = metadata.getProperty("effective_date").orEmpty()
+        assertEquals(approval.getProperty("effective_date"), effectiveDate)
+        assertTrue("生效日期必须为 YYYY-MM-DD", effectiveDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
+        assertEquals("生效日期必须是有效公历日期", effectiveDate, LocalDate.parse(effectiveDate).toString())
         assertFalse(metadata.containsKey("operator_address"))
+        val unapprovedText = Regex(
+            File(sourceRoot, "../../../release/unapproved-content-pattern.txt").readText(Charsets.UTF_8).trim(),
+            RegexOption.IGNORE_CASE,
+        )
         LegalDocumentType.entries.forEach { type ->
             val text = File(sourceRoot, "assets/legal/${type.assetName}").readText()
             assertFalse(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
             assertFalse(type.name, text.contains("{{publication_status}}"))
             assertFalse(type.name, text.contains("尚未生效"))
+            assertFalse("${type.name} 混入未批准文案", unapprovedText.containsMatchIn(text))
+            listOf("approval_status", "source_branch", "code_baseline").forEach { key ->
+                assertFalse("${type.name} 混入内部字段：$key", text.contains(key))
+            }
             if (type != LegalDocumentType.HELP) {
                 assertTrue(type.name, text.contains("版本：1.0.0"))
                 assertTrue(type.name, text.contains("{{effective_date}}"))
