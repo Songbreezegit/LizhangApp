@@ -92,13 +92,16 @@ class AppearanceFailureInstrumentedTest {
                 assertTrue(state.animateColors)
                 assertTrue(state.isThemeTransitioning)
                 assertTrue(captures.pending.isEmpty())
-                host.colorsFinished(id - 1, true)
-                host.colorsFinished(id, false)
+                val oldExecution = requireNotNull(host.colorsStarted(id, true))
+                val execution = requireNotNull(host.colorsStarted(id, true))
+                host.colorsFinished(id - 1, execution, true)
+                host.colorsFinished(id, execution, false)
+                host.colorsFinished(id, oldExecution, true)
                 assertTrue(state.isThemeTransitioning)
-                host.colorsFinished(id, true)
+                host.colorsFinished(id, execution, true)
                 assertFalse(state.isThemeTransitioning)
                 host.circular(Offset.Zero, false) { submissions++ }
-                host.colorsFinished(id, true)
+                host.colorsFinished(id, execution, true)
                 assertTrue("旧渐变回调不能解锁新的圆形请求", state.isThemeTransitioning)
                 captures.complete(0, PixelCopy.ERROR_SOURCE_NO_DATA)
                 assertEquals(2, submissions)
@@ -202,7 +205,8 @@ class AppearanceFailureInstrumentedTest {
                 host.colors(false) {}
                 state.clear(oldId)
                 assertTrue(state.isThemeTransitioning)
-                host.colorsFinished(state.requestId, false)
+                val execution = requireNotNull(host.colorsStarted(state.requestId, false))
+                host.colorsFinished(state.requestId, execution, false)
                 assertFalse(state.isThemeTransitioning)
             }
         } finally { compose.runOnIdle { host.detach(false); state.clear() } }

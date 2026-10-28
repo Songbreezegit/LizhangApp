@@ -297,11 +297,11 @@ class AppearanceTransitionHost(
         catch (failure: RuntimeException) { state.clear(request.id); throw failure }
         if (!state.animateColors) state.clear(request.id)
     }
-    /** 由现有 Compose Animatable 的真实完成回调解锁，保持原有渐变时长和曲线。 */
-    internal fun colorsFinished(id: Long, dark: Boolean) {
-        val request = state.themeRequest ?: return
-        if (!detached && ownsState && request.id == id && request.hostId == hostId &&
-            request.colors && request.targetDark == dark) state.clear(id)
+    internal fun colorsStarted(id: Long, dark: Boolean): Long? =
+        if (!detached && ownsState) state.beginColorExecution(hostId, id, dark) else null
+    /** 只有当前执行已完成或已收敛才解锁，迟到的取消／完成回调不能结束新的执行。 */
+    internal fun colorsFinished(id: Long, execution: Long, dark: Boolean) {
+        if (!detached && ownsState) state.finishColors(hostId, id, execution, dark)
     }
     override fun language(target: AppLanguage) {
         language(target, currentListPosition)

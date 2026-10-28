@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.CancellationException
 /** 奶油黄与淡蓝紫背景配浅粉色操作容器，深色文字保留清晰对比。 */
 private val Light = lightColorScheme(
     primary = CoralPrimary,
@@ -91,15 +92,36 @@ val LocalEffectiveDarkTheme = staticCompositionLocalOf { false }
 /** 页面和独立 Dialog 继承同一进度，圆形切换直接使用目标配色。 */
 @Composable
 fun LiZhangTheme(darkTheme: Boolean = isSystemInDarkTheme(), animateColors: Boolean = false,
-    colorTransitionId: Long? = null, onColorsFinished: (Long, Boolean) -> Unit = { _, _ -> },
+    colorTransitionId: Long? = null, colorTargetDark: Boolean = darkTheme, stopColorTransition: Boolean = false,
+    onColorsStarted: (Long, Boolean) -> Long? = { _, _ -> null },
+    onColorsFinished: (Long, Long, Boolean) -> Unit = { _, _, _ -> },
     content: @Composable () -> Unit) {
     val progress = remember { Animatable(if (darkTheme) 1f else 0f) }
+    val colorsStarted by rememberUpdatedState(onColorsStarted)
     val colorsFinished by rememberUpdatedState(onColorsFinished)
-    LaunchedEffect(darkTheme, animateColors, colorTransitionId) {
+    LaunchedEffect(darkTheme, animateColors, colorTransitionId, colorTargetDark, stopColorTransition) {
         val target = if (darkTheme) 1f else 0f
-        if (animateColors && progress.value != target) progress.animateTo(target, tween(240, easing = FastOutSlowInEasing))
-        else progress.snapTo(target)
-        colorTransitionId?.let { colorsFinished(it, darkTheme) }
+        // 无有效请求时只同步最终配色，清理请求不能重新启动一段无锁渐变。
+        val id = colorTransitionId
+        if (id == null || !animateColors) {
+            progress.snapTo(target)
+            return@LaunchedEffect
+        }
+        val execution = colorsStarted(id, darkTheme) ?: run {
+            progress.snapTo(target)
+            return@LaunchedEffect
+        }
+        try {
+            if (!stopColorTransition && darkTheme == colorTargetDark && progress.value != target)
+                progress.animateTo(target, tween(240, easing = FastOutSlowInEasing))
+            else progress.snapTo(target)
+        } catch (cancelled: CancellationException) {
+            // 新 effect 或宿主接管后由新执行收尾；旧执行不能在 finally 中解锁。
+            throw cancelled
+        } catch (_: RuntimeException) {
+            progress.snapTo(target)
+        }
+        colorsFinished(id, execution, darkTheme)
     }
     val fraction = if (animateColors) progress.value else if (darkTheme) 1f else 0f
     CompositionLocalProvider(LocalThemeDarkFraction provides fraction, LocalEffectiveDarkTheme provides darkTheme) {

@@ -63,7 +63,8 @@ class SettingsAndYearMenuInstrumentedTest {
         val completions = mutableListOf<Pair<Long, Boolean>>()
         compose.setContent {
             LiZhangTheme(darkTheme = dark.value, animateColors = true, colorTransitionId = request.value,
-                onColorsFinished = { id, target -> completions += id to target }) { Box {} }
+                onColorsStarted = { _, _ -> 1L },
+                onColorsFinished = { id, _, target -> completions += id to target }) { Box {} }
         }
         compose.mainClock.autoAdvance = false
         try {

@@ -126,6 +126,9 @@ class MainActivity : AppCompatActivity() {
             }
             LiZhangTheme(darkTheme = darkTheme, animateColors = appearanceState.animateColors,
                 colorTransitionId = appearanceState.themeRequest?.takeIf { it.colors }?.id,
+                colorTargetDark = appearanceState.themeRequest?.targetDark ?: darkTheme,
+                stopColorTransition = appearanceState.themeRequest?.colorPhase == AppearanceTransitionViewModel.ColorPhase.SETTLING,
+                onColorsStarted = appearanceHost::colorsStarted,
                 onColorsFinished = appearanceHost::colorsFinished) {
                 AppearanceTransition(appearanceHost, darkTheme, appearanceState.languagePreference,
                     resourceLocales) {

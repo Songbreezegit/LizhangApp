@@ -11,7 +11,9 @@ import com.yangsong.lizhang.domain.model.AppLanguage
 
 /** Activity 作用域只保留一张内存画面，不参与保存或持久化。 */
 class AppearanceTransitionViewModel : ViewModel() {
-    data class ThemeRequest(val id: Long, val hostId: Long, val targetDark: Boolean, val colors: Boolean)
+    enum class ColorPhase { WAITING, RUNNING, SETTLING }
+    data class ThemeRequest(val id: Long, val hostId: Long, val targetDark: Boolean, val colors: Boolean,
+        val colorPhase: ColorPhase = ColorPhase.WAITING, val colorExecution: Long = 0L)
     var themeRequest by mutableStateOf<ThemeRequest?>(null)
         private set
     val isThemeTransitioning get() = themeRequest != null
@@ -63,6 +65,7 @@ class AppearanceTransitionViewModel : ViewModel() {
     }
     private val handler = Handler(Looper.getMainLooper())
     private var timeout: Runnable? = null
+    private var colorExecutionSequence = 0L
     /** 所有入口在主线程同步校验和占用，先锁定再开始异步捕获。新宿主可替代失效宿主。 */
     @androidx.annotation.MainThread
     internal fun beginTheme(hostId: Long, targetDark: Boolean, colors: Boolean = false): ThemeRequest? {
@@ -74,8 +77,41 @@ class AppearanceTransitionViewModel : ViewModel() {
         return request
     }
     private fun scheduleTimeout(id: Long, duration: Long) {
+        cancelTimeout()
+        timeout = Runnable {
+            if (themeRequest?.let { it.id == id && it.colors } == true) requestColorStop(id)
+            else clear(id)
+        }.also { handler.postDelayed(it, duration) }
+    }
+    private fun cancelTimeout() {
         timeout?.let(handler::removeCallbacks)
-        timeout = Runnable { clear(id) }.also { handler.postDelayed(it, duration) }
+        timeout = null
+    }
+    /** 等到真实目标配色后才进入播放；同一请求重启 effect 时也更换执行编号。 */
+    internal fun beginColorExecution(hostId: Long, id: Long, dark: Boolean): Long? {
+        val request = themeRequest?.takeIf {
+            it.id == id && it.hostId == hostId && it.colors && ownsSnapshotObserver(hostId)
+        } ?: return null
+        if (request.colorPhase == ColorPhase.WAITING && request.targetDark != dark) return null
+        cancelTimeout()
+        val execution = ++colorExecutionSequence
+        val phase = if (request.colorPhase == ColorPhase.SETTLING || request.targetDark != dark)
+            ColorPhase.SETTLING else ColorPhase.RUNNING
+        themeRequest = request.copy(colorPhase = phase, colorExecution = execution)
+        return execution
+    }
+    /** 等待超时只要求收敛，保留互斥锁；旧动画的完成回调立即失效。 */
+    internal fun requestColorStop(id: Long) {
+        val request = themeRequest?.takeIf { it.id == id && it.colors } ?: return
+        if (request.colorPhase == ColorPhase.SETTLING) return
+        cancelTimeout()
+        themeRequest = request.copy(colorPhase = ColorPhase.SETTLING, colorExecution = 0L)
+    }
+    internal fun finishColors(hostId: Long, id: Long, execution: Long, dark: Boolean) {
+        val request = themeRequest ?: return
+        if (request.id == id && request.hostId == hostId && request.colors && ownsSnapshotObserver(hostId) &&
+            execution != 0L && request.colorExecution == execution &&
+            (request.colorPhase == ColorPhase.SETTLING || request.targetDark == dark)) clear(id)
     }
     fun nextRequest(): Long { clear(); return ++requestId }
     fun install(value: Snapshot) {
@@ -96,13 +132,13 @@ class AppearanceTransitionViewModel : ViewModel() {
         if (id != requestId) return
         clearSnapshot()
         if (themeRequest?.id == id) {
+            if (themeRequest?.colors == true) animateColors = false
             pendingDark = null
             themeRequest = null
         }
     }
     private fun clearSnapshot() {
-        timeout?.let(handler::removeCallbacks)
-        timeout = null
+        cancelTimeout()
         snapshot?.let { shot ->
             com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.record("overlay.release",
                 com.yangsong.lizhang.core.common.ThemeOperationDiagnostics.Operation(shot.id, shot.originHost, shot.targetDark, 0),
