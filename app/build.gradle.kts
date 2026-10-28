@@ -144,8 +144,8 @@ fun renderLegalMarkdown(source: java.io.File, metadata: Properties): String {
 
 val generatedOfflineLegalAssets = layout.buildDirectory.dir("generated/offlineLegalAssets")
 val generateOfflineLegalAssets by tasks.registering(Sync::class) {
-    // 许可等既有资产原样复制；法律 Markdown 只打包已展开版本，原始模板不进入 APK。
-    from("src/main/assets") { exclude("legal/*.md") }
+    // 许可等既有资产原样复制；法律区只打包已展开正文，原始模板和内部元数据不进入 APK。
+    from("src/main/assets") { exclude("legal/*.md", "legal/metadata.properties") }
     into(generatedOfflineLegalAssets)
     inputs.dir(legalAssetDirectory)
     inputs.file(legalApprovalFile)

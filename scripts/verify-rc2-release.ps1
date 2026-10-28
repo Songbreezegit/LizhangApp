@@ -53,7 +53,10 @@ if ($definedDex -match '(?m)^\s*C\s+.*(?:org\.junit\.|androidx\.test\.|com\.yang
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($apkFile.FullName)
 try {
-    foreach ($name in @('privacy.md', 'terms.md', 'help.md', 'metadata.properties')) {
+    if ($archive.GetEntry('assets/legal/metadata.properties')) {
+        throw 'APK 包含内部法律审批元数据 assets/legal/metadata.properties。'
+    }
+    foreach ($name in @('privacy.md', 'terms.md', 'help.md')) {
         $entry = $archive.GetEntry("assets/legal/$name")
         if (!$entry) { throw "APK 缺少完整离线正文：$name" }
         $stream = $entry.Open()
@@ -62,11 +65,9 @@ try {
             $assetDigest = -join ($hashAlgorithm.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') })
         } finally { $stream.Dispose(); $hashAlgorithm.Dispose() }
         # Markdown 在构建时展开日期等公开字段，必须比对本次构建的离线资产，不能比对原始模板。
-        $sourcePath = if ($name.EndsWith('.md')) {
-            Join-Path $repoRoot "app\build\generated\offlineLegalAssets\legal\$name"
-        } else { Join-Path $repoRoot "app\src\main\assets\legal\$name" }
+        $sourcePath = Join-Path $repoRoot "app\build\generated\offlineLegalAssets\legal\$name"
         if ($assetDigest -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
-            throw "APK 离线正文与当前源码不一致：$name" }
+            throw "APK 离线正文与本次生成资产不一致：$name" }
     }
     foreach ($entry in $archive.Entries) {
         if ($entry.FullName -match '(?i)(?:^|/)(?:local\.properties|[^/]+\.(?:jks|keystore|p12))$') {
