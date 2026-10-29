@@ -25,7 +25,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.items
@@ -242,7 +241,7 @@ fun ContactsContent(
         }
     }
     if (menuExpanded && !state.isSelectionMode) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = GlassTokens.ScrimAlpha)).testTag("关闭联系人菜单遮罩").clickable(
+        Box(Modifier.fillMaxSize().testTag("关闭联系人菜单遮罩").clickable(
             interactionSource = remember { MutableInteractionSource() }, indication = null,
             onClickLabel = stringResource(R.string.menu_close),
         ) { menuExpanded = false })

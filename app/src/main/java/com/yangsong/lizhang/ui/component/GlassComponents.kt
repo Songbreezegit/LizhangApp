@@ -39,8 +39,6 @@ object GlassTokens {
     const val HighlightAlpha = .06f
     const val FloatingLightAlpha = .46f
     const val FloatingDarkAlpha = .60f
-    const val DialogAlpha = 1f
-    const val ScrimAlpha = .62f
     const val SelectedAlpha = .55f
     const val DisabledAlpha = .38f
     const val PressedAlpha = .12f
@@ -192,10 +190,15 @@ fun Modifier.glassFrame(shape: Shape = RoundedCornerShape(GlassTokens.Radius), f
     icon: (@Composable () -> Unit)? = null, title: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null, properties: DialogProperties = DialogProperties(),
 ) {
-    AlertDialog(onDismissRequest, confirmButton,
-        modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(GlassTokens.FloatingRadius)),
+    val progress = rememberFrostedOverlayProgress()
+    AlertDialog(onDismissRequest, confirmButton = {
+        FrostedOverlayWindow(progress)
+        confirmButton()
+    },
+        modifier = modifier.frostedOverlayMotion(progress).floatingGlassShadow(RoundedCornerShape(GlassTokens.FloatingRadius))
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .12f), RoundedCornerShape(GlassTokens.FloatingRadius)),
         dismissButton = dismissButton, icon = icon, title = title, text = text,
-        shape = RoundedCornerShape(GlassTokens.FloatingRadius), containerColor = glassColor().copy(alpha = GlassTokens.DialogAlpha),
+        shape = RoundedCornerShape(GlassTokens.FloatingRadius), containerColor = frostedOverlayColor(),
         tonalElevation = 0.dp, properties = properties)
 }
 

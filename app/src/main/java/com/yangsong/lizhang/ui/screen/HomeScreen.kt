@@ -4,12 +4,6 @@ import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassIconButton
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,8 +18,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import kotlinx.coroutines.flow.drop
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,7 +66,6 @@ fun HomeContent(
     val listState = rememberLazyListState()
     var yearMenuExpanded by remember { mutableStateOf(initiallyYearMenuExpanded) }
     var yearButtonBounds by remember { mutableStateOf(Rect.Zero) }
-    var yearMenuBounds by remember { mutableStateOf(Rect.Zero) }
     var pageBounds by remember { mutableStateOf(Rect.Zero) }
     BackHandler(yearMenuExpanded) { yearMenuExpanded = false }
     LaunchedEffect(listState) {
@@ -83,12 +74,13 @@ fun HomeContent(
     }
     Box(Modifier.fillMaxSize()
         .onGloballyPositioned { pageBounds = it.boundsInRoot() }
-        .pointerInput(yearMenuExpanded, yearButtonBounds, yearMenuBounds) {
+        .pointerInput(yearMenuExpanded, yearButtonBounds) {
             // 在子控件消费事件之前观察外部触摸；不消费事件，保留页面滚动与原有点击。
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                 val point = down.position + pageBounds.topLeft
-                if (yearMenuExpanded && !yearButtonBounds.contains(point) && !yearMenuBounds.contains(point)) {
+                // 年份内容现在位于独立 Popup；其内部手势不会进入页面窗口。
+                if (yearMenuExpanded && !yearButtonBounds.contains(point)) {
                     yearMenuExpanded = false
                 }
             }
@@ -107,8 +99,7 @@ fun HomeContent(
                     item {
                         HeroSummaryCard(state, onYearSelected, yearMenuExpanded,
                             onExpandedChange = { yearMenuExpanded = it },
-                            onButtonBounds = { yearButtonBounds = it },
-                            onMenuBounds = { yearMenuBounds = it })
+                            onButtonBounds = { yearButtonBounds = it })
                     }
                     item {
                         QuickActions(
@@ -173,13 +164,11 @@ private fun HeroSummaryCard(
     yearMenuExpanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onButtonBounds: (Rect) -> Unit,
-    onMenuBounds: (Rect) -> Unit,
 ) {
-    val yearMenuHazeState = rememberHazeState()
     val expandedDescription = stringResource(if (yearMenuExpanded) R.string.state_expanded else R.string.state_collapsed)
     val anchor = remember { YearMenuAnchor() }
     Layout(modifier = Modifier.fillMaxWidth(), content = {
-        GlassCard(Modifier.fillMaxWidth().testTag("年度收支卡片").hazeSource(yearMenuHazeState), shape = RoundedCornerShape(GlassTokens.Radius)) {
+        GlassCard(Modifier.fillMaxWidth().testTag("年度收支卡片"), shape = RoundedCornerShape(GlassTokens.Radius)) {
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
                 // 入口实际高度决定菜单位置；年份与金额独立分层。
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
@@ -247,21 +236,18 @@ private fun HeroSummaryCard(
                     fontWeight = FontWeight.Medium)
             }
         }
-        AnimatedVisibility(
-            visible = yearMenuExpanded,
-            enter = fadeIn(tween(160)) + expandVertically(tween(160), expandFrom = Alignment.Top),
-            exit = fadeOut(tween(160)) + shrinkVertically(tween(160), shrinkTowards = Alignment.Top),
-        ) {
-            FrostedYearMenu(
-                years = state.availableYears,
-                selectedYear = state.year,
-                hazeState = yearMenuHazeState,
-                modifier = Modifier.onGloballyPositioned { onMenuBounds(it.boundsInRoot()) },
-                onYearSelected = { year ->
-                    onExpandedChange(false)
-                    onYearSelected(year)
-                },
-            )
+        if (yearMenuExpanded) Box {
+            GlassAnchoredPopup { progress ->
+                FrostedYearMenu(
+                    years = state.availableYears,
+                    selectedYear = state.year,
+                    modifier = Modifier.frostedOverlayMotion(progress, androidx.compose.ui.graphics.TransformOrigin(0f, 0f)),
+                    onYearSelected = { year ->
+                        onExpandedChange(false)
+                        onYearSelected(year)
+                    },
+                )
+            }
         }
     }) { measurables, constraints ->
         // 先测量卡片及年份入口，再约束和放置菜单；首帧与预览无需等待位置回调重组。

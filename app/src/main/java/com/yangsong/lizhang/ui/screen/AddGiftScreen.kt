@@ -297,7 +297,7 @@ private fun ContactPickerSheet(
                 it.phone.orEmpty().contains(query)
         }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = glassColor().copy(alpha = GlassTokens.DialogAlpha)) {
+    GlassModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()

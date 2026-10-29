@@ -25,7 +25,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Velocity
 import com.yangsong.lizhang.R
-import dev.chrisbanes.haze.HazeState
 
 // 菜单末端的滚动和惯性留在浮层内，避免传给首页并触发页面滚动关闭菜单。
 private val YearMenuScrollBoundary = object : NestedScrollConnection {
@@ -36,19 +35,18 @@ private val YearMenuScrollBoundary = object : NestedScrollConnection {
         Velocity(0f, available.y)
 }
 
-/** 同窗的年份浮层；只提供菜单内容，不改变年份来源和统计业务。 */
+/** 年份浮层只提供菜单内容，不改变年份来源和统计业务。 */
 @Composable
 fun FrostedYearMenu(
     years: List<Int>,
     selectedYear: Int,
-    hazeState: HazeState,
     onYearSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val title = stringResource(R.string.home_choose_year)
     LazyColumn(
         modifier.width(168.dp).heightIn(max = 240.dp).nestedScroll(YearMenuScrollBoundary)
-            .frostedGlassFrame(hazeState, RoundedCornerShape(GlassTokens.ControlRadius))
+            .frostedOverlayFrame(RoundedCornerShape(GlassTokens.ControlRadius))
             .testTag("年份菜单").selectableGroup().semantics { paneTitle = title },
         state = rememberLazyListState(initialFirstVisibleItemIndex = years.indexOf(selectedYear).coerceAtLeast(0)),
         contentPadding = PaddingValues(vertical = 6.dp),

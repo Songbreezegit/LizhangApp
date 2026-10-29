@@ -61,13 +61,13 @@ fun IndependentReminderEditor(reminder: IndependentReminder?, onDismiss: () -> U
                 override fun isSelectableDate(utcTimeMillis: Long): Boolean =
                     Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate() > LocalDate.now()
             })
-        DatePickerDialog(onDismissRequest = { showDate = false },
+        GlassDatePickerDialog(onDismissRequest = { showDate = false },
             confirmButton = { GlassTextButton({
                 picker.selectedDateMillis?.let { dateText = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate().toString() }
                 showDate = false
             }, enabled = picker.selectedDateMillis != null) { Text(stringResource(R.string.action_done)) } },
             dismissButton = { GlassTextButton({ showDate = false }) { Text(stringResource(R.string.action_cancel)) } }) {
-            DatePicker(picker)
+            DatePicker(picker, colors = DatePickerDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent))
         }
     }
 }

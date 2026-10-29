@@ -329,7 +329,7 @@ android {
         applicationId = "com.yangsong.lizhang"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
+        versionCode = 25
         versionName = "1.0.0"
         buildConfigField("String", "APP_FILING_NUMBER",
             "\"${publishedAppFilingNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")

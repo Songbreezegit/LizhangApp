@@ -1,4 +1,5 @@
 package com.yangsong.lizhang.ui.screen
+import androidx.compose.ui.graphics.Color
 import com.yangsong.lizhang.ui.component.gradientTextStyle
 import com.yangsong.lizhang.ui.onboarding.FeatureGuideTarget
 import com.yangsong.lizhang.ui.onboarding.featureGuideTarget
@@ -552,7 +553,9 @@ private fun ReminderTimeDialog(
     GlassDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.reminder_time_dialog_title)) },
-        text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(timePickerState) } },
+        text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            TimePicker(timePickerState, colors = TimePickerDefaults.colors(containerColor = Color.Transparent))
+        } },
         confirmButton = {
             GlassTextButton(onClick = { onConfirm(timePickerState.hour, timePickerState.minute) }) {
                 Text(stringResource(R.string.action_confirm))
