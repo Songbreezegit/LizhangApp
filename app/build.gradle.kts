@@ -329,8 +329,8 @@ android {
         applicationId = "com.yangsong.lizhang"
         minSdk = 26
         targetSdk = 36
-        versionCode = 23
-        versionName = if (officialRelease) "1.0.0" else "1.0.0-rc2"
+        versionCode = 24
+        versionName = "1.0.0"
         buildConfigField("String", "APP_FILING_NUMBER",
             "\"${publishedAppFilingNumber.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
         resourceConfigurations += listOf("zh", "b+zh+Hant", "en", "ja", "ko", "es", "fr")
