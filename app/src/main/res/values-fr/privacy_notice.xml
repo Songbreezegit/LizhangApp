@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">Avis de confidentialité</string>
+    <string name="privacy_notice_title">Confidentialité et conditions</string>
     <string name="privacy_notice_intro">Avant de tenir vos comptes, lisez cet avis, la Politique de confidentialité et les Conditions d’utilisation dans leur intégralité, puis faites un choix explicite.</string>
     <string name="privacy_notice_local_data">LiZhang conserve sur cet appareil les contacts, cadeaux et rappels que vous saisissez ou importez. Il ne propose ni compte, ni publicité, ni synchronisation cloud et ne téléverse pas ces données.</string>
     <string name="privacy_notice_permissions">Les contacts sont lus pour aperçu, sélection et dédoublonnage uniquement après votre demande d’importation et votre autorisation. Les notifications sont demandées à l’activation des rappels. Ces deux autorisations sont facultatives pour les comptes.</string>
     <string name="privacy_notice_exports">CSV, Excel et sauvegardes ordinaires ne sont pas chiffrés ; le chiffrement par mot de passe est facultatif. Restaurer remplace les contacts et cadeaux sans les fusionner. Les rappels et réglages sont exclus. Protégez fichiers et mots de passe.</string>
     <string name="privacy_notice_read_privacy">Lire la politique hors ligne</string>
     <string name="privacy_notice_read_terms">Lire les conditions hors ligne</string>
-    <string name="privacy_notice_agree">Accepter la politique et les conditions et continuer</string>
+    <string name="privacy_notice_agree">Accepter et continuer</string>
     <string name="privacy_notice_decline">Refuser</string>
-    <string name="privacy_notice_save_failed">La confirmation n’a pas pu être enregistrée. Réessayez ; les comptes ne sont pas encore ouverts.</string>
+    <string name="privacy_notice_save_failed">Impossible d’enregistrer votre choix. Réessayez.</string>
     <string name="privacy_notice_declined_title">Vous n’avez pas accepté</string>
     <string name="privacy_notice_declined_body">Vous pouvez revenir lire et choisir ou quitter LiZhang. Aucune permission de contacts ou de notification n’est demandée ici et vos livres existants sont conservés.</string>
     <string name="privacy_notice_return">Revenir lire et choisir</string>

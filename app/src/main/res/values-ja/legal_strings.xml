@@ -1,13 +1,11 @@
 <resources>
     <string name="legal_terms_title">利用規約</string>
-    <string name="legal_help_title">ヘルプ文書</string>
-    <string name="legal_terms_description">利用規約全文をオフラインで読む</string>
-    <string name="legal_help_description">記帳、権限、バックアップと復元の説明</string>
+    <string name="legal_help_title">使い方</string>
     <string name="legal_candidate_notice">法的文書</string>
-    <string name="legal_language_fallback">オフラインの全文は簡体字中国語で提供され、すべてのアプリ言語で同じ全文を表示します。現在、他言語の全文翻訳は提供していません。重要なデータ処理の説明を要約に置き換えることはありません。</string>
-    <string name="legal_read_failed">オフラインの全文を読み取れません。再試行するか前のページに戻ってください。このエラーで同意が記録されることはありません。</string>
-    <string name="legal_retry">再読み込み</string>
-    <string name="legal_online_explanation">ウェブサイトはシステムブラウザで開き、通信やサイトの利用状況に左右されます。本ページの全文はアプリに含まれ、通信不要です。</string>
-    <string name="legal_open_official_site">ブラウザーで公式サイトを開く</string>
-    <string name="legal_browser_failed">システムブラウザーを開けません。このページで全文をオフラインで読めます。</string>
+    <string name="legal_language_fallback">本文は簡体字中国語です。</string>
+    <string name="legal_read_failed">文書を読み込めません。再試行してください。</string>
+    <string name="legal_retry">再試行</string>
+    <string name="legal_online_explanation">公式サイト</string>
+    <string name="legal_open_official_site">ブラウザで見る</string>
+    <string name="legal_browser_failed">ページを開けません。ブラウザを確認して再試行してください。</string>
 </resources>

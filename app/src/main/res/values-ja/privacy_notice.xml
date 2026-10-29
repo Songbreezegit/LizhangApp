@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">初回のプライバシー通知</string>
+    <string name="privacy_notice_title">プライバシーと利用規約</string>
     <string name="privacy_notice_intro">記帳を始める前に、この説明とプライバシーポリシー、利用規約の全文を読み、明確に選択してください。</string>
     <string name="privacy_notice_local_data">礼帳は入力・取り込みした連絡先、礼金記録、リマインダーを端末内に保存します。アカウント、広告、クラウド同期はなく、アプリはこれらのデータをアップロードしません。</string>
     <string name="privacy_notice_permissions">連絡先は取り込みを選択して許可した場合にのみ、確認・選択・重複除去のため読み取ります。通知権限はリマインダーを有効にするときに申請します。どちらを拒否しても記帳できます。</string>
     <string name="privacy_notice_exports">CSV、Excel、通常のバックアップは暗号化されません。バックアップはパスワード暗号化を選択できます。復元は連絡先と礼金を置き換え、結合しません。リマインダーと設定は含まれません。ファイルとパスワードを安全に保管してください。</string>
     <string name="privacy_notice_read_privacy">プライバシーポリシーをオフラインで読む</string>
     <string name="privacy_notice_read_terms">利用規約をオフラインで読む</string>
-    <string name="privacy_notice_agree">ポリシーと利用規約に同意して続ける</string>
+    <string name="privacy_notice_agree">同意して続ける</string>
     <string name="privacy_notice_decline">同意しない</string>
-    <string name="privacy_notice_save_failed">確認状態を保存できませんでした。再試行してください。記帳画面はまだ開いていません。</string>
+    <string name="privacy_notice_save_failed">選択を保存できません。再試行してください。</string>
     <string name="privacy_notice_declined_title">まだ同意していません</string>
     <string name="privacy_notice_declined_body">説明に戻って再度選択するか、礼帳を終了できます。ここでは連絡先や通知の権限を要求せず、既存の帳簿も削除しません。</string>
     <string name="privacy_notice_return">説明と選択に戻る</string>

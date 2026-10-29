@@ -55,8 +55,6 @@ fun FontGuideScreen(onBack: () -> Unit) {
         onBack = onBack,
         sections = listOf(
             InformationSection(R.string.font_guide_follow_system_title, R.string.font_guide_follow_system_body),
-            InformationSection(R.string.font_guide_adjust_title, R.string.font_guide_adjust_body),
-            InformationSection(R.string.font_guide_layout_title, R.string.font_guide_layout_body),
         ),
         footer = {
             SecondaryButton(
@@ -87,7 +85,6 @@ fun AboutScreen(onBack: () -> Unit) {
         sections = listOf(
             InformationSection(R.string.about_version_title, R.string.settings_version),
             InformationSection(R.string.about_principle_title, R.string.about_principle_body),
-            InformationSection(R.string.about_scope_title, R.string.about_scope_body),
         ),
         // 未获本人批准时连同列表项一起省略，不显示占位内容或多余间距。
         footer = if (filingNumber.isNotBlank()) {

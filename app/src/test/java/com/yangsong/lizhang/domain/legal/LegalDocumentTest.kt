@@ -16,8 +16,8 @@ class LegalDocumentTest {
             LegalDocumentType.PRIVACY to listOf("READ_CONTACTS", "POST_NOTIFICATIONS", "PBKDF2-HMAC-SHA256",
                 "AES-256-GCM", "CSV、Excel 和普通备份文件未加密", "撤回权限不会自动删除", "官网访问补充说明",
                 "独立提醒", "替换设备中现有的联系人及礼金记录", "独立密码加密", "依法向有关主管部门投诉", "未成年人"),
-            LegalDocumentType.TERMS to listOf("手动添加联系人", "遗失后我无法替你找回或解密", "替换设备中现有的全部联系人及礼金记录", "关联的礼金记录",
-                "锁屏", "不能保证", "第三方", "未成年人"),
+            LegalDocumentType.TERMS to listOf("手动添加联系人", "遗失后无法找回或解密", "替换设备中现有的全部联系人及礼金记录", "关联的礼金记录",
+                "锁屏", "通知权限", "省电设置", "第三方", "未成年人"),
             LegalDocumentType.HELP to listOf("拒绝通知权限不影响记账", "礼金备份不包含独立提醒", "替换当前联系人和礼金记录",
                 "不能通过礼账恢复", "完整正文为简体中文", "数据备份与恢复"),
         )
@@ -78,16 +78,29 @@ class LegalDocumentTest {
         }
         assertEquals(LegalPolicy.CURRENT_VERSION, metadata.getProperty("policy_version"))
         assertEquals(LegalPolicy.CURRENT_VERSION, approval.getProperty("policy_version"))
-        assertEquals("approved", approval.getProperty("approval_status"))
-        assertEquals(approval.getProperty("approval_status"), metadata.getProperty("approval_status"))
-        assertEquals("杨松", metadata.getProperty("operator_name"))
+        val approvalStatus = approval.getProperty("approval_status")
+        assertTrue("法律正文只能处于待审阅或已批准状态", approvalStatus in setOf("pending", "approved"))
+        assertEquals(approvalStatus, metadata.getProperty("approval_status"))
+        val operatorName = metadata.getProperty("operator_name").orEmpty()
+        assertTrue("内部登记资料应保留核对来源", operatorName.isNotBlank())
+        assertEquals(approval.getProperty("operator_name"), operatorName)
         assertEquals("3173887065@qq.com", metadata.getProperty("contact_email"))
         assertEquals("渝ICP备2026025309号-1", metadata.getProperty("filing_record"))
         assertEquals(approval.getProperty("filing_record"), metadata.getProperty("filing_record"))
         val effectiveDate = metadata.getProperty("effective_date").orEmpty()
         assertEquals(approval.getProperty("effective_date"), effectiveDate)
-        assertTrue("生效日期必须为 YYYY-MM-DD", effectiveDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
-        assertEquals("生效日期必须是有效公历日期", effectiveDate, LocalDate.parse(effectiveDate).toString())
+        assertEquals(approval.getProperty("reviewed_by"), metadata.getProperty("reviewed_by"))
+        if (approvalStatus == "approved") {
+            assertTrue("生效日期必须为 YYYY-MM-DD", effectiveDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
+            assertEquals("生效日期必须是有效公历日期", effectiveDate, LocalDate.parse(effectiveDate).toString())
+            assertTrue("已批准内容必须有摘要", approval.getProperty("approved_content_sha256").orEmpty()
+                .matches(Regex("[a-fA-F0-9]{64}")))
+        } else {
+            listOf("effective_date", "reviewed_by", "approved_at", "approved_content_sha256").forEach { key ->
+                assertEquals("新版正文不能沿用旧批准：$key", "pending", approval.getProperty(key))
+            }
+            assertEquals("pending", metadata.getProperty("reviewed_by"))
+        }
         assertFalse(metadata.containsKey("operator_address"))
         val unapprovedText = Regex(
             File(sourceRoot, "../../../release/unapproved-content-pattern.txt").readText(Charsets.UTF_8).trim(),
@@ -98,6 +111,8 @@ class LegalDocumentTest {
             assertFalse(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
             assertFalse(type.name, text.contains("{{publication_status}}"))
             assertFalse(type.name, text.contains("尚未生效"))
+            assertFalse("${type.name} 不应出现个人姓名", text.contains(operatorName))
+            assertFalse("${type.name} 不应展开个人姓名", text.contains("{{operator_name}}"))
             assertFalse("${type.name} 混入未批准文案", unapprovedText.containsMatchIn(text))
             listOf("approval_status", "source_branch", "code_baseline").forEach { key ->
                 assertFalse("${type.name} 混入内部字段：$key", text.contains(key))

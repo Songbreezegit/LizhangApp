@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">Privacy notice</string>
+    <string name="privacy_notice_title">Privacy and terms</string>
     <string name="privacy_notice_intro">Before keeping records, read this notice and the complete Privacy Policy and User Agreement, then make an explicit choice.</string>
     <string name="privacy_notice_local_data">LiZhang stores the contacts, gift records and reminders you enter or import on this device. No account, ads or cloud sync are provided, and the app does not upload this data.</string>
     <string name="privacy_notice_permissions">Contacts are read for preview, selection and deduplication only after you request import and grant permission. Notification permission is requested when you enable reminders. Both permissions are optional for bookkeeping.</string>
     <string name="privacy_notice_exports">CSV, Excel and ordinary backups are unencrypted; password encryption is optional for backups. Restore replaces contacts and gift records rather than merging them. Backups exclude reminders and settings. Keep files and passwords secure.</string>
     <string name="privacy_notice_read_privacy">Read Privacy Policy offline</string>
     <string name="privacy_notice_read_terms">Read User Agreement offline</string>
-    <string name="privacy_notice_agree">Agree to the policy and agreement and continue</string>
+    <string name="privacy_notice_agree">Agree and continue</string>
     <string name="privacy_notice_decline">Decline</string>
-    <string name="privacy_notice_save_failed">Your confirmation could not be saved. Please retry; bookkeeping has not been opened.</string>
+    <string name="privacy_notice_save_failed">Could not save your choice. Try again.</string>
     <string name="privacy_notice_declined_title">You have not agreed</string>
     <string name="privacy_notice_declined_body">Return to read and choose again, or exit LiZhang. No contact or notification permission is requested here, and existing ledgers will be kept.</string>
     <string name="privacy_notice_return">Return to read and choose</string>

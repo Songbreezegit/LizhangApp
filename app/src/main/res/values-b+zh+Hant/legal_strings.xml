@@ -1,13 +1,11 @@
 <resources>
     <string name="legal_terms_title">使用者協議</string>
-    <string name="legal_help_title">說明文件</string>
-    <string name="legal_terms_description">離線閱讀完整使用者協議</string>
-    <string name="legal_help_description">查看記帳、權限、備份與還原說明</string>
+    <string name="legal_help_title">使用說明</string>
     <string name="legal_candidate_notice">法律文件</string>
-    <string name="legal_language_fallback">完整離線正文以簡體中文提供，所有應用語言均讀取同一全文。目前不提供其他語言的完整譯文，也不以摘要取代關鍵資料處理說明。</string>
-    <string name="legal_read_failed">離線全文暫時無法讀取。可重試或返回上一頁；此錯誤不會自動記錄為同意。</string>
-    <string name="legal_retry">重新讀取</string>
-    <string name="legal_online_explanation">網站由系統瀏覽器存取，受網路及網站可用性影響；本頁全文隨安裝套件保存，無需連網。</string>
-    <string name="legal_open_official_site">在瀏覽器開啟官方網站</string>
-    <string name="legal_browser_failed">無法開啟系統瀏覽器。你仍可在本頁離線閱讀全文。</string>
+    <string name="legal_language_fallback">正文為簡體中文。</string>
+    <string name="legal_read_failed">文件讀取失敗，請再試。</string>
+    <string name="legal_retry">重試</string>
+    <string name="legal_online_explanation">官網</string>
+    <string name="legal_open_official_site">在瀏覽器查看</string>
+    <string name="legal_browser_failed">無法開啟網頁，請檢查瀏覽器後再試。</string>
 </resources>

@@ -1,13 +1,11 @@
 <resources>
     <string name="legal_terms_title">Terms of use</string>
-    <string name="legal_help_title">Help documents</string>
-    <string name="legal_terms_description">Read the full terms offline</string>
-    <string name="legal_help_description">Accounting, permissions, backup and restore guidance</string>
+    <string name="legal_help_title">Help</string>
     <string name="legal_candidate_notice">Legal documents</string>
-    <string name="legal_language_fallback">The complete offline text is provided in Simplified Chinese. Every app language displays the same full text. Full translations are not currently provided; key data processing explanations are never replaced with a summary.</string>
-    <string name="legal_read_failed">The full offline text could not be read. Retry or return to the previous page. This error does not record consent.</string>
-    <string name="legal_retry">Load again</string>
-    <string name="legal_online_explanation">The system browser opens the website, subject to network and website availability. The full text on this page is included in the app and works offline.</string>
-    <string name="legal_open_official_site">Open official website in browser</string>
-    <string name="legal_browser_failed">Could not open the system browser. The full text remains available offline on this page.</string>
+    <string name="legal_language_fallback">The full text is in Simplified Chinese.</string>
+    <string name="legal_read_failed">Could not load the document. Try again.</string>
+    <string name="legal_retry">Retry</string>
+    <string name="legal_online_explanation">Website</string>
+    <string name="legal_open_official_site">View in browser</string>
+    <string name="legal_browser_failed">Could not open the page. Check your browser and try again.</string>
 </resources>

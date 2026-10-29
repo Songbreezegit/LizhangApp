@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">Aviso de privacidad</string>
+    <string name="privacy_notice_title">Privacidad y condiciones</string>
     <string name="privacy_notice_intro">Antes de registrar datos, lea este aviso, la Política de privacidad y el Acuerdo de usuario completos, y elija de forma explícita.</string>
     <string name="privacy_notice_local_data">LiZhang guarda en este dispositivo los contactos, regalos y recordatorios que introduce o importa. No ofrece cuentas, anuncios ni sincronización en la nube, y la aplicación no sube estos datos.</string>
     <string name="privacy_notice_permissions">Los contactos solo se leen para previsualizar, seleccionar y eliminar duplicados cuando solicita la importación y concede permiso. El permiso de notificaciones se solicita al activar recordatorios. Ambos son opcionales para llevar registros.</string>
     <string name="privacy_notice_exports">CSV, Excel y las copias ordinarias no están cifrados; puede cifrar las copias con contraseña. Restaurar sustituye contactos y regalos, no los combina. Las copias excluyen recordatorios y ajustes. Proteja archivos y contraseñas.</string>
     <string name="privacy_notice_read_privacy">Leer la política sin conexión</string>
     <string name="privacy_notice_read_terms">Leer el acuerdo sin conexión</string>
-    <string name="privacy_notice_agree">Aceptar la política y el acuerdo y continuar</string>
+    <string name="privacy_notice_agree">Aceptar y continuar</string>
     <string name="privacy_notice_decline">No aceptar</string>
-    <string name="privacy_notice_save_failed">No se pudo guardar la confirmación. Inténtelo otra vez; aún no se ha abierto el registro.</string>
+    <string name="privacy_notice_save_failed">No se pudo guardar tu elección. Inténtalo de nuevo.</string>
     <string name="privacy_notice_declined_title">No ha aceptado</string>
     <string name="privacy_notice_declined_body">Puede volver a leer y elegir o salir de LiZhang. Aquí no se solicitan permisos de contactos ni notificaciones y se conservan los libros existentes.</string>
     <string name="privacy_notice_return">Volver a leer y elegir</string>

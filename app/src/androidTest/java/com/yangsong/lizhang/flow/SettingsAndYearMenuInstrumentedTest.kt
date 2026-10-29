@@ -106,7 +106,7 @@ class SettingsAndYearMenuInstrumentedTest {
                 onThemeOptions = { calls += "主题" }, onFontGuide = { calls += "字体" },
                 onAbout = { calls += "关于" }, onPrivacy = { calls += "隐私" })
         } }
-        listOf("数据备份与恢复", "导出 Excel", "导出 CSV", "主题设置", "字体说明", "关于礼账", "隐私说明").forEach {
+        listOf("数据备份与恢复", "导出 Excel", "导出 CSV", "主题设置", "字体大小", "关于礼账", "隐私说明").forEach {
             compose.onNodeWithText(it).performScrollTo().performClick()
         }
         compose.runOnIdle { assertEquals(listOf("备份", "Excel", "CSV", "主题", "字体", "关于", "隐私"), calls) }

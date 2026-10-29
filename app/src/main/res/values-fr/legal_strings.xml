@@ -1,13 +1,11 @@
 <resources>
     <string name="legal_terms_title">Conditions d\'utilisation</string>
-    <string name="legal_help_title">Documents d\'aide</string>
-    <string name="legal_terms_description">Lire les conditions intégrales hors ligne</string>
-    <string name="legal_help_description">Guide des écritures, autorisations, sauvegardes et restaurations</string>
+    <string name="legal_help_title">Aide</string>
     <string name="legal_candidate_notice">Documents juridiques</string>
-    <string name="legal_language_fallback">Le texte intégral hors ligne est en chinois simplifié. Toutes les langues affichent le même texte complet. Les traductions intégrales ne sont pas proposées actuellement ; les explications essentielles sur les données ne sont jamais remplacées par un résumé.</string>
-    <string name="legal_read_failed">Impossible de lire le texte intégral hors ligne. Réessayez ou revenez à la page précédente. Cette erreur ne vaut pas consentement.</string>
-    <string name="legal_retry">Recharger</string>
-    <string name="legal_online_explanation">Le navigateur du système ouvre le site, selon la disponibilité du réseau et du site. Le texte intégral de cette page est inclus dans l’application et fonctionne hors ligne.</string>
-    <string name="legal_open_official_site">Ouvrir le site officiel dans le navigateur</string>
-    <string name="legal_browser_failed">Impossible d\'ouvrir le navigateur système. Le texte intégral reste lisible ici hors ligne.</string>
+    <string name="legal_language_fallback">Le texte intégral est en chinois simplifié.</string>
+    <string name="legal_read_failed">Impossible de charger le document. Réessayez.</string>
+    <string name="legal_retry">Réessayer</string>
+    <string name="legal_online_explanation">Site web</string>
+    <string name="legal_open_official_site">Voir dans le navigateur</string>
+    <string name="legal_browser_failed">Impossible d’ouvrir la page. Vérifiez votre navigateur et réessayez.</string>
 </resources>

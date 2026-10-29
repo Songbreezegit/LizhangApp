@@ -328,7 +328,6 @@ fun SettingsScreen(
                         com.yangsong.lizhang.ui.mapper.displayDateTime(pending.summary.createdTime),
                         pending.summary.contactCount,
                         pending.summary.giftRecordCount,
-                        pending.summary.sourceDatabaseVersion,
                     ),
                 )
             },
@@ -601,7 +600,6 @@ fun SettingsContent(
                     SettingsRow(
                         LiZhangIcons.Moon,
                         stringResource(R.string.settings_dark),
-                        themeDescription,
                         onClick = { setDark(!effectiveDark, "row") },
                         diagnosticName = "深色模式行",
                         modifier = Modifier.testTag("深色模式行").onGloballyPositioned {
@@ -625,7 +623,6 @@ fun SettingsContent(
                     SettingsRow(
                         LiZhangIcons.Type,
                         stringResource(R.string.settings_font),
-                        stringResource(R.string.settings_font_description),
                         onClick = onFontGuide,
                     )
                 }
@@ -635,28 +632,24 @@ fun SettingsContent(
                     SettingsRow(
                         LiZhangIcons.Info,
                         stringResource(R.string.settings_about),
-                        stringResource(R.string.settings_version, com.yangsong.lizhang.BuildConfig.VERSION_NAME),
                         onClick = onAbout,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         LiZhangIcons.ShieldCheck,
                         stringResource(R.string.settings_privacy),
-                        stringResource(R.string.settings_privacy_description),
                         onClick = onPrivacy,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         LiZhangIcons.FileText,
                         stringResource(R.string.legal_terms_title),
-                        stringResource(R.string.legal_terms_description),
                         onClick = onTerms,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                     SettingsRow(
                         LiZhangIcons.CircleHelp,
                         stringResource(R.string.legal_help_title),
-                        stringResource(R.string.legal_help_description),
                         onClick = onHelp,
                     )
                 }

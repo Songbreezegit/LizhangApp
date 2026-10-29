@@ -55,8 +55,8 @@ class LegalDocumentInstrumentedTest {
                 LegalDocumentUiState(isLoading = false, document = document), { returned = true })
         } }
         compose.onNodeWithTag("legal_document_privacy")
-            .performScrollToNode(hasText("十、政策更新与联系"))
-        compose.onNodeWithText("十、政策更新与联系").assertIsDisplayed()
+            .performScrollToNode(hasText("十、联系"))
+        compose.onNodeWithText("十、联系").assertIsDisplayed()
         compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
         assertTrue(returned)
     }
@@ -89,7 +89,7 @@ class LegalDocumentInstrumentedTest {
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().performClick()
             compose.onNodeWithTag("legal_document_${type.name.lowercase()}").assertIsDisplayed()
             compose.runOnIdle { dark.value = !dark.value }
-            compose.onNodeWithText(compose.activity.getString(R.string.legal_candidate_notice)).assertIsDisplayed()
+            compose.onNodeWithText(documents.getValue(type).sections.first().body).assertIsDisplayed()
             compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
             compose.onNodeWithTag("设置列表").performScrollToNode(hasText(compose.activity.getString(stringId)))
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().assertIsDisplayed()

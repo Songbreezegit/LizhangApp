@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -39,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
+import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.domain.repository.LegalDocumentRepository
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.AppTopBar
@@ -116,6 +118,9 @@ fun PrivacyNoticeScreen(
     onRetryTerms: () -> Unit = {},
     documentScrollState: ScrollState = rememberScrollState(),
 ) {
+    val showLanguageNotice = AppLanguage.fromLanguageTag(
+        LocalConfiguration.current.locales[0]?.toLanguageTag(),
+    ) != AppLanguage.ZH_CN
     // Gate 持有滚动状态，打开独立全文页再返回时仍停在原位置。
     LaunchedEffect(saveFailed, documentScrollState.maxValue) {
         if (saveFailed) documentScrollState.animateScrollTo(documentScrollState.maxValue)
@@ -131,8 +136,8 @@ fun PrivacyNoticeScreen(
                         .testTag("首次隐私告知正文"),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Text(stringResource(R.string.legal_language_fallback), style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (showLanguageNotice) Text(stringResource(R.string.legal_language_fallback),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     NoticeDocument(LegalDocumentType.PRIVACY, privacyState, onRetryPrivacy)
                     NoticeDocument(LegalDocumentType.TERMS, termsState, onRetryTerms)
                     if (saveFailed) Text(stringResource(R.string.privacy_notice_save_failed),

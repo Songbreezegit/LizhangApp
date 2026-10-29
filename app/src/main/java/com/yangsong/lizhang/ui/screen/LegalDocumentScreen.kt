@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
 import com.yangsong.lizhang.domain.legal.LegalDocumentType
+import com.yangsong.lizhang.domain.model.AppLanguage
 import com.yangsong.lizhang.ui.component.AppScaffold
 import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
@@ -58,6 +60,9 @@ fun LegalDocumentContent(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val browserFailure = stringResource(R.string.legal_browser_failed)
+    val showLanguageNotice = AppLanguage.fromLanguageTag(
+        LocalConfiguration.current.locales[0]?.toLanguageTag(),
+    ) != AppLanguage.ZH_CN
     val title = stringResource(when (type) {
         LegalDocumentType.PRIVACY -> R.string.privacy_title
         LegalDocumentType.TERMS -> R.string.legal_terms_title
@@ -72,10 +77,8 @@ fun LegalDocumentContent(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            item(key = "status") {
+            if (showLanguageNotice) item(key = "language") {
                 LegalCard {
-                    Text(stringResource(R.string.legal_candidate_notice), fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium)
                     Text(stringResource(R.string.legal_language_fallback),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)

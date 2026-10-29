@@ -62,9 +62,11 @@ class OnboardingLocaleInstrumentedTest {
                     compose.onNodeWithTag("首次隐私告知").assertIsDisplayed()
                     compose.onNodeWithTag("告知正文_privacy").assertExists()
                     compose.onNodeWithTag("告知正文_terms").assertExists()
-                    compose.onNodeWithText(app.createConfigurationContext(android.content.res.Configuration(app.resources.configuration).apply {
+                    val languageNotice = app.createConfigurationContext(android.content.res.Configuration(app.resources.configuration).apply {
                         setLocale(java.util.Locale.forLanguageTag(tag))
-                    }).getString(R.string.legal_language_fallback)).performScrollTo().assertIsDisplayed()
+                    }).getString(R.string.legal_language_fallback)
+                    if (tag == "zh-CN") compose.onNodeWithText(languageNotice).assertDoesNotExist()
+                    else compose.onNodeWithText(languageNotice).performScrollTo().assertIsDisplayed()
                     compose.onNodeWithTag("隐私告知同意").assertIsDisplayed().assertIsEnabled()
                     compose.onNodeWithTag("隐私告知拒绝").assertIsDisplayed().assertIsEnabled()
                     assertFalse(app.appContainer.onboardingRepository.state.value.completed)

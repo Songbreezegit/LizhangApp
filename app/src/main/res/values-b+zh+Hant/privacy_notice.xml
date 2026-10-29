@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">首次隱私告知</string>
+    <string name="privacy_notice_title">隱私與使用者協議</string>
     <string name="privacy_notice_intro">開始記帳前，請閱讀以下說明以及完整的隱私政策和使用者協議，並作出明確選擇。</string>
     <string name="privacy_notice_local_data">禮帳在本機儲存您填寫或匯入的聯絡人、禮金紀錄和提醒。無需帳號，沒有廣告或雲端同步，App 不上傳這些資料。</string>
     <string name="privacy_notice_permissions">通訊錄僅在您主動匯入並授權後讀取，用於預覽、選擇及去重；通知權限在主動開啟提醒時申請。拒絕這兩項可選權限仍可正常記帳。</string>
     <string name="privacy_notice_exports">CSV、Excel 和普通備份未加密，備份可選擇密碼加密。還原會取代目前聯絡人和禮金，不是合併；備份不含提醒和設定。請妥善保管檔案與密碼。</string>
     <string name="privacy_notice_read_privacy">離線閱讀隱私政策</string>
     <string name="privacy_notice_read_terms">離線閱讀使用者協議</string>
-    <string name="privacy_notice_agree">同意政策與協議並繼續</string>
+    <string name="privacy_notice_agree">同意並繼續</string>
     <string name="privacy_notice_decline">不同意</string>
-    <string name="privacy_notice_save_failed">確認狀態儲存失敗，請重試；目前尚未進入記帳。</string>
+    <string name="privacy_notice_save_failed">儲存失敗，請再試。</string>
     <string name="privacy_notice_declined_title">您尚未同意</string>
     <string name="privacy_notice_declined_body">您可以返回閱讀並重新選擇，或退出禮帳。我們不會在此請求通訊錄或通知權限，不會清空已有帳本。</string>
     <string name="privacy_notice_return">返回閱讀與選擇</string>

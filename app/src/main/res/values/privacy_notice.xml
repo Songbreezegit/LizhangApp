@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="privacy_notice_title">首次隐私告知</string>
+    <string name="privacy_notice_title">隐私与用户协议</string>
     <string name="privacy_notice_intro">开始记账前，请阅读以下说明以及完整的隐私政策和用户协议，并作出明确选择。</string>
     <string name="privacy_notice_local_data">礼账在本机保存您填写或导入的联系人、礼金记录和提醒。无需账号，没有广告或云同步，App 不上传这些数据。</string>
     <string name="privacy_notice_permissions">通讯录仅在您主动导入并授权后读取，用于预览、选择及去重；通知权限在主动开启提醒时申请。拒绝这两项可选权限仍可正常记账。</string>
     <string name="privacy_notice_exports">CSV、Excel 和普通备份未加密，备份可选择密码加密。恢复会替换当前联系人和礼金，不是合并；备份不含提醒和设置。请妥善保管文件与密码。</string>
     <string name="privacy_notice_read_privacy">离线阅读隐私政策</string>
     <string name="privacy_notice_read_terms">离线阅读用户协议</string>
-    <string name="privacy_notice_agree">同意政策与协议并继续</string>
+    <string name="privacy_notice_agree">同意并继续</string>
     <string name="privacy_notice_decline">不同意</string>
-    <string name="privacy_notice_save_failed">确认状态保存失败，请重试；当前尚未进入记账。</string>
+    <string name="privacy_notice_save_failed">保存失败，请重试。</string>
     <string name="privacy_notice_declined_title">您尚未同意</string>
     <string name="privacy_notice_declined_body">您可以返回阅读并重新选择，或退出礼账。我们不会在此请求通讯录或通知权限，不会清空已有账本。</string>
     <string name="privacy_notice_return">返回阅读与选择</string>
