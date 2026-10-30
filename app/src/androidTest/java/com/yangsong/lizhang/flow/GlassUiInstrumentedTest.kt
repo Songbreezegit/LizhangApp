@@ -1,5 +1,6 @@
 package com.yangsong.lizhang.flow
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
@@ -16,6 +17,7 @@ import com.yangsong.lizhang.ui.screen.ReminderAdvanceDialog
 import com.yangsong.lizhang.ui.theme.LiZhangTheme
 import com.yangsong.lizhang.ui.viewmodel.ContactsUiState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,13 +28,18 @@ class GlassUiInstrumentedTest {
     private val state = mutableStateOf(ContactsUiState(isLoading = false))
     private var manual = 0
     private var imported = 0
+    private var contactClicks = 0
+    private var backCalls = 0
 
     private fun start() {
-        compose.setChineseContent { LiZhangTheme {
-            ContactsContent(state.value, {}, {}, {}, { manual++ },
-                onImportContacts = { imported++ },
-                onEnterSelection = { state.value = state.value.copy(isSelectionMode = true) })
-        } }
+        compose.setChineseContent {
+            BackHandler { backCalls++ }
+            LiZhangTheme {
+                ContactsContent(state.value, {}, {}, { contactClicks++ }, { manual++ },
+                    onImportContacts = { imported++ },
+                    onEnterSelection = { state.value = state.value.copy(isSelectionMode = true) })
+            }
+        }
     }
     private fun toggle() = compose.onNodeWithTag("联系人添加菜单").performClick()
     private fun closed() {
@@ -61,6 +68,32 @@ class GlassUiInstrumentedTest {
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         closed()
         compose.onNodeWithTag("联系人添加菜单").assertIsDisplayed()
+        compose.runOnIdle { assertEquals("第一次返回只关闭菜单", 0, backCalls) }
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
+        compose.runOnIdle { assertEquals("收起后返回交给页面", 1, backCalls) }
+    }
+
+    @Test fun 独立窗口菜单保持按钮锚点且真实点击不穿透联系人() {
+        state.value = state.value.copy(contacts = (1L..30L).map {
+            ContactLedgerSummary(Contact(it, "虚构联系人$it"), 0, 0)
+        })
+        start()
+        val collapsed = compose.onNodeWithTag("联系人添加菜单").fetchSemanticsNode().clippedBoundsOnScreen()
+        toggle()
+        compose.onNodeWithTag("联系人添加菜单").assert(hasAnyAncestor(isPopup()))
+        compose.onNodeWithText("手动添加").assert(hasAnyAncestor(isPopup()))
+        val expanded = compose.onNodeWithTag("联系人添加菜单").fetchSemanticsNode().clippedBoundsOnScreen()
+        assertEquals("展开后右侧锚点保持", collapsed.right, expanded.right, 1f)
+        assertEquals("展开后底部锚点保持", collapsed.bottom, expanded.bottom, 1f)
+        val action = compose.onNodeWithText("手动添加").fetchSemanticsNode().clippedBoundsOnScreen()
+        assertTrue("操作位于关闭按钮上方", action.bottom <= expanded.top + 1f)
+        compose.onNodeWithText("手动添加").performTouchInput { click() }
+        closed()
+        compose.runOnIdle {
+            assertEquals("只执行一次手动添加", 1, manual)
+            assertEquals("未触发通讯录导入", 0, imported)
+            assertEquals("未穿透到背景联系人", 0, contactClicks)
+        }
     }
 
     @Test fun 两个操作分别回调并自动收起() {

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -37,7 +38,7 @@ fun GlassActionMenu(expanded: Boolean, onToggle: () -> Unit, onDismiss: () -> Un
     if (!expanded) ActionMenuToggle(false, onToggle, hazeState, rotation)
     else {
         // 页面上的占位保留引导锚点，不在模糊的背景中再绘制一份菜单按钮。
-        Box(Modifier.size(56.dp)) {
+        Box(if (LocalInspectionMode.current) Modifier else Modifier.size(56.dp)) {
             GlassAnchoredPopup(alignment = Alignment.BottomEnd) { progress ->
                 Column(
                     Modifier.frostedOverlayMotion(progress, TransformOrigin(1f, 1f)).clickable(

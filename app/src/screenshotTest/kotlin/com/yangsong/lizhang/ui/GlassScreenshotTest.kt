@@ -51,6 +51,7 @@ fun GlassHomeScreenshot() {
 fun GlassContactsScreenshot() = ContactsFixture(false)
 
 @PreviewTest @GlassConfigurations @Composable
+// 保留整页与导航覆盖；Layoutlib 下菜单同层绘制，不将此快照视为原生窗口模糊证据。
 fun GlassSpeedDialScreenshot() = ContactsFixture(true)
 
 @PreviewTest @GlassConfigurations @Composable

@@ -1,6 +1,5 @@
 package com.yangsong.lizhang.flow
 
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
@@ -16,7 +15,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PixelMap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -294,8 +292,7 @@ class FrostedGlassInstrumentedTest {
 
     private fun capture(name: String) {
         compose.waitForIdle()
-        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        saveWholeScreen(File(directory, "$name.png"))
     }
 
     private fun variation(p: PixelMap, left: Int, right: Int, y: Int): Float =

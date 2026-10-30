@@ -24,8 +24,9 @@ function Invoke-Analyzer([string[]]$AnalyzerArguments) {
 $applicationId = Invoke-Analyzer @('manifest', 'application-id')
 $versionName = Invoke-Analyzer @('manifest', 'version-name')
 $versionCode = Invoke-Analyzer @('manifest', 'version-code')
-$expectedVersion = if ($OfficialRelease) { '1.0.0' } else { '1.0.0-rc2' }
-if ($applicationId -ne 'com.yangsong.lizhang' -or $versionName -ne $expectedVersion -or $versionCode -ne '23') {
+$expectedVersion = '1.0.0'
+$expectedVersionCode = '25'
+if ($applicationId -ne 'com.yangsong.lizhang' -or $versionName -ne $expectedVersion -or $versionCode -ne $expectedVersionCode) {
     throw "版本不符合本轮检查目标：$applicationId / $versionName / $versionCode。"
 }
 if ((Invoke-Analyzer @('manifest', 'min-sdk')) -ne '26' -or (Invoke-Analyzer @('manifest', 'target-sdk')) -ne '36') {

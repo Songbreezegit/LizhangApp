@@ -2,7 +2,6 @@ package com.yangsong.lizhang.flow
 
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -10,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
@@ -103,9 +101,8 @@ class GradientUiDeviceTest {
         } }
         fun capture(name: String) {
             compose.waitForIdle()
-            val image = compose.onRoot().captureToImage().asAndroidBitmap()
             val directory = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "ui-repair-review").apply { mkdirs() }
-            File(directory, name + ".png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            saveWholeScreen(File(directory, name + ".png"))
         }
         for (night in listOf(false, true)) {
             compose.runOnIdle { dark.value = night }

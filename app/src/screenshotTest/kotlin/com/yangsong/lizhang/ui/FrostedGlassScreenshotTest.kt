@@ -25,6 +25,7 @@ fun FrostedNavigationScreenshot() = FrostedFixture(0)
 fun FrostedContactFabScreenshot() = FrostedFixture(1)
 
 @PreviewTest @GlassConfigurations @Composable
+// 静态预览保留图案、面板和前景；真实跨窗口模糊须由仪器/实机另验。
 fun FrostedSpeedDialScreenshot() = FrostedFixture(2)
 
 @PreviewTest @GlassConfigurations @Composable

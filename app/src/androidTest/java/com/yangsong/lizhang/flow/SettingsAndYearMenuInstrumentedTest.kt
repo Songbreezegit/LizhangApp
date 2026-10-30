@@ -133,7 +133,8 @@ class SettingsAndYearMenuInstrumentedTest {
         compose.onNodeWithTag("年份入口").performClick()
         compose.onNodeWithTag("年份菜单").assertDoesNotExist()
         compose.onNodeWithTag("年份入口").performClick()
-        compose.onRoot().performTouchInput { click(Offset(5f, 5f)) }
+        compose.onNode(isRoot() and hasAnyDescendant(hasTestTag("首页列表")))
+            .performTouchInput { click(Offset(5f, 5f)) }
         compose.onNodeWithTag("年份菜单").assertDoesNotExist()
     }
 
@@ -192,14 +193,15 @@ class SettingsAndYearMenuInstrumentedTest {
         for (night in listOf(false, true)) for (scale in listOf(1f, 1.5f)) {
             compose.runOnIdle { dark.value = night; font.floatValue = scale }
             compose.onNodeWithTag("年份入口").performClick()
-            val button = compose.onNodeWithTag("年份入口").fetchSemanticsNode().boundsInRoot
-            val menu = compose.onNodeWithTag("年份菜单").fetchSemanticsNode().boundsInRoot
+            compose.onNodeWithTag("年份菜单").assert(hasAnyAncestor(isPopup()))
+            val button = compose.onNodeWithTag("年份入口").fetchSemanticsNode().clippedBoundsOnScreen()
+            val menu = compose.onNodeWithTag("年份菜单").fetchSemanticsNode().clippedBoundsOnScreen()
             assertEquals("菜单与入口之间8dp", 8 * density, menu.top - button.bottom, 1f)
             assertEquals("菜单与入口左对齐", button.left, menu.left, 1f)
             assertEquals("菜单宽度168dp", 168 * density, menu.width, 1f)
             assertTrue("菜单不能无限增长", menu.height <= 240 * density + 1)
             for (year in listOf(2026, 2025)) {
-                val item = compose.onNodeWithTag("年份选项-$year").fetchSemanticsNode().boundsInRoot
+                val item = compose.onNodeWithTag("年份选项-$year").fetchSemanticsNode().clippedBoundsOnScreen()
                 assertTrue("年份触控高度至少48dp", item.height >= 48 * density - 1)
             }
             compose.onNodeWithTag("年份入口").performClick()

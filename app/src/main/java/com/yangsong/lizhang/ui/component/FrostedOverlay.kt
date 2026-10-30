@@ -2,6 +2,8 @@ package com.yangsong.lizhang.ui.component
 
 import android.animation.ValueAnimator
 import android.os.Build
+import android.view.View
+import android.view.Window
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -102,7 +104,7 @@ internal fun FrostedOverlayWindow(progress: State<Float>, popup: Boolean = false
     var blurEnabled by remember(manager) {
         mutableStateOf(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && manager.isCrossWindowBlurEnabled)
     }
-    DisposableEffect(manager) {
+    DisposableEffect(manager, view, window, popup) {
         val listener = Consumer<Boolean> { blurEnabled = it }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             manager.addCrossWindowBlurEnabledListener(context.mainExecutor, listener)
@@ -111,31 +113,40 @@ internal fun FrostedOverlayWindow(progress: State<Float>, popup: Boolean = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 manager.removeCrossWindowBlurEnabledListener(listener)
             }
+            // 只清理当前浮层；嵌套弹窗关闭时不影响下层窗口，也不恢复系统退出动画。
+            if (view.isAttachedToWindow) {
+                updateFrostedWindow(window, view, manager, popup, blurRadius = 0, dimAmount = 0f)
+            }
         }
     }
     val fraction = progress.value
     SideEffect {
-        val popupView = view.rootView
-        val attributes = window?.attributes ?: if (popup) {
-            (popupView.layoutParams as? WindowManager.LayoutParams)?.takeIf {
-                it.type == WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
-            }
-        } else null
-        if (attributes != null) {
-            attributes.flags = attributes.flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
-            attributes.dimAmount = (if (blurEnabled) FrostedOverlayTokens.BlurredDim
-                else FrostedOverlayTokens.FallbackDim) * fraction
-            attributes.windowAnimations = 0
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                attributes.flags = if (blurEnabled) attributes.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                    else attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
-                attributes.blurBehindRadius = if (blurEnabled)
-                    (FrostedOverlayTokens.BlurRadiusPx * fraction).roundToInt() else 0
-            }
-            if (window != null) window.attributes = attributes
-            else if (popupView.isAttachedToWindow) manager.updateViewLayout(popupView, attributes)
-        }
+        updateFrostedWindow(window, view, manager, popup,
+            blurRadius = if (blurEnabled) (FrostedOverlayTokens.BlurRadiusPx * fraction).roundToInt() else 0,
+            dimAmount = (if (blurEnabled) FrostedOverlayTokens.BlurredDim else FrostedOverlayTokens.FallbackDim) * fraction)
     }
+}
+
+private fun updateFrostedWindow(window: Window?, view: View, manager: WindowManager, popup: Boolean,
+    blurRadius: Int, dimAmount: Float) {
+    val popupView = view.rootView
+    val attributes = window?.attributes ?: if (popup) {
+        (popupView.layoutParams as? WindowManager.LayoutParams)?.takeIf {
+            it.type == WindowManager.LayoutParams.TYPE_APPLICATION_SUB_PANEL
+        }
+    } else null
+    if (attributes == null) return
+    attributes.flags = if (dimAmount > 0f) attributes.flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
+        else attributes.flags and WindowManager.LayoutParams.FLAG_DIM_BEHIND.inv()
+    attributes.dimAmount = dimAmount
+    attributes.windowAnimations = 0
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        attributes.flags = if (blurRadius > 0) attributes.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+            else attributes.flags and WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
+        attributes.blurBehindRadius = blurRadius
+    }
+    if (window != null) window.attributes = attributes
+    else if (popupView.isAttachedToWindow) manager.updateViewLayout(popupView, attributes)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,8 +194,13 @@ fun GlassDatePickerDialog(
 internal fun GlassAnchoredPopup(alignment: Alignment = Alignment.TopStart, content: @Composable (State<Float>) -> Unit) {
     val progress = rememberFrostedOverlayProgress()
     val properties = remember { PopupProperties(focusable = false, dismissOnClickOutside = false) }
-    Popup(alignment = alignment, properties = properties) {
-        FrostedOverlayWindow(progress, popup = true)
+    if (LocalInspectionMode.current) {
+        // Layoutlib 只验证面板与页面布局；真实多窗口与系统模糊由仪器/实机验收覆盖。
         content(progress)
+    } else {
+        Popup(alignment = alignment, properties = properties) {
+            FrostedOverlayWindow(progress, popup = true)
+            content(progress)
+        }
     }
 }
