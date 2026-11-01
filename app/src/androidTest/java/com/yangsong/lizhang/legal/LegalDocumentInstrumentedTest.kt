@@ -89,7 +89,12 @@ class LegalDocumentInstrumentedTest {
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().performClick()
             compose.onNodeWithTag("legal_document_${type.name.lowercase()}").assertIsDisplayed()
             compose.runOnIdle { dark.value = !dark.value }
-            compose.onNodeWithText(documents.getValue(type).sections.first().body).assertIsDisplayed()
+            // 正文按段落独立排版，逐块确认开篇全部内容，不依赖旧的单个 Text 节点。
+            documents.getValue(type).sections.first().blocks.forEach { block ->
+                compose.onNodeWithTag("legal_document_${type.name.lowercase()}")
+                    .performScrollToNode(hasText(block.text))
+                compose.onNodeWithText(block.text).assertIsDisplayed()
+            }
             compose.onNodeWithContentDescription(compose.activity.getString(R.string.action_back)).performClick()
             compose.onNodeWithTag("设置列表").performScrollToNode(hasText(compose.activity.getString(stringId)))
             compose.onNodeWithText(compose.activity.getString(stringId)).performScrollTo().assertIsDisplayed()

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -26,7 +25,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yangsong.lizhang.R
@@ -37,6 +35,7 @@ import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.CenteredSnackbarHost
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassTokens
+import com.yangsong.lizhang.ui.component.LegalDocumentSectionContent
 import com.yangsong.lizhang.ui.component.SecondaryButton
 import com.yangsong.lizhang.ui.viewmodel.LegalDocumentUiState
 import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
@@ -95,13 +94,7 @@ fun LegalDocumentContent(
             state.document?.sections?.forEachIndexed { index, section ->
                 item(key = "section_$index") {
                     LegalCard {
-                        section.heading?.let {
-                            Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        }
-                        SelectionContainer {
-                            Text(section.body, style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        LegalDocumentSectionContent(section)
                     }
                 }
             }

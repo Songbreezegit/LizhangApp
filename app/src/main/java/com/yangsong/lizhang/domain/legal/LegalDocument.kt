@@ -11,7 +11,19 @@ enum class LegalDocumentType(val assetName: String, val officialUrl: String) {
     HELP("help.md", "https://lizhang.songisle.xyz/help/"),
 }
 
-data class LegalDocumentSection(val heading: String?, val body: String)
+sealed interface LegalDocumentBlock {
+    val text: String
+
+    data class Paragraph(override val text: String) : LegalDocumentBlock
+    data class Heading(override val text: String, val level: Int) : LegalDocumentBlock
+    data class ListItem(override val text: String, val marker: String) : LegalDocumentBlock
+}
+
+data class LegalDocumentSection(
+    val heading: String?,
+    val body: String,
+    val blocks: List<LegalDocumentBlock> = listOf(LegalDocumentBlock.Paragraph(body)),
+)
 
 data class LegalDocument(val type: LegalDocumentType, val sections: List<LegalDocumentSection>)
 
@@ -21,29 +33,62 @@ object LegalDocumentLanguage {
     val supportedUiLanguages = setOf("zh-CN", "zh-Hant", "en", "ja", "ko", "es", "fr")
 }
 
-/** 把本地 Markdown 分成可换行卡片；表格逐行展开，避免大字号横向裁切。 */
+/** 保留本地文档的章节、小标题、段落与列表；表格逐行展开，避免横向裁切。 */
 object LegalDocumentParser {
+    private val headingPattern = Regex("^(#{1,6})\\s+(.+)$")
+    private val unorderedItemPattern = Regex("^[-+*]\\s+(.+)$")
+    private val orderedItemPattern = Regex("^(\\d+)[.)]\\s+(.+)$")
+    private val inlineCodePattern = Regex("`([^`]+)`")
+
     fun parse(type: LegalDocumentType, markdown: String): LegalDocument {
         val sections = mutableListOf<LegalDocumentSection>()
         var heading: String? = null
-        val lines = mutableListOf<String>()
+        val blocks = mutableListOf<LegalDocumentBlock>()
+        val paragraphLines = mutableListOf<String>()
+        fun finishParagraph() {
+            val text = paragraphLines.joinToString("\n").trim()
+            if (text.isNotBlank()) blocks += LegalDocumentBlock.Paragraph(text)
+            paragraphLines.clear()
+        }
         fun finishSection() {
-            val body = lines.joinToString("\n").trim()
-            if (body.isNotBlank()) sections += LegalDocumentSection(heading, body)
-            lines.clear()
+            finishParagraph()
+            val body = blocks.joinToString("\n\n") {
+                if (it is LegalDocumentBlock.ListItem) "${it.marker} ${it.text}" else it.text
+            }
+            if (body.isNotBlank()) sections += LegalDocumentSection(heading, body, blocks.toList())
+            blocks.clear()
         }
         markdown.lineSequence().forEach { source ->
             val line = source.trimEnd()
+            val title = headingPattern.matchEntire(line)
+            val unorderedItem = unorderedItemPattern.matchEntire(line)
+            val orderedItem = orderedItemPattern.matchEntire(line)
             when {
-                line.startsWith("# ") -> Unit
-                line.startsWith("## ") -> {
+                title != null && title.groupValues[1].length == 1 -> Unit
+                title != null && title.groupValues[1].length == 2 -> {
                     finishSection()
-                    heading = line.removePrefix("## ")
+                    heading = plainText(title.groupValues[2])
                 }
-                line.startsWith("|") && line.contains("---") -> Unit
-                line.startsWith("|") -> lines += line.trim().trim('|').split('|')
-                    .joinToString("：") { it.trim() }.let(::plainText)
-                else -> lines += plainText(line.removePrefix("### "))
+                title != null -> {
+                    finishParagraph()
+                    blocks += LegalDocumentBlock.Heading(plainText(title.groupValues[2]), title.groupValues[1].length)
+                }
+                line.isBlank() -> finishParagraph()
+                line.startsWith("|") && line.contains("---") -> finishParagraph()
+                line.startsWith("|") -> {
+                    finishParagraph()
+                    val text = line.trim().trim('|').split('|').joinToString("：") { it.trim() }
+                    blocks += LegalDocumentBlock.Paragraph(plainText(text))
+                }
+                unorderedItem != null -> {
+                    finishParagraph()
+                    blocks += LegalDocumentBlock.ListItem(plainText(unorderedItem.groupValues[1]), "•")
+                }
+                orderedItem != null -> {
+                    finishParagraph()
+                    blocks += LegalDocumentBlock.ListItem(plainText(orderedItem.groupValues[2]), "${orderedItem.groupValues[1]}.")
+                }
+                else -> paragraphLines += plainText(line)
             }
         }
         finishSection()
@@ -52,7 +97,7 @@ object LegalDocumentParser {
     }
 
     private fun plainText(line: String): String {
-        val text = line.replace("**", "")
+        val text = inlineCodePattern.replace(line.replace("**", "")) { it.groupValues[1] }
         val output = StringBuilder()
         var offset = 0
         // 仅解析文档使用的 [说明](地址)，避免 Android ICU 与桌面 JVM 的字符类语法差异。

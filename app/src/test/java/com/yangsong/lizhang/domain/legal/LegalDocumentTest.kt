@@ -13,7 +13,7 @@ class LegalDocumentTest {
 
     @Test fun `三份离线完整正文包含关键数据处理说明`() {
         val required = mapOf(
-            LegalDocumentType.PRIVACY to listOf("READ_CONTACTS", "POST_NOTIFICATIONS", "PBKDF2-HMAC-SHA256",
+            LegalDocumentType.PRIVACY to listOf("通讯录权限", "通知权限", "开机后恢复提醒", "PBKDF2-HMAC-SHA256",
                 "AES-256-GCM", "CSV、Excel 和普通备份文件未加密", "撤回权限不会自动删除", "官网访问补充说明",
                 "独立提醒", "替换设备中现有的联系人及礼金记录", "独立密码加密", "依法向有关主管部门投诉", "未成年人"),
             LegalDocumentType.TERMS to listOf("手动添加联系人", "遗失后无法找回或解密", "替换设备中现有的全部联系人及礼金记录", "关联的礼金记录",
@@ -27,6 +27,61 @@ class LegalDocumentTest {
             val displayed = document.sections.joinToString("\n") { "${it.heading.orEmpty()}\n${it.body}" }
             phrases.forEach { assertTrue("${type.name} 缺失完整说明：$it", displayed.contains(it)) }
             assertTrue(type.name, document.sections.size >= 8)
+        }
+    }
+
+    @Test fun `权限说明保留主动授权字段范围拒绝行为及撤回后的记录`() {
+        val document = LegalDocumentParser.parse(LegalDocumentType.PRIVACY,
+            File(sourceRoot, "assets/legal/privacy.md").readText())
+        val permissions = document.sections.single { it.heading == "二、权限与用途" }
+        val contacts = permissions.body.substringAfter("通讯录权限").substringBefore("通知权限")
+        listOf("主动选择“通讯录导入”并授权后", "读取通讯录", "拒绝授权后，仍可手动添加联系人",
+            "在本机", "有电话号码的条目", "姓名、完整号码和系统联系人标识", "预览、搜索及去重",
+            "只保存你选中的姓名和完整号码", "不保存系统联系人标识", "号码遮罩不改变实际保存的完整号码",
+            "系统通讯录不会被修改").forEach {
+            assertTrue("通讯录说明缺失：$it", contacts.contains(it))
+        }
+        val notifications = permissions.body.substringAfter("通知权限").substringBefore("开机后恢复提醒")
+        listOf("开启提醒通知时", "按系统要求申请通知权限", "拒绝通知权限不影响联系人管理和礼金记账",
+            "提醒名称和日期", "Android 系统显示", "可能出现在锁屏上").forEach {
+            assertTrue("通知说明缺失：$it", notifications.contains(it))
+        }
+        val restart = permissions.body.substringAfter("开机后恢复提醒")
+        listOf("设备重启后", "重新安排已启用的提醒", "系统设置中撤回通讯录或通知权限",
+            "撤回权限不会自动删除已保存到礼账的记录").forEach {
+            assertTrue("重启与撤回说明缺失：$it", restart.contains(it))
+        }
+    }
+
+    @Test fun `公开正文使用自然语言权限名称且开头邮箱去重不影响联系与权利说明`() {
+        val introductions = mapOf(
+            LegalDocumentType.PRIVACY to "礼账用于记录礼金往来、管理联系人和日期提醒。以下说明这些信息的用途、保存方式及你的管理方式。",
+            LegalDocumentType.TERMS to "本协议适用于礼账 Android 应用。使用前请阅读本协议和《礼账隐私说明》。",
+        )
+        LegalDocumentType.entries.forEach { type ->
+            val markdown = File(sourceRoot, "assets/legal/${type.assetName}").readText()
+            val displayed = LegalDocumentParser.parse(type, markdown).sections.joinToString("\n") { it.body }
+            listOf("READ_CONTACTS", "POST_NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "INTERNET").forEach {
+                assertFalse("${type.name} 原文不应包含权限常量：$it", markdown.contains(it))
+                assertFalse("${type.name} 展示不应包含权限常量：$it", displayed.contains(it))
+            }
+            introductions[type]?.let { introduction ->
+                val opening = markdown.substringAfter("生效日期：{{effective_date}}").substringBefore("\n## ").trim()
+                assertEquals("${type.name} 开头不再重复邮箱", introduction, opening)
+                val contact = markdown.substringAfterLast("\n## ")
+                assertTrue("${type.name} 末尾保留联系邮箱", contact.contains("联系邮箱：**{{contact_email}}**"))
+                assertTrue("${type.name} 末尾保留官方网站", contact.contains("官方网站：**https://{{website_domain}}**"))
+            }
+        }
+        val privacy = File(sourceRoot, "assets/legal/privacy.md").readText()
+        val mail = privacy.substringAfter("## 六、官网与邮件").substringBefore("## 七、")
+        listOf("{{contact_email}}", "发件邮箱、邮件内容", "处理和回复该事项", "邮件服务商", "期限内保存").forEach {
+            assertTrue("反馈邮件处理说明缺失：$it", mail.contains(it))
+        }
+        val rights = privacy.substringAfter("## 七、信息管理与权利").substringBefore("## 八、")
+        listOf("查看、更正和删除", "导出或备份取得副本", "撤回权限", "权利请求", "{{contact_email}}",
+            "必要核实后依法及时处理", "依法向有关主管部门投诉").forEach {
+            assertTrue("信息权利说明缺失：$it", rights.contains(it))
         }
     }
 
@@ -46,6 +101,40 @@ class LegalDocumentTest {
         assertTrue(body.contains("https://example.invalid/privacy/"))
         assertFalse(body.contains("**"))
         assertFalse(body.contains("| ---"))
+    }
+
+    @Test fun `小标题段落及列表保留结构与原编号且显示文本没有Markdown标记`() {
+        val document = LegalDocumentParser.parse(LegalDocumentType.PRIVACY, """
+            # 隐私说明
+            版本：1.0.0
+            ## 权限与用途
+            ### **通讯录权限**
+            仅在主动导入时读取，`预览`保留完整号码。
+
+            拒绝后仍可手动添加联系人。
+
+            - **预览**不修改系统通讯录。
+            - 只保存所选姓名和号码。
+
+            3. 核对导入选择。
+            4. 确认保存。
+        """.trimIndent())
+        val section = document.sections.last()
+        assertEquals("权限与用途", section.heading)
+        assertEquals(listOf(
+            LegalDocumentBlock.Heading("通讯录权限", 3),
+            LegalDocumentBlock.Paragraph("仅在主动导入时读取，预览保留完整号码。"),
+            LegalDocumentBlock.Paragraph("拒绝后仍可手动添加联系人。"),
+            LegalDocumentBlock.ListItem("预览不修改系统通讯录。", "•"),
+            LegalDocumentBlock.ListItem("只保存所选姓名和号码。", "•"),
+            LegalDocumentBlock.ListItem("核对导入选择。", "3."),
+            LegalDocumentBlock.ListItem("确认保存。", "4."),
+        ), section.blocks)
+        listOf("#", "**", "`", "- ").forEach { assertFalse("不应显示 Markdown 标记：$it", section.body.contains(it)) }
+        assertTrue(section.body.contains("• 预览不修改系统通讯录。"))
+        assertTrue(section.body.contains("3. 核对导入选择。"))
+        assertTrue(section.body.contains("4. 确认保存。"))
+        assertTrue(section.body.contains("预览保留完整号码。\n\n拒绝后仍可手动添加联系人。"))
     }
 
     @Test(expected = IllegalArgumentException::class)

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -34,7 +33,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,8 +45,10 @@ import com.yangsong.lizhang.ui.component.AppTopBar
 import com.yangsong.lizhang.ui.component.GlassButton
 import com.yangsong.lizhang.ui.component.GlassCard
 import com.yangsong.lizhang.ui.component.GlassTokens
+import com.yangsong.lizhang.ui.component.LegalDocumentSectionContent
 import com.yangsong.lizhang.ui.component.SecondaryButton
 import com.yangsong.lizhang.ui.screen.LegalDocumentScreen
+import com.yangsong.lizhang.ui.theme.LegalDocumentTypography
 import com.yangsong.lizhang.ui.viewmodel.LegalDocumentViewModel
 import com.yangsong.lizhang.ui.viewmodel.LegalDocumentUiState
 import com.yangsong.lizhang.ui.viewmodel.PrivacyConsentViewModel
@@ -180,7 +180,7 @@ private fun NoticeDocument(type: LegalDocumentType, state: LegalDocumentUiState,
     Column(Modifier.fillMaxWidth().testTag("告知正文_${type.name.lowercase()}"),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(if (type == LegalDocumentType.PRIVACY) R.string.privacy_title else R.string.legal_terms_title),
-            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            style = MaterialTheme.typography.titleLarge.merge(LegalDocumentTypography.Title))
         when {
             state.isLoading -> CircularProgressIndicator()
             state.failed || document == null || document.type != type || document.sections.isEmpty() ||
@@ -191,13 +191,7 @@ private fun NoticeDocument(type: LegalDocumentType, state: LegalDocumentUiState,
                     Modifier.fillMaxWidth().testTag("告知重新读取_${type.name.lowercase()}"))
             }
             else -> document.sections.forEach { section ->
-                section.heading?.let {
-                    Text(it, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                SelectionContainer {
-                    Text(section.body, style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                LegalDocumentSectionContent(section)
             }
         }
     }
