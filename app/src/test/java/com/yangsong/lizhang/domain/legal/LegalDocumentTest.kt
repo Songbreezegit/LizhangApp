@@ -200,10 +200,26 @@ class LegalDocumentTest {
             assertFalse(type.name, text.contains(LegalPolicy.CURRENT_VERSION))
             assertFalse(type.name, text.contains("{{publication_status}}"))
             assertFalse(type.name, text.contains("尚未生效"))
-            assertFalse("${type.name} 不应出现个人姓名", text.contains(operatorName))
-            assertFalse("${type.name} 不应展开个人姓名", text.contains("{{operator_name}}"))
+            assertFalse("${type.name} 不应硬编码主体姓名", text.contains(operatorName))
+            if (type == LegalDocumentType.HELP) {
+                assertFalse("帮助文档不新增主体署名", text.contains("{{operator_name}}"))
+            } else {
+                val opening = text.substringBefore("\n## ")
+                assertFalse("${type.name} 开头不重复主体", opening.contains("{{operator_name}}"))
+                assertFalse("${type.name} 开头不重复邮箱", opening.contains("{{contact_email}}"))
+                val contact = text.substringAfterLast("\n## ").replace("\r\n", "\n")
+                val operatorLine = "运营主体：{{operator_name}}（个人开发者）"
+                assertEquals("${type.name} 只在末尾登记一次主体", 1,
+                    Regex(Regex.escape("{{operator_name}}")).findAll(text).count())
+                assertTrue("${type.name} 末尾保留主体占位符", contact.contains(operatorLine))
+                assertTrue("${type.name} 主体先于邮箱", contact.indexOf(operatorLine) < contact.indexOf("联系邮箱："))
+                assertTrue("${type.name} 邮箱先于官网", contact.indexOf("联系邮箱：") < contact.indexOf("官方网站："))
+                assertTrue("${type.name} 三项信息分段", contact.contains("$operatorLine\n\n联系邮箱："))
+                assertTrue("${type.name} 邮箱与官网分段", contact.contains("**{{contact_email}}**\n\n官方网站："))
+            }
             assertFalse("${type.name} 混入未批准文案", unapprovedText.containsMatchIn(text))
-            listOf("approval_status", "source_branch", "code_baseline").forEach { key ->
+            listOf("approval_status", "source_branch", "code_baseline", "reviewed_by", "approved_at",
+                "approved_content_sha256", "signing_identity_status", "signing_certificate_sha256").forEach { key ->
                 assertFalse("${type.name} 混入内部字段：$key", text.contains(key))
             }
             if (type != LegalDocumentType.HELP) {

@@ -2,7 +2,7 @@ package com.yangsong.lizhang.domain.legal
 
 /** 内部同意记录版本。重大正文更新必须变更此标识；不向用户展示为公开法律版本。 */
 object LegalPolicy {
-    const val CURRENT_VERSION = "legal-product-copy-20261029"
+    const val CURRENT_VERSION = "legal-final-v1.0.0-20261103"
 }
 
 enum class LegalDocumentType(val assetName: String, val officialUrl: String) {

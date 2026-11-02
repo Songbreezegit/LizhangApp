@@ -85,5 +85,8 @@
 
 ## 十、联系
 
+运营主体：{{operator_name}}（个人开发者）
+
 联系邮箱：**{{contact_email}}**
+
 官方网站：**https://{{website_domain}}**

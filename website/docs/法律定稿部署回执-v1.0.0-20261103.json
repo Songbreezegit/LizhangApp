@@ -1,0 +1,47 @@
+{
+  "status": "deployed-and-readback-verified",
+  "deployedAt": "2026-11-03T01:24:59.897572+08:00",
+  "sourceBaseline": "355d0784d4d9e0c8adb36c822057912471f0974a",
+  "branch": "release/v1.0.0-legal-finalization",
+  "policyVersion": "legal-final-v1.0.0-20261103",
+  "effectiveDate": "2026-11-03",
+  "legalContentSha256": "b698f2d89e5b4786bd46ac82dea0b17250911cf31d9427d6d32f5db5953fff55",
+  "siteContentSha256": "b32be1df42c4c7bbf737cf4062c3511cf631ef60890d1e01e0bae51b69626633",
+  "current": "/var/www/lizhang-privacy/releases/20261103-legal-b32be1df",
+  "previous": "/var/www/lizhang-privacy/releases/20261021-21134e9c",
+  "audit": "/var/backups/ecs-ops/lizhang-legal-20261103-b32be1df",
+  "rollbackCommand": "sudo /usr/bin/python3 /var/backups/ecs-ops/lizhang-legal-20261103-b32be1df/rollback-reviewed.py --execute",
+  "rollbackScriptSha256": "cd98a5f7e1972d9e2b4a229668f90545a5ad93fa06456c03eda60bb0d36e9052",
+  "rollbackExecuted": false,
+  "serverReadback": {
+    "newFilesVerified": 10,
+    "previousFilesVerified": 10,
+    "unchangedNonLegalFiles": 7,
+    "owner": "root:root",
+    "directoryMode": "0755",
+    "fileMode": "0644",
+    "internalMetadataPresent": false
+  },
+  "httpsReadback": [
+    {
+      "Url": "https://lizhang.songisle.xyz/privacy/",
+      "Status": 200,
+      "SHA256": "36ef4322546c8546ccc2c5c652180b091866df529eca96b687e7b337fe3e1558",
+      "MatchesApprovedProduction": true
+    },
+    {
+      "Url": "https://lizhang.songisle.xyz/terms/",
+      "Status": 200,
+      "SHA256": "393294a421a74027772810df55bd190fd3fb2a222959ed11a29361d45aea4c88",
+      "MatchesApprovedProduction": true
+    },
+    {
+      "Url": "https://lizhang.songisle.xyz/help/",
+      "Status": 200,
+      "SHA256": "072d54f4d750237b294ccfe70e272bc1bb62cd5fdee28c97a254db18b9205192",
+      "MatchesApprovedProduction": true
+    }
+  ],
+  "infrastructureModified": [],
+  "androidOfficialReleaseAuthorized": false
+}

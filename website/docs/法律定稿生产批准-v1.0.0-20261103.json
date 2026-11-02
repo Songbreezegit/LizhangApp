@@ -1,0 +1,34 @@
+{
+  "status": "approved",
+  "approvalSource": "2026-11-03 本人明确授权本次限定的法律定稿及既有官网法律页面同步",
+  "reviewedBy": "杨松",
+  "approvedAt": "2026-11-03",
+  "effectiveDate": "2026-11-03",
+  "policyVersion": "legal-final-v1.0.0-20261103",
+  "baseline": "355d0784d4d9e0c8adb36c822057912471f0974a",
+  "legalContentSha256": "b698f2d89e5b4786bd46ac82dea0b17250911cf31d9427d6d32f5db5953fff55",
+  "siteContentSha256": "b32be1df42c4c7bbf737cf4062c3511cf631ef60890d1e01e0bae51b69626633",
+  "scope": [
+    "/privacy/",
+    "/terms/",
+    "/help/"
+  ],
+  "androidOfficialReleaseAuthorized": false,
+  "publicFiles": {
+    "404.html": "4b240b9055eaa76f26846e14a85da27335e2e1a9d67e6709c5e23a86a24f1fc0",
+    "assets/home-cat.png": "99cc9c1ddc2a1262a0c2a4f70ec877f6ea46ba97ebad64248f202372d201e3e5",
+    "assets/logo-cat.png": "dce28e0d573cebb55ac3c6e76a80a28c60f22e141ee317a152407e04b8398cd4",
+    "assets/style.css": "a3938cfadb6ab5828d04b85503092beba7972528f45d4e9b68eb9f907c4c64a4",
+    "contact/index.html": "1a66f1e3d67a0dcd482aa471b3251a1e3e4bf6a5b6b1772646f14098babda4a4",
+    "help/index.html": "072d54f4d750237b294ccfe70e272bc1bb62cd5fdee28c97a254db18b9205192",
+    "index.html": "0333c5a7c62757bec202e7ce4593ec53189859342b01adab57b0609bd2acdb76",
+    "privacy/index.html": "36ef4322546c8546ccc2c5c652180b091866df529eca96b687e7b337fe3e1558",
+    "robots.txt": "bbc322f01c0d16efaef78e32aaca80b81571f8dbbd9a4c16f7670b0d55f77d1f",
+    "terms/index.html": "393294a421a74027772810df55bd190fd3fb2a222959ed11a29361d45aea4c88"
+  },
+  "package": {
+    "name": "Lizhang-v1.0.0-legal-finalization-20261103-production.zip",
+    "bytes": 2538681,
+    "sha256": "8056e548922dc9d810d42b6e9769a39183bac2554436075cb7b7d9528ff4035f"
+  }
+}
