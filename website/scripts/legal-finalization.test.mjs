@@ -60,7 +60,7 @@ test('生产目录仅有公开静态资源且没有内部批准及证书资料',
   }
 });
 
-test('法律批准与版本一致但 Android 备案发布条件和正式签名仍待批准', () => {
+test('法律批准与版本一致，Android 备案与正式签名身份已确认', () => {
   assert.equal(legal.metadata.approval_status, 'approved');
   assert.equal(approval.approval_status, 'approved');
   assert.equal(approval.approved_content_sha256, legal.legalDigest);
@@ -69,7 +69,7 @@ test('法律批准与版本一致但 Android 备案发布条件和正式签名�
   assert.equal(approval.policy_version, legal.policyVersion);
   assert.ok(legal.validDate(approval.effective_date));
   assert.ok(legal.validDate(approval.approved_at));
-  for (const key of ['filing_status', 'signing_identity_status', 'signing_certificate_sha256']) {
-    assert.equal(approval[key], 'pending');
-  }
+  assert.equal(approval.filing_status, 'confirmed');
+  assert.equal(approval.signing_identity_status, 'confirmed');
+  assert.match(approval.signing_certificate_sha256, /^[a-f0-9]{64}$/i);
 });
