@@ -44,7 +44,7 @@ test('首页先进入站内下载页，下载页有独立 SEO 和原有法律入
 test('复制摘要只加载同源脚本，其余页面继续禁止脚本，未开放内联脚本', () => {
   const html = page('download/index.html');
   assert.ok(html.includes('script-src \'self\''));
-  assert.ok(html.includes('<script src="/assets/download.js" defer></script>'));
+  assert.match(html, /<script src="\/assets\/download\.js\?v=[a-f0-9]{12}" defer><\/script>/);
   assert.ok(html.includes('data-copy-checksum disabled'));
   assert.ok(html.includes('role="status" aria-live="polite"'));
   assert.ok(html.includes('校验值也可长按或选中复制'));
@@ -77,4 +77,15 @@ test('Nginx 仅下载页允许同源脚本，保留安全头及内部文件拦�
   assert.ok(downloadLocation.includes("script-src 'self'"));
   assert.ok(nginx.includes('BUILD-INFO'));
   assert.doesNotMatch(nginx, /unsafe-inline|unsafe-eval|location \^~ \/download\//);
+});
+
+test('新首页及下载页按网站输入摘要更新资源缓存，法律页面保持原有资源地址', () => {
+  const version = config.productionApproval.approvedSiteSha256.slice(0, 12);
+  for (const name of ['index.html', 'download/index.html']) {
+    assert.ok(page(name).includes(`/assets/style.css?v=${version}`));
+  }
+  assert.ok(page('download/index.html').includes(`/assets/download.js?v=${version}`));
+  for (const name of ['privacy/index.html', 'terms/index.html', 'help/index.html']) {
+    assert.ok(page(name).includes('href="/assets/style.css"'));
+  }
 });

@@ -5,6 +5,7 @@
 /release/*.properties text eol=lf
 /release/unapproved-content-pattern.txt text eol=lf
 /website/**/*.mjs text eol=lf
+/website/**/*.js text eol=lf
 /website/**/*.json text eol=lf
 /website/**/*.css text eol=lf
 /website/**/*.conf text eol=lf

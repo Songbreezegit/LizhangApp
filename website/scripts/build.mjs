@@ -51,6 +51,8 @@ function image(name, alt, className = '', lazy = false) {
 
 function layout(path, title, description, body) {
   const downloadScript = path === '/download/';
+  const assetVersion = '?v=' + siteDigest.slice(0, 12);
+  const stylesheetVersion = path === '/' || downloadScript ? assetVersion : '';
   const filing = '<a href="https://beian.miit.gov.cn/" rel="noreferrer">' + e(config.icp.number) + '</a>';
   // 公安联网备案尚未取得时不展示；取得真实编号及链接后与 ICP 一并居中显示。
   const publicSecurity = config.publicSecurity?.number && config.publicSecurity?.url
@@ -69,7 +71,7 @@ function layout(path, title, description, body) {
     (downloadScript ? 'script-src \'self\'; ' : '') + 'base-uri \'none\'; form-action \'none\'">\n' +
     '<title>' + e(title) + ' · 礼账</title>\n<meta name="description" content="' + e(description) + '">\n' +
     '<link rel="icon" href="/assets/logo-cat.png" type="image/png">\n' +
-    '<link rel="stylesheet" href="/assets/style.css">\n</head>\n<body>\n' +
+    '<link rel="stylesheet" href="/assets/style.css' + stylesheetVersion + '">\n</head>\n<body>\n' +
     '<a class="skip-link" href="#main">跳到正文</a>\n' +
     (mode === 'review' ? '<div class="preview-banner">官网 v1.1 信息精简审核预览 · 仅供本地审阅，尚未测试；仍待本人验收及新的发布摘要批准</div>\n' : '') +
     '<header class="site-header wrap"><a class="brand" href="/" aria-label="礼账首页">' +
@@ -82,7 +84,7 @@ function layout(path, title, description, body) {
     '<p class="footer-contact"><span>联系邮箱</span><a href="mailto:' + e(metadata.contact_email) + '">' +
     e(metadata.contact_email) + '</a></p></div></div>' +
     '<p class="footer-filing">' + filing + publicSecurity + '</p></footer>\n' +
-    (downloadScript ? '<script src="/assets/download.js" defer></script>\n' : '') + '</body>\n</html>\n';
+    (downloadScript ? '<script src="/assets/download.js' + assetVersion + '" defer></script>\n' : '') + '</body>\n</html>\n';
 }
 
 function documentPage(route) {
