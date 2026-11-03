@@ -8,6 +8,18 @@
     "number": null,
     "url": null
   },
+  "release": {
+    "versionName": "1.0.0",
+    "versionCode": 25,
+    "apkFilename": "LiZhang-v1.0.0-25-release.apk",
+    "apkUrl": "https://github.com/Songbreezegit/LizhangApp/releases/download/v1.0.0/LiZhang-v1.0.0-25-release.apk",
+    "releaseUrl": "https://github.com/Songbreezegit/LizhangApp/releases/tag/v1.0.0",
+    "latestReleaseUrl": "https://github.com/Songbreezegit/LizhangApp/releases/latest",
+    "checksumUrl": "https://github.com/Songbreezegit/LizhangApp/releases/download/v1.0.0/SHA256SUMS.txt",
+    "sha256": "26a0fed1a81286bf60bd7ba405c077fde0e5214c4be7267112ea8eaf936d4d55",
+    "sizeBytes": 26813393,
+    "minAndroidVersion": "8.0"
+  },
   "deploymentReview": {
     "icpDomainStatus": "confirmed",
     "icpOperatorStatus": "confirmed",
@@ -19,7 +31,7 @@
   "productionApproval": {
     "status": "approved",
     "reviewedBy": "杨松",
-    "approvedAt": "2026-11-03",
-    "approvedSiteSha256": "b32be1df42c4c7bbf737cf4062c3511cf631ef60890d1e01e0bae51b69626633"
+    "approvedAt": "2026-11-04",
+    "approvedSiteSha256": "a55f96b46cf701c319b94b7479e8b3c65e7b51628e2e84ba6a0eccb7ad010d42"
   }
 }

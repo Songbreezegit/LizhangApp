@@ -49,11 +49,12 @@ test('生产目录仅有公开静态资源且没有内部批准及证书资料',
     assert.ok(!entry.isSymbolicLink(), '公开资源不能是符号链接');
     return entry.isDirectory() ? walk(name) : [name];
   });
-  assert.deepEqual(walk('').sort(), ['404.html', 'assets/home-cat.png', 'assets/logo-cat.png',
-    'assets/style.css', 'contact/index.html', 'help/index.html', 'index.html', 'privacy/index.html',
+  assert.deepEqual(walk('').sort(), ['404.html', 'assets/download.js', 'assets/home-cat.png', 'assets/logo-cat.png',
+    'assets/style.css', 'contact/index.html', 'download/index.html', 'help/index.html', 'index.html', 'privacy/index.html',
     'robots.txt', 'terms/index.html'].sort());
-  for (const name of ['privacy', 'terms', 'help']) {
-    const html = read(`website/dist-production/${name}/index.html`);
+  for (const name of ['404.html', 'index.html', 'download/index.html', 'privacy/index.html',
+    'terms/index.html', 'help/index.html', 'contact/index.html']) {
+    const html = read(`website/dist-production/${name}`);
     assert.doesNotMatch(html, /pending|\{\{|\}\}|approval_status|source_branch|code_baseline|reviewed_by|approved_at|approved_content_sha256|signing_identity_status|signing_certificate_sha256|-----BEGIN .*PRIVATE KEY-----/i);
     assert.ok(!html.includes(legal.policyVersion));
     assert.ok(!html.includes('BUILD-INFO.json'));

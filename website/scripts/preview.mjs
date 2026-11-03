@@ -13,8 +13,9 @@ if (process.argv.length > 3 || !Number.isInteger(port) || port < 1024 || port > 
 // 仅提供生成目录中明确列出的公开页面和资产，不暴露文档源、凭据或任意磁盘文件。
 const routes = new Map([
   ['/', ['index.html', 'text/html; charset=utf-8']],
-  ...['privacy', 'terms', 'help', 'contact'].map(page => ['/' + page + '/', [page + '/index.html', 'text/html; charset=utf-8']]),
+  ...['download', 'privacy', 'terms', 'help', 'contact'].map(page => ['/' + page + '/', [page + '/index.html', 'text/html; charset=utf-8']]),
   ['/assets/style.css', ['assets/style.css', 'text/css; charset=utf-8']],
+  ['/assets/download.js', ['assets/download.js', 'text/javascript; charset=utf-8']],
   ['/assets/logo-cat.png', ['assets/logo-cat.png', 'image/png']],
   ['/assets/home-cat.png', ['assets/home-cat.png', 'image/png']],
   ['/robots.txt', ['robots.txt', 'text/plain; charset=utf-8']]
@@ -23,18 +24,19 @@ const server = createServer((request, response) => {
   response.setHeader('Cache-Control', 'no-store');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Referrer-Policy', 'no-referrer');
-  response.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     response.writeHead(405, { Allow: 'GET, HEAD' }); response.end(); return;
   }
   let path;
   try { path = new URL(request.url, 'http://127.0.0.1').pathname; }
   catch { response.writeHead(400); response.end(); return; }
-  if (/^\/(?:privacy|terms|help|contact)(?:\/index\.html)?$/.test(path)) {
+  if (/^\/(?:download|privacy|terms|help|contact)(?:\/index\.html)?$/.test(path)) {
     const target = '/' + path.split('/')[1] + '/';
     response.writeHead(308, { Location: target }); response.end(); return;
   }
   if (path === '/index.html') path = '/';
+  response.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'self'; " +
+    (path === '/download/' ? "script-src 'self'; " : '') + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
   const entry = routes.get(path);
   response.statusCode = entry ? 200 : 404;
   if (!entry) response.setHeader('X-Robots-Tag', 'noindex, nofollow');

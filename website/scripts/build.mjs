@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { escapeHtml as e, renderMarkdown } from './markdown.mjs';
 import { loadLegal } from './legal.mjs';
+import { loadRelease } from './release.mjs';
 
 const website = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const project = resolve(website, '..');
@@ -15,9 +16,12 @@ const mode = argument === '--production' ? 'production' : 'review';
 const output = resolve(website, mode === 'production' ? 'dist-production' : 'dist');
 const { metadata, config, policyVersion, legalDigest, siteDigest, renderDocument, renderWebsitePrivacy } = loadLegal(project, mode);
 const websitePrivacy = renderWebsitePrivacy();
+const release = loadRelease(config.release);
 
 const routes = [
   { path: '/', label: '首页' },
+  { path: '/download/', label: '下载 Android 版', title: 'Android 版下载',
+    intro: `下载礼账 v${release.versionName} 正式版，在手机里记录礼金往来、联系人与重要日期。` },
   { path: '/privacy/', label: '隐私政策', file: 'privacy.md', title: '礼账隐私政策',
     intro: '了解本机数据、可选权限，以及你管理信息的方式。' },
   { path: '/terms/', label: '用户协议', file: 'terms.md', title: '礼账用户协议',
@@ -46,6 +50,7 @@ function image(name, alt, className = '', lazy = false) {
 }
 
 function layout(path, title, description, body) {
+  const downloadScript = path === '/download/';
   const filing = '<a href="https://beian.miit.gov.cn/" rel="noreferrer">' + e(config.icp.number) + '</a>';
   // 公安联网备案尚未取得时不展示；取得真实编号及链接后与 ICP 一并居中显示。
   const publicSecurity = config.publicSecurity?.number && config.publicSecurity?.url
@@ -60,7 +65,8 @@ function layout(path, title, description, body) {
     '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
     indexing + canonical +
     '<meta name="referrer" content="no-referrer">\n' +
-    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\'; style-src \'self\'; base-uri \'none\'; form-action \'none\'">\n' +
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src \'self\'; style-src \'self\'; ' +
+    (downloadScript ? 'script-src \'self\'; ' : '') + 'base-uri \'none\'; form-action \'none\'">\n' +
     '<title>' + e(title) + ' · 礼账</title>\n<meta name="description" content="' + e(description) + '">\n' +
     '<link rel="icon" href="/assets/logo-cat.png" type="image/png">\n' +
     '<link rel="stylesheet" href="/assets/style.css">\n</head>\n<body>\n' +
@@ -75,7 +81,8 @@ function layout(path, title, description, body) {
     '<a href="/privacy/">隐私政策</a><a href="/terms/">用户协议</a><a href="/help/">使用帮助</a></nav>' +
     '<p class="footer-contact"><span>联系邮箱</span><a href="mailto:' + e(metadata.contact_email) + '">' +
     e(metadata.contact_email) + '</a></p></div></div>' +
-    '<p class="footer-filing">' + filing + publicSecurity + '</p></footer>\n</body>\n</html>\n';
+    '<p class="footer-filing">' + filing + publicSecurity + '</p></footer>\n' +
+    (downloadScript ? '<script src="/assets/download.js" defer></script>\n' : '') + '</body>\n</html>\n';
 }
 
 function documentPage(route) {
@@ -106,8 +113,9 @@ function home() {
   return '<section class="hero"><div class="hero-copy"><p class="eyebrow">本地人情礼金记录工具</p>' +
     '<h1>人情记在心里，<br><span>往来记在礼账。</span></h1>' +
     '<p class="hero-description">记下收到与送出的心意，把联系人、礼金和重要日子整理清楚。记录留在自己的手机里，日后想起时，随手就能找到。</p>' +
-    '<div class="hero-actions"><a class="button primary" href="/help/">从使用帮助开始</a>' +
-    '<a class="button secondary" href="/privacy/">了解隐私保护</a></div>' +
+    '<div class="hero-actions"><a class="button primary" href="/download/">下载 Android 版</a>' +
+    '<a class="button secondary" href="/help/">使用帮助</a></div>' +
+    '<p class="release-line">当前正式版 v' + e(release.versionName) + ' · Android ' + e(release.minAndroidVersion) + '+</p>' +
     '<ul class="trust-points" aria-label="产品特点"><li>本机保存</li><li>无需账号</li><li>无广告</li></ul></div>' +
     '<figure class="hero-art">' + image('home-cat.png', '礼账品牌小猫抱着红包') + '</figure></section>' +
     '<section class="section" aria-labelledby="features"><div class="section-heading"><p class="eyebrow">日常往来，慢慢记清楚</p>' +
@@ -121,6 +129,40 @@ function home() {
     '<div class="reading-links"><a class="card" href="/privacy/"><span>隐私政策</span><small>数据范围、权限与删除规则</small><b aria-hidden="true">↗</b></a>' +
     '<a class="card" href="/terms/"><span>用户协议</span><small>使用范围与重要操作提示</small><b aria-hidden="true">↗</b></a>' +
     '<a class="card" href="/contact/"><span>联系与反馈</span><small>联系邮箱与反馈说明</small><b aria-hidden="true">↗</b></a></div></section>';
+}
+
+function download() {
+  const features = [
+    ['往来记账', '收礼、送礼分别记录，金额、事由与备注随时可查。'],
+    ['联系人管理', '整理联系人与历史往来，也可主动选择通讯录导入。'],
+    ['日历与统计', '按日期找记录，查看一年里的收礼、送礼与结余。'],
+    ['日期提醒', '为重要日子创建一次性或每年重复的本地提醒。'],
+    ['本地备份', '导出 Excel、CSV，或保存普通与密码加密备份。']
+  ].map(([title, text]) => '<li><h3>' + title + '</h3><p>' + text + '</p></li>').join('');
+  return '<section class="hero download-hero"><div class="hero-copy"><p class="eyebrow">礼账 · ' +
+    e(metadata.english_name) + '</p><h1>把人情记清楚，<br>让心意有迹可循。</h1>' +
+    '<p class="hero-description">记录收到与送出的每一份心意，整理联系人、礼金往来和重要日期。</p>' +
+    '<div class="hero-actions"><a class="button primary" href="' + e(release.apkUrl) + '" download="' +
+    e(release.apkFilename) + '">下载 Android 版</a>' +
+    '<a class="button secondary" href="' + e(release.latestReleaseUrl) +
+    '" target="_blank" rel="noopener noreferrer">查看 GitHub 发行记录</a></div>' +
+    '<ul class="download-version" aria-label="版本信息"><li>v' + e(release.versionName) + '</li><li>Android ' +
+    e(release.minAndroidVersion) + '+</li><li>' + e(release.sizeMiB) + ' MiB</li><li>正式签名版本</li></ul></div>' +
+    '<figure class="hero-art">' + image('home-cat.png', '礼账品牌小猫抱着红包') + '</figure></section>' +
+    '<section class="download-features-panel card" aria-labelledby="download-features"><h2 id="download-features">让每一份往来都有记录</h2>' +
+    '<ul class="download-features">' + features + '</ul></section>' +
+    '<section class="download-integrity card" aria-labelledby="download-file"><h2 id="download-file">安装包与校验值</h2>' +
+    '<p class="download-filename">' + e(release.apkFilename) + '</p><dl class="download-file-info"><div><dt>文件大小</dt><dd>' +
+    e(release.sizeBytes.toLocaleString('en-US')) + ' 字节</dd></div><div><dt>版本</dt><dd>v' + e(release.versionName) +
+    ' / ' + e(String(release.versionCode)) + '</dd></div></dl><p class="checksum-label">SHA-256</p>' +
+    '<code class="checksum" id="apk-sha256" tabindex="0">' + e(release.sha256) + '</code>' +
+    '<div class="download-checksum-actions"><button class="button secondary" type="button" data-copy-checksum disabled>复制摘要</button>' +
+    '<a class="text-link" href="' + e(release.checksumUrl) + '">下载校验文件</a></div>' +
+    '<p class="checksum-status" id="checksum-status" role="status" aria-live="polite">校验值也可长按或选中复制。</p></section>' +
+    '<section class="download-install section" aria-labelledby="download-install"><h2 id="download-install">安装与迁移</h2>' +
+    '<p>下载安装包后，按照 Android 系统提示完成安装；系统可能要求允许当前浏览器安装外部来源应用。</p>' +
+    '<p>如果此前安装过 Debug 测试版，请先在礼账内备份账本并保存文件，再卸载旧版、安装正式版并恢复。备份包含联系人和礼金记录，不包含独立提醒及应用设置；加密备份恢复时需要原密码。</p>' +
+    '<a class="text-link" href="/help/">查看使用帮助</a></section>';
 }
 
 function contact() {
@@ -157,12 +199,14 @@ if (mode === 'production') {
 const dist = productionBuild ? resolve(productionBuild, 'public') : output;
 mkdirSync(resolve(dist, 'assets'), { recursive: true });
 copyFileSync(resolve(website, 'src/style.css'), resolve(dist, 'assets/style.css'));
+copyFileSync(resolve(website, 'src/download.js'), resolve(dist, 'assets/download.js'));
 for (const asset of images) copyFileSync(resolve(drawable, asset.source), resolve(dist, 'assets', asset.target));
 for (const route of routes) {
   const dir = route.path === '/' ? dist : resolve(dist, route.path.slice(1));
   mkdirSync(dir, { recursive: true });
   const title = route.title || (route.path === '/' ? '本地人情礼金记录工具' : '联系与反馈');
-  const body = route.file ? documentPage(route) : route.path === '/' ? home() : contact();
+  const body = route.file ? documentPage(route) : route.path === '/' ? home()
+    : route.path === '/download/' ? download() : contact();
   writeFileSync(resolve(dir, 'index.html'), layout(route.path, title, route.intro || title, body), 'utf8');
 }
 writeFileSync(resolve(dist, '404.html'), layout('', '页面未找到', '请通过页脚导航查阅礼账说明。',

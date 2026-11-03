@@ -202,3 +202,32 @@ th:first-child, td:first-child { width: 25%; }
 @media (min-width: 68.75rem) {
   .features { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* 下载页沿用既有品牌、卡片和按钮，仅增加发行资料的布局。 */
+.release-line { margin-top: .875rem; color: var(--muted); font-size: var(--label-size); }
+.download-version { display: flex; flex-wrap: wrap; gap: .5rem 1.125rem; padding: 0; margin: 1rem 0 0; list-style: none; color: var(--muted); font-size: var(--label-size); }
+.download-features-panel, .download-integrity { padding: 1.25rem; margin-bottom: 1.25rem; }
+.download-features { display: grid; gap: 1.125rem; list-style: none; margin: 1.25rem 0 0; padding: 0; }
+.download-features p { margin-top: .375rem; font-size: var(--detail-size); color: var(--muted); }
+.download-filename { margin-top: .75rem; font-weight: 600; }
+.download-file-info { display: flex; flex-wrap: wrap; gap: .625rem 2rem; margin: .75rem 0 1rem; font-size: var(--detail-size); }
+.download-file-info > div { display: flex; gap: .625rem; }
+.download-file-info dt { color: var(--muted); }
+.download-file-info dd { margin: 0; }
+.checksum-label { color: var(--muted); font-size: var(--label-size); margin-bottom: .375rem; }
+.checksum { display: block; padding: .875rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: #f4f7fc; font-size: .9375rem; line-height: 1.8; word-break: break-all; user-select: all; }
+.download-checksum-actions { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; align-items: center; margin-top: .875rem; }
+button.button { font-family: inherit; cursor: pointer; }
+button.button:disabled { cursor: default; opacity: .65; }
+button.button:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+.checksum-status { min-height: 1.6em; font-size: var(--label-size); color: var(--muted); margin-top: .5rem; }
+.download-install { max-width: 48rem; }
+.download-install > p { color: var(--muted); margin-top: .875rem; }
+.download-install > .text-link { margin-top: .625rem; }
+@media (min-width: 48rem) {
+  .download-features-panel, .download-integrity { padding: 1.75rem 2rem; }
+  .download-features { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem 2rem; }
+}
+@media (min-width: 68.75rem) {
+  .download-features { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.25rem; }
+}

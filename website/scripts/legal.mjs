@@ -72,7 +72,8 @@ export function loadLegal(project, mode) {
   const legalDigest = hash(inputs.map(path => relative(app, path).replaceAll('\\', '/') + '\n' +
     hash(readFileSync(path)) + '\n').join(''));
   const { productionApproval, ...siteInputs } = config;
-  const siteSources = ['scripts/build.mjs', 'scripts/legal.mjs', 'scripts/markdown.mjs', 'src/style.css',
+  const siteSources = ['scripts/build.mjs', 'scripts/legal.mjs', 'scripts/markdown.mjs', 'scripts/release.mjs',
+    'src/style.css', 'src/download.js',
     'content/privacy-website.md', 'content/privacy-website.properties',
     'deploy/nginx-loopback.conf', 'deploy/nginx-http.conf', 'deploy/nginx-https.conf'];
   const siteDigest = hash(JSON.stringify(siteInputs) + '\n' + legalDigest + '\n' +
