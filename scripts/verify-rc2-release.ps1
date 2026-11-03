@@ -53,6 +53,14 @@ if ($definedDex -match '(?m)^\s*C\s+.*(?:org\.junit\.|androidx\.test\.|com\.yang
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($apkFile.FullName)
+$legalAssets = @{}
+$filingNumberFound = $false
+$filingSource = [IO.File]::ReadAllText((Join-Path $repoRoot 'release/app-filing.properties'), [Text.Encoding]::UTF8)
+$filingMatch = [Regex]::Match($filingSource, '(?m)^app_filing_number=([^\r\n]+)\r?$')
+if (!$filingMatch.Success -or $filingMatch.Groups[1].Value -ne '渝ICP备2026025309号-2A') {
+    throw 'APP 备案配置与本次正式安装包目标不一致。'
+}
+$filingNumber = $filingMatch.Groups[1].Value
 try {
     if ($archive.GetEntry('assets/legal/metadata.properties')) {
         throw 'APK 包含内部法律审批元数据 assets/legal/metadata.properties。'
@@ -69,12 +77,34 @@ try {
         $sourcePath = Join-Path $repoRoot "app\build\generated\offlineLegalAssets\legal\$name"
         if ($assetDigest -ne (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant()) {
             throw "APK 离线正文与本次生成资产不一致：$name" }
-    }
-    foreach ($entry in $archive.Entries) {
-        if ($entry.FullName -match '(?i)(?:^|/)(?:local\.properties|[^/]+\.(?:jks|keystore|p12))$') {
-            throw 'APK 包含本机配置或密钥文件。'
+        $reader = [IO.StreamReader]::new($entry.Open(), [Text.Encoding]::UTF8)
+        try { $legalAssets[$name] = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        if ([string]::IsNullOrWhiteSpace($legalAssets[$name]) -or
+            $legalAssets[$name] -match '\{\{|\}\}|(?i)\bpending\b|approval_status|approved_content_sha256|source_branch|code_baseline|signing_certificate_sha256|legal-final-v') {
+            throw "APK 离线正文包含未展开模板、内部记录或未批准内容：$name"
         }
     }
+    foreach ($entry in $archive.Entries) {
+        if ($entry.FullName -match '(?i)(?:^|/)(?:local\.properties|release-signing[^/]*\.properties|(?:key|keystore)\.properties|[^/]+\.(?:jks|keystore|p12|pfx|key|pem))$') {
+            throw 'APK 包含本机配置或密钥文件。'
+        }
+        # 公钥签名块 META-INF/*.RSA 不属于私钥；仅拒绝实际私钥文件头。
+        $stream = $entry.Open()
+        try {
+            $prefix = [byte[]]::new(256)
+            $count = $stream.Read($prefix, 0, $prefix.Length)
+            if ([Text.Encoding]::ASCII.GetString($prefix, 0, $count) -match '-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----') {
+                throw 'APK 包含私钥内容。'
+            }
+        } finally { $stream.Dispose() }
+        if ($entry.FullName -match '^classes(?:\d+)?\.dex$') {
+            # DEX 字符串池的中文 BMP 字符与 UTF-8 字节相同，核对实际 APK 中的完整编号。
+            $reader = [IO.StreamReader]::new($entry.Open(), [Text.Encoding]::UTF8)
+            try { if ($reader.ReadToEnd().Contains($filingNumber)) { $filingNumberFound = $true } }
+            finally { $reader.Dispose() }
+        }
+    }
+    if (!$filingNumberFound) { throw 'APK DEX 中未找到完整 APP 备案号。' }
 } finally { $archive.Dispose() }
 
 $signatureOutput = & $ApkSignerPath verify --verbose --print-certs $apkFile.FullName 2>&1
@@ -89,6 +119,7 @@ if ($OfficialRelease) {
         return $match.Groups[1].Value.Trim()
     }
     if ((Get-ApprovedValue 'approval_status') -ne 'approved' -or
+        (Get-ApprovedValue 'filing_status') -ne 'confirmed' -or
         (Get-ApprovedValue 'signing_identity_status') -ne 'confirmed' -or
         (Get-ApprovedValue 'approved_content_sha256') -ne $legalDigest.legal_content_sha256) {
         throw '正式 APK 的内容批准或签名身份记录不完整，或批准摘要与当前内容不一致。'
@@ -104,12 +135,34 @@ if ($OfficialRelease) {
         throw '签名证书与本人批准的既有签名身份不一致。'
     }
     if ($signatureText -notmatch 'Verified using v2 scheme.*true') { throw '正式 APK 未通过 v2 签名验证。' }
+    if ($signatureText -notmatch 'Signer #1 key algorithm:\s*RSA\s*(?:\r?\n|$)' -or
+        $signatureText -notmatch 'Signer #1 key size \(bits\):\s*2048\s*(?:\r?\n|$)') {
+        throw '正式 APK 未使用本次已备案的 RSA 2048 签名身份。'
+    }
+    $metadataSource = [IO.File]::ReadAllText((Join-Path $repoRoot 'app/src/main/assets/legal/metadata.properties'), [Text.Encoding]::UTF8)
+    $effectiveDate = Get-ApprovedValue 'effective_date'
+    $policyVersion = Get-ApprovedValue 'policy_version'
+    $operatorName = Get-ApprovedValue 'operator_name'
+    foreach ($name in @('effective_date', 'policy_version', 'operator_name', 'approval_status')) {
+        if ($metadataSource -notmatch "(?m)^$name=$([Regex]::Escape((Get-ApprovedValue $name)))\r?$") {
+            throw "正式 APK 的法律元数据与批准记录不一致：$name"
+        }
+    }
+    foreach ($name in @('privacy.md', 'terms.md')) {
+        if (!$legalAssets[$name].Contains("版本：$expectedVersion") -or
+            !$legalAssets[$name].Contains("生效日期：$effectiveDate") -or
+            !$legalAssets[$name].Contains("运营主体：$operatorName（个人开发者）")) {
+            throw "正式 APK 的法律版本、日期或运营主体不完整：$name"
+        }
+    }
 }
 [PSCustomObject]@{
     apk = $apkFile.FullName
     application_id = $applicationId
     version_name = $versionName
     version_code = [int]$versionCode
+    min_sdk = 26
+    target_sdk = 36
     sha256 = (Get-FileHash -LiteralPath $apkFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     bytes = $apkFile.Length
     permissions = $permissions
@@ -117,6 +170,13 @@ if ($OfficialRelease) {
     legal_input_count = $legalDigest.input_count
     signature_verified = ($signatureExitCode -eq 0)
     signature_identity_checked = [bool]$OfficialRelease
+    certificate_sha256 = if ($OfficialRelease) { $actualFingerprints[0] } else { $null }
+    signing_algorithm = if ($OfficialRelease) { 'RSA' } else { $null }
+    signing_key_bits = if ($OfficialRelease) { 2048 } else { $null }
+    app_filing_number = $filingNumber
+    app_filing_number_found = $filingNumberFound
+    legal_assets_checked = @('privacy.md', 'terms.md', 'help.md')
+    internal_legal_metadata_absent = $true
     candidate = !$OfficialRelease
     device_tests_run = $false
 }
